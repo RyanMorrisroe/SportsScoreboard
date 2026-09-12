@@ -1,0 +1,55 @@
+{
+  "events": [
+    {
+      "id": "fixture-final",
+      "date": "2026-09-19T18:30:00Z",
+      "week": { "text": "Week 3" },
+      "competitions": [{
+        "status": { "type": { "state": "post", "shortDetail": "Final" } },
+        "venue": { "fullName": "Arrowhead Stadium" },
+        "competitors": [
+          {
+            "id": "12",
+            "homeAway": "home",
+            "score": { "displayValue": "31" },
+            "winner": true,
+            "team": {
+              "displayName": "Kansas City Chiefs",
+              "logos": [{ "href": "https://a.espncdn.com/i/teamlogos/nfl/500/kc.png" }]
+            }
+          },
+          {
+            "id": "34",
+            "homeAway": "away",
+            "score": { "displayValue": "17" },
+            "winner": false,
+            "team": {
+              "displayName": "Away Fixture Team",
+              "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/fixture-away.png"
+            }
+          }
+        ]
+      }]
+    },
+    {
+      "id": "fixture-tbd",
+      "date": "2026-10-03T18:30:00Z",
+      "timeValid": false,
+      "week": { "text": "Week 5" },
+      "competitions": [{
+        "status": { "type": { "state": "pre", "shortDetail": "TBD" } },
+        "competitors": [
+          {
+            "id": "56",
+            "homeAway": "away",
+            "team": { "displayName": "TBD Opponent" }
+          },
+          {
+            "team": { "id": "12", "displayName": "Kansas City Chiefs" },
+            "homeAway": "home"
+          }
+        ]
+      }]
+    }
+  ]
+}

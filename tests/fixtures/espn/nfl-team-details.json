@@ -1,0 +1,23 @@
+{
+  "team": {
+    "id": "12",
+    "slug": "kansas-city-chiefs",
+    "location": "Kansas City",
+    "name": "Chiefs",
+    "displayName": "Kansas City Chiefs",
+    "abbreviation": "KC",
+    "logos": [{ "href": "https://a.espncdn.com/i/teamlogos/nfl/500/kc.png" }],
+    "record": {
+      "items": [{
+        "type": "total",
+        "description": "Overall",
+        "summary": "10-2",
+        "stats": [
+          { "name": "wins", "value": 10 },
+          { "name": "losses", "value": 2 },
+          { "name": "winPercent", "displayValue": "83.3%" }
+        ]
+      }]
+    }
+  }
+}
