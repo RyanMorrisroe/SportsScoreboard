@@ -44,6 +44,7 @@
         <!-- CFB CONFERENCE DROPDOWN -->
         <select v-if="selectedLeague === 'college-football'" v-model="selectedGroup" @change="triggerImmediateFetch"
                 class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
+          <option value="80">All</option>
           <option value="">Top 25 Rankings</option>
           <option value="1">ACC</option>
           <option value="4">Big 12</option>
@@ -325,7 +326,7 @@
         const selectedLeague = ref('college-football');
         const seasonType = ref(2);
         const week = ref(1);
-        const selectedGroup = ref('');
+        const selectedGroup = ref('80');
         const mlbDate = ref(new Date().toLocaleDateString('en-CA'));
         const games = ref([]);
         const loading = ref(false);
@@ -337,6 +338,7 @@
         
         let pollingInterval = null;
 
+        // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
         const getFavoriteFilterText = () => {
           if (selectedLeague.value === 'college-football') return 'Northwestern';
           return 'Chicago';
@@ -358,6 +360,9 @@
             } else {
               if (isInitialBoot) {
                 endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard`;
+                if (selectedLeague.value === 'college-football' && selectedGroup.value) {
+                  endpoint += `?groups=${selectedGroup.value}`;
+                }
               } else {
                 endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard?week=${week.value}&seasontype=${seasonType.value}`;
                 if (selectedLeague.value === 'college-football' && selectedGroup.value) {
