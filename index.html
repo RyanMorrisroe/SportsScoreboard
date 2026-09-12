@@ -1,1066 +1,1715 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sports Scoreboard Dashboard</title>
-  <!-- Tailwind CSS Engine -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <!-- Vue 3 Framework -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <style>
-    body { background-color: #121212; color: #e0e0e0; font-family: system-ui, sans-serif; }
-    .live-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-    [v-cloak] { display: none; }
-  </style>
-</head>
-<body class="p-4 md:p-6">
-
-  <div id="app" v-cloak>
-    <!-- TOP TOUCH-FRIENDLY SPORT TABS NAVIGATION -->
-    <div class="flex border-b border-zinc-800 mb-6 bg-zinc-900/50 p-1 rounded-xl max-w-md mx-auto md:mx-0">
-      <button @click="switchTab('college-football')" 
-              :class="selectedLeague === 'college-football' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
-              class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150">
-        🏈 CFB
-      </button>
-      <button @click="switchTab('nfl')" 
-              :class="selectedLeague === 'nfl' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
-              class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150">
-        🏈 NFL
-      </button>
-      <button @click="switchTab('mlb')" 
-              :class="selectedLeague === 'mlb' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
-              class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150">
-        ⚾ MLB
-      </button>
-    </div>
-
-    <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
-    <div class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-6">
-      <div class="flex flex-wrap items-center gap-3 justify-start w-full">
-        
-        <!-- CFB CONFERENCE DROPDOWN -->
-        <select v-if="selectedLeague === 'college-football'" v-model="selectedGroup" @change="triggerImmediateFetch"
-                class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
-          <option value="80">All</option>
-          <option value="">Top 25 Rankings</option>
-          <option value="1">ACC</option>
-          <option value="4">Big 12</option>
-          <option value="5">Big Ten (B1G)</option>
-          <option value="12">C-USA</option>
-          <option value="18">Independent</option>
-          <option value="15">MAC</option>
-          <option value="17">Mountain West</option>
-          <option value="9">PAC-12</option>
-          <option value="8">SEC</option>
-          <option value="37">Sun Belt</option>
-        </select>
-
-        <!-- FOOTBALL WEEK CHANGER CONTROLS -->
-        <div v-if="selectedLeague !== 'mlb'" class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-1 h-[38px]">
-          <button @click="adjustWeek(-1)" class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full">-</button>
-          <span class="text-sm px-2 text-white font-semibold min-w-[75px] text-center">Week {{ week }}</span>
-          <button @click="adjustWeek(1)" class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full">+</button>
-        </div>
-
-        <!-- FOOTBALL SEASON TYPE SEGMENT CONTROLLER -->
-        <div v-if="selectedLeague !== 'mlb'" class="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl h-[38px]">
-          <button @click="setSeasonType(2)" :class="seasonType === 2 ? 'bg-zinc-800 text-white' : 'text-zinc-500'" class="px-3 rounded-lg text-xs font-bold transition-all">REG</button>
-          <button @click="setSeasonType(3)" :class="seasonType === 3 ? 'bg-zinc-800 text-amber-500' : 'text-zinc-500'" class="px-3 rounded-lg text-xs font-bold transition-all">POST</button>
-        </div>
-
-        <!-- MLB CALENDAR DATE PICKER WITH SHOWPICKER INTERCEPT -->
-        <div v-if="selectedLeague === 'mlb'" class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 h-[38px] cursor-pointer" onclick="this.querySelector('input').showPicker()">
-          <span class="text-xs text-zinc-500 font-bold uppercase tracking-wider select-none">📅 Date:</span>
-          <input type="date" v-model="mlbDate" @change="triggerImmediateFetch"
-                 class="bg-transparent text-white text-sm font-semibold focus:outline-none scheme-dark cursor-pointer border-none p-0 min-w-[110px]" />
-        </div>
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sports Scoreboard Dashboard</title>
+    <!-- Tailwind CSS Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Vue 3 Framework -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+        font-family: system-ui, sans-serif;
+      }
+      .live-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      [v-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-6">
+    <div id="app" v-cloak>
+      <!-- TOP TOUCH-FRIENDLY SPORT TABS NAVIGATION -->
+      <div
+        class="flex border-b border-zinc-800 mb-6 bg-zinc-900/50 p-1 rounded-xl max-w-md mx-auto md:mx-0"
+      >
+        <button
+          @click="switchTab('college-football')"
+          :class="selectedLeague === 'college-football' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+        >
+          🏈 CFB
+        </button>
+        <button
+          @click="switchTab('nfl')"
+          :class="selectedLeague === 'nfl' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+        >
+          🏈 NFL
+        </button>
+        <button
+          @click="switchTab('mlb')"
+          :class="selectedLeague === 'mlb' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+        >
+          ⚾ MLB
+        </button>
       </div>
-    </div>
 
-    <!-- MAIN SCORE CARD GRID -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-24 text-zinc-500">
-      <div class="w-9 h-9 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p class="text-sm tracking-wide">Syncing data streams...</p>
-    </div>
+      <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
+      <div
+        class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-6"
+      >
+        <div class="flex flex-wrap items-center gap-3 justify-start w-full">
+          <!-- CFB CONFERENCE DROPDOWN -->
+          <select
+            v-if="selectedLeague === 'college-football'"
+            v-model="selectedGroup"
+            @change="triggerImmediateFetch"
+            class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+          >
+            <option value="80">All</option>
+            <option value="">Top 25 Rankings</option>
+            <option value="1">ACC</option>
+            <option value="4">Big 12</option>
+            <option value="5">Big Ten (B1G)</option>
+            <option value="12">C-USA</option>
+            <option value="18">Independent</option>
+            <option value="15">MAC</option>
+            <option value="17">Mountain West</option>
+            <option value="9">PAC-12</option>
+            <option value="8">SEC</option>
+            <option value="37">Sun Belt</option>
+          </select>
 
-    <div v-else-if="games.length === 0" class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-      <p class="text-zinc-400 font-semibold text-base">No active games scheduled for this frame.</p>
-    </div>
+          <!-- FOOTBALL WEEK CHANGER CONTROLS -->
+          <div
+            v-if="selectedLeague !== 'mlb'"
+            class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-1 h-[38px]"
+          >
+            <button
+              @click="adjustWeek(-1)"
+              class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full"
+            >
+              -
+            </button>
+            <span
+              class="text-sm px-2 text-white font-semibold min-w-[75px] text-center"
+              >Week {{ week }}</span
+            >
+            <button
+              @click="adjustWeek(1)"
+              class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full"
+            >
+              +
+            </button>
+          </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <div v-for="game in sortedGames" :key="game.id" 
-           role="button"
-           @click.stop="handleGameClick(game)"
-           class="w-full text-left bg-zinc-900/90 border rounded-2xl p-4 transition-all duration-150 backdrop-blur-sm shadow-sm hover:bg-zinc-800/60 block select-none touch-manipulation appearance-none [webkit-tap-highlight-color:transparent]"
-           :disabled="getGameState(game) === 'pre'"
-           :class="[
+          <!-- FOOTBALL SEASON TYPE SEGMENT CONTROLLER -->
+          <div
+            v-if="selectedLeague !== 'mlb'"
+            class="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl h-[38px]"
+          >
+            <button
+              @click="setSeasonType(2)"
+              :class="seasonType === 2 ? 'bg-zinc-800 text-white' : 'text-zinc-500'"
+              class="px-3 rounded-lg text-xs font-bold transition-all"
+            >
+              REG
+            </button>
+            <button
+              @click="setSeasonType(3)"
+              :class="seasonType === 3 ? 'bg-zinc-800 text-amber-500' : 'text-zinc-500'"
+              class="px-3 rounded-lg text-xs font-bold transition-all"
+            >
+              POST
+            </button>
+          </div>
+
+          <!-- MLB CALENDAR DATE PICKER WITH SHOWPICKER INTERCEPT -->
+          <div
+            v-if="selectedLeague === 'mlb'"
+            class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 h-[38px] cursor-pointer"
+            onclick="this.querySelector('input').showPicker()"
+          >
+            <span
+              class="text-xs text-zinc-500 font-bold uppercase tracking-wider select-none"
+              >📅 Date:</span
+            >
+            <input
+              type="date"
+              v-model="mlbDate"
+              @change="triggerImmediateFetch"
+              class="bg-transparent text-white text-sm font-semibold focus:outline-none scheme-dark cursor-pointer border-none p-0 min-w-[110px]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN SCORE CARD GRID -->
+      <div
+        v-if="loading"
+        class="flex flex-col items-center justify-center py-24 text-zinc-500"
+      >
+        <div
+          class="w-9 h-9 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"
+        ></div>
+        <p class="text-sm tracking-wide">Syncing data streams...</p>
+      </div>
+
+      <div
+        v-else-if="games.length === 0"
+        class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10"
+      >
+        <p class="text-zinc-400 font-semibold text-base">
+          No active games scheduled for this frame.
+        </p>
+      </div>
+
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div
+          v-for="game in sortedGames"
+          :key="game.id"
+          role="button"
+          @click.stop="handleGameClick(game)"
+          class="w-full text-left bg-zinc-900/90 border rounded-2xl p-4 transition-all duration-150 backdrop-blur-sm shadow-sm hover:bg-zinc-800/60 block select-none touch-manipulation appearance-none [webkit-tap-highlight-color:transparent]"
+          :disabled="getGameState(game) === 'pre'"
+          :class="[
              isGameHighlighted(game) ? 'border-amber-500 shadow-amber-500/10 shadow-lg ring-1 ring-amber-500/20' : 'border-zinc-800/80',
              getGameState(game) === 'pre' ? 'cursor-default opacity-90' : 'cursor-pointer active:scale-[0.99] active:bg-zinc-800/90'
-           ]">
-        
-        <!-- TOP EVENT META BAR -->
-        <div class="flex items-center justify-between border-b border-zinc-800/60 pb-3 mb-3.5 text-xs">
-          <div class="flex items-center gap-2">
-            <span v-if="getGameState(game) === 'in'" class="bg-red-600 text-white px-1.5 py-0.5 rounded font-black text-[10px] tracking-widest live-pulse">LIVE</span>
-            <span v-else-if="getGameState(game) === 'pre'" class="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider">UPCOMING</span>
-            <span v-else class="bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider">FINAL</span>
+           ]"
+        >
+          <!-- TOP EVENT META BAR -->
+          <div
+            class="flex items-center justify-between border-b border-zinc-800/60 pb-3 mb-3.5 text-xs"
+          >
+            <div class="flex items-center gap-2">
+              <span
+                v-if="getGameState(game) === 'in'"
+                class="bg-red-600 text-white px-1.5 py-0.5 rounded font-black text-[10px] tracking-widest live-pulse"
+                >LIVE</span
+              >
+              <span
+                v-else-if="getGameState(game) === 'pre'"
+                class="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider"
+                >UPCOMING</span
+              >
+              <span
+                v-else
+                class="bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider"
+                >FINAL</span
+              >
 
-            <span v-if="getNetwork(game)" class="text-zinc-400 font-bold px-1.5 bg-zinc-950 rounded border border-zinc-800 text-[10px]">{{ getNetwork(game) }}</span>
-            <span class="text-zinc-400 font-medium">{{ formatGameTime(game) }}</span>
+              <span
+                v-if="getNetwork(game)"
+                class="text-zinc-400 font-bold px-1.5 bg-zinc-950 rounded border border-zinc-800 text-[10px]"
+                >{{ getNetwork(game) }}</span
+              >
+              <span class="text-zinc-400 font-medium"
+                >{{ formatGameTime(game) }}</span
+              >
+            </div>
+
+            <div
+              v-if="getSituation(game)"
+              class="text-amber-400 font-semibold tracking-tight bg-amber-500/10 px-2 py-0.5 rounded-full text-[11px]"
+            >
+              {{ getSituation(game) }}
+            </div>
           </div>
-          
-          <div v-if="getSituation(game)" class="text-amber-400 font-semibold tracking-tight bg-amber-500/10 px-2 py-0.5 rounded-full text-[11px]">
-            {{ getSituation(game) }}
+
+          <!-- TEAM MATRIX VALUES ROW (RANK INLINE & STRIPPED) -->
+          <div class="space-y-3.5">
+            <!-- AWAY SLOT -->
+            <div
+              class="flex items-center justify-between"
+              :class="{'opacity-40': getGameState(game) === 'post' && !isWinner(game, 'away')}"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <img
+                  :src="getTeamLogo(game, 'away')"
+                  class="w-6 h-6 object-contain flex-shrink-0"
+                  loading="lazy"
+                />
+                <span
+                  class="font-bold text-white tracking-tight truncate text-sm"
+                  :class="{'text-amber-400 font-black': isTeamStringHighlighted(getTeamName(game, 'away'))}"
+                >
+                  <span
+                    v-if="getTeamRank(game, 'away')"
+                    class="text-zinc-400 font-bold mr-1"
+                    >#{{ getTeamRank(game, 'away') }}</span
+                  >{{ getTeamName(game, 'away') }}
+                </span>
+                <span
+                  v-if="hasPossession(game, 'away')"
+                  class="text-amber-500 text-xs animate-pulse"
+                  >🏈</span
+                >
+              </div>
+              <div class="font-mono text-xl font-black text-white pl-4">
+                {{ getTeamScore(game, 'away') }}
+              </div>
+            </div>
+
+            <!-- HOME SLOT -->
+            <div
+              class="flex items-center justify-between"
+              :class="{'opacity-40': getGameState(game) === 'post' && !isWinner(game, 'home')}"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <img
+                  :src="getTeamLogo(game, 'home')"
+                  class="w-6 h-6 object-contain flex-shrink-0"
+                  loading="lazy"
+                />
+                <span
+                  class="font-bold text-white tracking-tight truncate text-sm"
+                  :class="{'text-amber-400 font-black': isTeamStringHighlighted(getTeamName(game, 'home'))}"
+                >
+                  <span
+                    v-if="getTeamRank(game, 'home')"
+                    class="text-zinc-400 font-bold mr-1"
+                    >#{{ getTeamRank(game, 'home') }}</span
+                  >{{ getTeamName(game, 'home') }}
+                </span>
+                <span
+                  v-if="hasPossession(game, 'home')"
+                  class="text-amber-500 text-xs animate-pulse"
+                  >🏈</span
+                >
+              </div>
+              <div class="font-mono text-xl font-black text-white pl-4">
+                {{ getTeamScore(game, 'home') }}
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- TEAM MATRIX VALUES ROW (RANK INLINE & STRIPPED) -->
-        <div class="space-y-3.5">
-          <!-- AWAY SLOT -->
-          <div class="flex items-center justify-between" :class="{'opacity-40': getGameState(game) === 'post' && !isWinner(game, 'away')}">
-            <div class="flex items-center gap-2 min-w-0">
-              <img :src="getTeamLogo(game, 'away')" class="w-6 h-6 object-contain flex-shrink-0" loading="lazy" />
-              <span class="font-bold text-white tracking-tight truncate text-sm" :class="{'text-amber-400 font-black': isTeamStringHighlighted(getTeamName(game, 'away'))}">
-                <span v-if="getTeamRank(game, 'away')" class="text-zinc-400 font-bold mr-1">#{{ getTeamRank(game, 'away') }}</span>{{ getTeamName(game, 'away') }}
-              </span>
-              <span v-if="hasPossession(game, 'away')" class="text-amber-500 text-xs animate-pulse">🏈</span>
-            </div>
-            <div class="font-mono text-xl font-black text-white pl-4">{{ getTeamScore(game, 'away') }}</div>
+      <!-- GAMECAST DETAILS MODAL DRAWER -->
+      <div
+        v-if="showModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto"
+        @click.self="closeModal"
+      >
+        <div
+          class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative text-sm"
+        >
+          <!-- MODAL LOADING STATE -->
+          <div
+            v-if="modalLoading"
+            class="flex flex-col items-center justify-center py-32 text-zinc-500 w-full"
+          >
+            <div
+              class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"
+            ></div>
+            <p class="text-xs">Fetching live summary metrics...</p>
           </div>
 
-          <!-- HOME SLOT -->
-          <div class="flex items-center justify-between" :class="{'opacity-40': getGameState(game) === 'post' && !isWinner(game, 'home')}">
-            <div class="flex items-center gap-2 min-w-0">
-              <img :src="getTeamLogo(game, 'home')" class="w-6 h-6 object-contain flex-shrink-0" loading="lazy" />
-              <span class="font-bold text-white tracking-tight truncate text-sm" :class="{'text-amber-400 font-black': isTeamStringHighlighted(getTeamName(game, 'home'))}">
-                <span v-if="getTeamRank(game, 'home')" class="text-zinc-400 font-bold mr-1">#{{ getTeamRank(game, 'home') }}</span>{{ getTeamName(game, 'home') }}
-              </span>
-              <span v-if="hasPossession(game, 'home')" class="text-amber-500 text-xs animate-pulse">🏈</span>
-            </div>
-            <div class="font-mono text-xl font-black text-white pl-4">{{ getTeamScore(game, 'home') }}</div>
+          <div
+            v-else-if="!modalData"
+            class="p-8 text-center text-zinc-400 relative"
+          >
+            <button
+              @click="closeModal"
+              class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl p-2"
+            >
+              ✕
+            </button>
+            Failed to fetch extended match details for this event.
           </div>
+
+          <!-- RE-IMPLEMENTED SAFETY WRAPPER: Completely gates property lookups until modalData populates -->
+          <div v-if="modalData" class="flex flex-col w-full">
+            <div
+              class="flex justify-end p-2 border-b border-zinc-800/40 bg-zinc-950/20"
+            >
+              <button
+                @click="closeModal"
+                class="text-zinc-400 hover:text-white text-xs font-bold px-4 py-2 transition-all"
+              >
+                ✕ CLOSE WINDOW
+              </button>
+            </div>
+
+            <div class="p-6 border-b border-zinc-800 bg-zinc-950/40">
+              <div
+                class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40"
+              >
+                <!-- AWAY BRAND (Columns 1, 2, 3) -->
+                <div
+                  class="col-span-3 flex flex-col sm:flex-row items-center text-center sm:text-left gap-1 sm:gap-3 w-full min-w-0"
+                >
+                  <img
+                    :src="modalData.teams.away.logo"
+                    class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0"
+                  />
+                  <div class="min-w-0 w-full">
+                    <h3
+                      class="text-xs sm:text-base font-bold text-white truncate px-1"
+                    >
+                      <span
+                        v-if="modalData.teams.away.rank"
+                        class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5"
+                        >#{{ modalData.teams.away.rank }}</span
+                      >
+                      <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
+                      <button
+                        @click.stop="openTeamDetails('away')"
+                        class="block sm:hidden w-full text-left truncate hover:text-blue-400"
+                      >
+                        {{ modalData.teams.away.abbrev ||
+                        modalData.teams.away.name }}
+                      </button>
+                      <button
+                        @click.stop="openTeamDetails('away')"
+                        class="hidden sm:inline truncate hover:text-blue-400"
+                      >
+                        {{ modalData.teams.away.name }}
+                      </button>
+                    </h3>
+                    <p
+                      class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase"
+                    >
+                      Away
+                    </p>
+                  </div>
+                </div>
+
+                <!-- CENTER LIVE RUNNING SCORE WITH INTEGRATED POSSESSION LOGIC (Column 4) -->
+                <div
+                  class="col-span-1 flex flex-col items-center justify-center font-mono select-none px-1"
+                >
+                  <div
+                    class="flex items-center bg-zinc-950 px-2 py-1 sm:px-4 sm:py-2 rounded-xl border border-zinc-800/80 text-sm sm:text-2xl font-black text-white whitespace-nowrap"
+                  >
+                    <!-- Football emoji lights up if Away has possession -->
+                    <span
+                      v-if="selectedLeague !== 'mlb' && hasPossession(games.find(g => g.id === modalData.id), 'away')"
+                      class="text-amber-500 text-xs sm:text-sm animate-pulse mr-1 sm:mr-2"
+                      >🏈</span
+                    >
+
+                    <span>{{ modalData.teams.away.score }}</span>
+                    <span
+                      class="text-zinc-600 text-xs sm:text-lg font-normal font-sans mx-1 sm:mx-1.5"
+                      >vs</span
+                    >
+                    <span>{{ modalData.teams.home.score }}</span>
+
+                    <!-- Football emoji lights up if Home has possession -->
+                    <span
+                      v-if="selectedLeague !== 'mlb' && hasPossession(games.find(g => g.id === modalData.id), 'home')"
+                      class="text-amber-500 text-xs sm:text-sm animate-pulse ml-1 sm:mr-2"
+                      >🏈</span
+                    >
+                  </div>
+                </div>
+
+                <!-- HOME BRAND (Columns 5, 6, 7) -->
+                <div
+                  class="col-span-3 flex flex-col-reverse sm:flex-row items-center text-center sm:text-right gap-1 sm:gap-3 w-full min-w-0 justify-end"
+                >
+                  <div class="min-w-0 w-full">
+                    <h3
+                      class="text-xs sm:text-base font-bold text-white truncate px-1"
+                    >
+                      <span
+                        v-if="modalData.teams.home.rank"
+                        class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5"
+                        >#{{ modalData.teams.home.rank }}</span
+                      >
+                      <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
+                      <button
+                        @click.stop="openTeamDetails('home')"
+                        class="block sm:hidden w-full text-right truncate hover:text-blue-400"
+                      >
+                        {{ modalData.teams.home.abbrev ||
+                        modalData.teams.home.name }}
+                      </button>
+                      <button
+                        @click.stop="openTeamDetails('home')"
+                        class="hidden sm:inline truncate hover:text-blue-400"
+                      >
+                        {{ modalData.teams.home.name }}
+                      </button>
+                    </h3>
+                    <p
+                      class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase"
+                    >
+                      Home
+                    </p>
+                  </div>
+                  <img
+                    :src="modalData.teams.home.logo"
+                    class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0"
+                  />
+                </div>
+              </div>
+
+              <div
+                v-if="modalView === 'game'"
+                class="overflow-x-auto w-full bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/60"
+              >
+                <table
+                  class="w-full text-center font-mono text-xs text-zinc-300 min-w-[280px]"
+                >
+                  <thead>
+                    <tr
+                      class="text-zinc-500 border-b border-zinc-800/80 pb-1.5 uppercase font-sans tracking-widest text-[10px]"
+                    >
+                      <th class="text-left font-medium px-2">TEAM</th>
+                      <th
+                        v-for="head in linescoreHeaders"
+                        :key="head"
+                        class="px-2 font-black"
+                      >
+                        {{ head }}
+                      </th>
+                      <th
+                        class="px-2 font-black text-white border-l border-zinc-800/80 pl-3"
+                      >
+                        TOT
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-900/60">
+                    <tr class="h-9">
+                      <td
+                        class="text-left font-sans font-bold text-zinc-400 px-2"
+                      >
+                        {{ modalData.teams.away.abbrev }}
+                      </td>
+                      <td
+                        v-for="(val, idx) in linescores.away"
+                        :key="'away-'+idx"
+                        class="px-2 font-bold text-zinc-300"
+                      >
+                        {{ val }}
+                      </td>
+                      <td
+                        class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm"
+                      >
+                        {{ modalData.teams.away.score }}
+                      </td>
+                    </tr>
+                    <tr class="h-9">
+                      <td
+                        class="text-left font-sans font-bold text-zinc-400 px-2"
+                      >
+                        {{ modalData.teams.home.abbrev }}
+                      </td>
+                      <td
+                        v-for="(val, idx) in linescores.home"
+                        :key="'home-'+idx"
+                        class="px-2 font-bold text-zinc-300"
+                      >
+                        {{ val }}
+                      </td>
+                      <td
+                        class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm"
+                      >
+                        {{ modalData.teams.home.score }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div
+              v-if="modalView === 'game'"
+              class="flex bg-zinc-950/60 border-b border-zinc-800 p-1"
+            >
+              <button
+                @click="modalTab = 'stats'"
+                :class="modalTab === 'stats' ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400'"
+                class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
+              >
+                📊 TEAM STATS
+              </button>
+              <button
+                @click="modalTab = 'leaders'"
+                :class="modalTab === 'leaders' ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400'"
+                class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
+              >
+                🏃 PLAYER LEADERS
+              </button>
+            </div>
+
+            <div v-if="modalView === 'game'" class="p-6 flex-1 bg-zinc-900">
+              <div v-if="modalTab === 'stats'" class="space-y-6">
+                <div
+                  v-if="currentDrive"
+                  class="bg-blue-950/30 border border-blue-900/50 rounded-xl p-3.5 mb-4"
+                >
+                  <div class="flex items-center justify-between mb-1.5 text-xs">
+                    <span
+                      class="text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5"
+                    >
+                      <span
+                        class="w-2 h-2 rounded-full bg-red-500 animate-ping"
+                      ></span>
+                      Live Drive
+                    </span>
+                    <span class="text-zinc-400 font-mono font-medium"
+                      >{{ currentDrive.result || 'In progress...' }}</span
+                    >
+                  </div>
+                  <p class="text-white font-bold text-sm tracking-tight mb-0.5">
+                    {{ currentDrive.description }}
+                  </p>
+                  <p
+                    v-if="currentDrive.recap"
+                    class="text-xs text-zinc-400 font-medium"
+                  >
+                    {{ currentDrive.recap }}
+                  </p>
+                </div>
+
+                <div
+                  v-if="winProbabilityPoints"
+                  class="bg-zinc-950/40 border border-zinc-800/80 rounded-xl p-4"
+                >
+                  <h4
+                    class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3"
+                  >
+                    Live Win Probability Trend
+                  </h4>
+                  <div
+                    class="w-full h-24 relative bg-zinc-950/80 rounded-lg border border-zinc-900/60 p-1"
+                  >
+                    <div
+                      class="absolute left-2 top-1.5 text-[9px] font-bold text-zinc-500 uppercase"
+                    >
+                      {{ modalData.teams.away.abbrev }} Advantage
+                    </div>
+                    <div
+                      class="absolute left-2 bottom-1.5 text-[9px] font-bold text-zinc-500 uppercase"
+                    >
+                      {{ modalData.teams.home.abbrev }} Advantage
+                    </div>
+                    <svg
+                      class="w-full h-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                    >
+                      <line
+                        x1="0"
+                        y1="50"
+                        x2="100"
+                        y2="50"
+                        stroke="#333333"
+                        stroke-width="1"
+                        stroke-dasharray="4"
+                      />
+                      <polyline
+                        fill="none"
+                        stroke="#eab308"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        :points="winProbabilityPoints"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="space-y-3.5 mt-2">
+                  <!-- Loop through our customized teamStats computed property instead of raw attributes -->
+                  <div
+                    v-for="stat in teamStats"
+                    :key="stat.label"
+                    class="border-b border-zinc-800/40 pb-3"
+                  >
+                    <div
+                      class="flex justify-between items-center text-xs font-medium mb-1.5"
+                    >
+                      <span class="font-mono text-zinc-300 font-bold"
+                        >{{ stat.awayDisplay }}</span
+                      >
+                      <span
+                        class="text-zinc-400 uppercase tracking-wider font-semibold text-[10px]"
+                        >{{ stat.label }}</span
+                      >
+                      <span class="font-mono text-zinc-300 font-bold"
+                        >{{ stat.homeDisplay }}</span
+                      >
+                    </div>
+                    <div
+                      class="flex h-2 bg-zinc-950 rounded-full overflow-hidden"
+                    >
+                      <div
+                        class="bg-blue-600 rounded-l-full transition-all duration-300"
+                        :style="{ width: stat.awayPct + '%' }"
+                      ></div>
+                      <div class="bg-zinc-800/80 flex-1"></div>
+                      <div
+                        class="bg-emerald-600 rounded-r-full transition-all duration-300"
+                        :style="{ width: stat.homePct + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FIXED RENDER MATRIX FOR THE PLAYER LEADERS TAB GRID -->
+              <div
+                v-else-if="modalTab === 'leaders'"
+                class="grid grid-cols-1 md:grid-cols-3 gap-4"
+              >
+                <div
+                  v-for="category in playerLeaders"
+                  :key="category.title"
+                  class="bg-zinc-950/40 border border-zinc-800/80 rounded-2xl p-4"
+                >
+                  <h4
+                    class="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-800/60 pb-2 mb-3.5"
+                  >
+                    {{ category.title }} Leaders
+                  </h4>
+
+                  <div class="space-y-4">
+                    <div
+                      v-for="player in category.athletes"
+                      :key="player.name"
+                      class="flex items-center gap-3 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/40"
+                    >
+                      <img
+                        :src="player.headshot"
+                        class="w-10 h-10 rounded-full bg-zinc-800 object-cover border border-zinc-700/60 flex-shrink-0"
+                      />
+                      <div class="min-w-0 flex-1">
+                        <div
+                          class="font-bold text-white text-xs tracking-tight truncate"
+                        >
+                          {{ player.name }}
+                        </div>
+                        <div
+                          class="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-0.5"
+                        >
+                          {{ player.teamAbbrev }} · #{{ player.jersey }}
+                        </div>
+                        <div
+                          class="font-mono text-xs font-bold text-amber-400 mt-1 flex flex-wrap gap-1.5"
+                        >
+                          <span
+                            v-for="(val, idx) in player.stats"
+                            :key="idx"
+                            class="bg-zinc-950 px-1.5 py-0.5 rounded text-[9px] border border-zinc-900"
+                          >
+                            {{ category.labels[idx] || 'STAT' }}:{{ val }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else
+              class="p-4 sm:p-6 flex-1 bg-zinc-900 space-y-5 sm:space-y-6"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <button
+                  @click="returnToGame"
+                  class="text-zinc-400 hover:text-white text-xs font-bold"
+                >
+                  ← BACK TO GAME
+                </button>
+                <span
+                  class="text-[10px] text-zinc-500 uppercase tracking-widest"
+                  >Team Details</span
+                >
+              </div>
+
+              <div
+                v-if="teamLoading"
+                class="flex flex-col items-center justify-center py-16 text-zinc-500"
+              >
+                <div
+                  class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"
+                ></div>
+                <p class="text-xs">Fetching team details...</p>
+              </div>
+
+              <div v-else class="space-y-6">
+                <div
+                  v-if="teamData"
+                  class="flex items-center gap-3 sm:gap-4 border-b border-zinc-800 pb-5"
+                >
+                  <img
+                    :src="teamData.team?.logos?.[0]?.href || teamData.team?.logo || selectedTeam.logo"
+                    class="w-16 h-16 object-contain"
+                  />
+                  <div class="min-w-0">
+                    <h3
+                      class="text-lg sm:text-xl font-black text-white truncate"
+                    >
+                      {{ teamData.team?.displayName || selectedTeam.name }}
+                    </h3>
+                    <p class="text-xs text-zinc-400 mt-1">
+                      {{ teamData.team?.abbreviation || selectedTeam.abbrev
+                      }}<span v-if="teamData.team?.location">
+                        · {{ teamData.team.location }}</span
+                      >
+                    </p>
+                    <p
+                      v-if="teamData.groups?.name || teamData.team?.groups?.name"
+                      class="text-xs text-zinc-500 mt-1"
+                    >
+                      {{ teamData.groups?.name || teamData.team.groups.name }}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  v-if="teamError"
+                  class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+                >
+                  {{ teamError }}
+                </div>
+
+                <div
+                  v-if="teamRecords.length || teamRecordStats.length"
+                  class="space-y-5"
+                >
+                  <div
+                    v-if="teamRecords.length"
+                    class="grid grid-cols-2 gap-2 sm:gap-3"
+                  >
+                    <div
+                      v-for="record in teamRecords"
+                      :key="record.label"
+                      class="bg-gradient-to-br from-blue-950/60 to-zinc-950/60 border border-blue-900/50 rounded-2xl px-3 sm:px-4 py-3"
+                    >
+                      <div
+                        class="text-[10px] text-blue-300/70 uppercase tracking-widest font-bold"
+                      >
+                        {{ record.label }}
+                      </div>
+                      <div
+                        class="font-mono text-xl sm:text-2xl font-black text-white mt-1 truncate"
+                      >
+                        {{ record.value }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="teamRecordStats.length" class="space-y-3">
+                    <button
+                      @click="showSeasonMetrics = !showSeasonMetrics"
+                      class="flex items-center justify-between w-full text-left text-xs font-black text-zinc-400 uppercase tracking-widest hover:text-white"
+                    >
+                      <span>Season Metrics</span>
+                      <span class="text-base leading-none"
+                        >{{ showSeasonMetrics ? '−' : '+' }}</span
+                      >
+                    </button>
+                    <div
+                      v-if="showSeasonMetrics"
+                      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
+                    >
+                      <div
+                        v-for="stat in teamRecordStats"
+                        :key="stat.key"
+                        class="bg-zinc-950/70 border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-3"
+                      >
+                        <div
+                          class="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight"
+                        >
+                          {{ stat.label }}
+                        </div>
+                        <div
+                          class="font-mono text-base sm:text-lg font-black text-white mt-2 truncate"
+                        >
+                          {{ stat.value }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4
+                    class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3"
+                  >
+                    Schedule
+                  </h4>
+                  <div
+                    v-if="scheduleError"
+                    class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+                  >
+                    {{ scheduleError }}
+                  </div>
+                  <div
+                    v-else-if="teamSchedule.length === 0"
+                    class="border border-dashed border-zinc-800 rounded-xl p-8 text-center text-sm text-zinc-500"
+                  >
+                    No schedule available.
+                  </div>
+                  <div v-else class="space-y-2">
+                    <div
+                      v-for="game in teamSchedule"
+                      :key="game.id"
+                      class="flex items-start justify-between gap-2 sm:gap-3 bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-2.5 sm:p-3"
+                    >
+                      <div class="min-w-0">
+                        <div class="text-[10px] text-zinc-500">
+                          {{ game.date }}<span v-if="game.week">
+                            · {{ game.week }}</span
+                          >
+                        </div>
+                        <div
+                          class="flex items-center gap-2 text-sm font-bold text-white truncate mt-1"
+                        >
+                          <img
+                            :src="game.opponentLogo"
+                            class="w-5 h-5 object-contain shrink-0"
+                            loading="lazy"
+                          />
+                          <span class="truncate"
+                            >{{ game.homeAway === 'home' ? 'vs' : 'at' }} {{
+                            game.opponent }}</span
+                          >
+                        </div>
+                        <div
+                          v-if="game.venue"
+                          class="text-[10px] text-zinc-500 mt-1 truncate"
+                        >
+                          {{ game.venue }}
+                        </div>
+                      </div>
+                      <div class="text-right shrink-0">
+                        <div
+                          class="flex items-center gap-2 font-mono font-black text-white"
+                        >
+                          <img
+                            :src="game.teamLogo"
+                            class="w-5 h-5 object-contain shrink-0"
+                            loading="lazy"
+                          />
+                          <span>{{ game.score }}</span>
+                        </div>
+                        <div class="text-[10px] text-zinc-400 uppercase mt-1">
+                          {{ game.result || game.status }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /modalData check safety wrap -->
         </div>
-
       </div>
     </div>
+    <script>
+      const { createApp, ref, computed, onMounted } = Vue;
 
-    <!-- GAMECAST DETAILS MODAL DRAWER -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto" @click.self="closeModal">
-      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative text-sm">
-        
-        <!-- MODAL LOADING STATE -->
-        <div v-if="modalLoading" class="flex flex-col items-center justify-center py-32 text-zinc-500 w-full">
-          <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-          <p class="text-xs">Fetching live summary metrics...</p>
-        </div>
+      createApp({
+        setup() {
+          const selectedLeague = ref("college-football");
+          const seasonType = ref(2);
+          const week = ref(1);
+          const selectedGroup = ref("80");
+          const mlbDate = ref(new Date().toLocaleDateString("en-CA"));
+          const games = ref([]);
+          const loading = ref(false);
 
-        <div v-else-if="!modalData" class="p-8 text-center text-zinc-400 relative">
-          <button @click="closeModal" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl p-2">✕</button>
-          Failed to fetch extended match details for this event.
-        </div>
+          const showModal = ref(false);
+          const modalLoading = ref(false);
+          const modalData = ref(null);
+          const modalTab = ref("stats");
+          const modalView = ref("game");
+          const selectedTeamSide = ref(null);
+          const teamData = ref(null);
+          const teamScheduleData = ref(null);
+          const teamLoading = ref(false);
+          const teamError = ref("");
+          const scheduleError = ref("");
+          const showSeasonMetrics = ref(false);
+          let teamRequestId = 0;
 
-        <!-- RE-IMPLEMENTED SAFETY WRAPPER: Completely gates property lookups until modalData populates -->
-        <div v-if="modalData" class="flex flex-col w-full">
-          
-          <div class="flex justify-end p-2 border-b border-zinc-800/40 bg-zinc-950/20">
-            <button @click="closeModal" class="text-zinc-400 hover:text-white text-xs font-bold px-4 py-2 transition-all">✕ CLOSE WINDOW</button>
-          </div>
+          let pollingInterval = null;
 
-          <div class="p-6 border-b border-zinc-800 bg-zinc-950/40">
-            <div class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40">
-              
-              <!-- AWAY BRAND (Columns 1, 2, 3) -->
-              <div class="col-span-3 flex flex-col sm:flex-row items-center text-center sm:text-left gap-1 sm:gap-3 w-full min-w-0">
-                <img :src="modalData.teams.away.logo" class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0" />
-                <div class="min-w-0 w-full">
-                  <h3 class="text-xs sm:text-base font-bold text-white truncate px-1">
-                    <span v-if="modalData.teams.away.rank" class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5">#{{ modalData.teams.away.rank }}</span>
-                    <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
-                    <button @click.stop="openTeamDetails('away')" class="block sm:hidden w-full text-left truncate hover:text-blue-400">{{ modalData.teams.away.abbrev || modalData.teams.away.name }}</button>
-                    <button @click.stop="openTeamDetails('away')" class="hidden sm:inline truncate hover:text-blue-400">{{ modalData.teams.away.name }}</button>
-                  </h3>
-                  <p class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase">Away</p>
-                </div>
-              </div>
-              
-              <!-- CENTER LIVE RUNNING SCORE WITH INTEGRATED POSSESSION LOGIC (Column 4) -->
-              <div class="col-span-1 flex flex-col items-center justify-center font-mono select-none px-1">
-                <div class="flex items-center bg-zinc-950 px-2 py-1 sm:px-4 sm:py-2 rounded-xl border border-zinc-800/80 text-sm sm:text-2xl font-black text-white whitespace-nowrap">
-                  <!-- Football emoji lights up if Away has possession -->
-                  <span v-if="selectedLeague !== 'mlb' && hasPossession(games.find(g => g.id === modalData.id), 'away')" class="text-amber-500 text-xs sm:text-sm animate-pulse mr-1 sm:mr-2">🏈</span>
-                  
-                  <span>{{ modalData.teams.away.score }}</span>
-                  <span class="text-zinc-600 text-xs sm:text-lg font-normal font-sans mx-1 sm:mx-1.5">vs</span>
-                  <span>{{ modalData.teams.home.score }}</span>
-                  
-                  <!-- Football emoji lights up if Home has possession -->
-                  <span v-if="selectedLeague !== 'mlb' && hasPossession(games.find(g => g.id === modalData.id), 'home')" class="text-amber-500 text-xs sm:text-sm animate-pulse ml-1 sm:mr-2">🏈</span>
-                </div>
-              </div>
-              
-              <!-- HOME BRAND (Columns 5, 6, 7) -->
-              <div class="col-span-3 flex flex-col-reverse sm:flex-row items-center text-center sm:text-right gap-1 sm:gap-3 w-full min-w-0 justify-end">
-                <div class="min-w-0 w-full">
-                  <h3 class="text-xs sm:text-base font-bold text-white truncate px-1">
-                    <span v-if="modalData.teams.home.rank" class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5">#{{ modalData.teams.home.rank }}</span>
-                    <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
-                    <button @click.stop="openTeamDetails('home')" class="block sm:hidden w-full text-right truncate hover:text-blue-400">{{ modalData.teams.home.abbrev || modalData.teams.home.name }}</button>
-                    <button @click.stop="openTeamDetails('home')" class="hidden sm:inline truncate hover:text-blue-400">{{ modalData.teams.home.name }}</button>
-                  </h3>
-                  <p class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase">Home</p>
-                </div>
-                <img :src="modalData.teams.home.logo" class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0" />
-              </div>
+          // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
+          const getFavoriteFilterText = () => {
+            if (selectedLeague.value === "college-football")
+              return "Northwestern";
+            return "Chicago";
+          };
 
-            </div>
+          const handleGameClick = (game) => {
+            if (getGameState(game) !== "pre") {
+              openModal(game.id);
+            }
+          };
 
-            <div v-if="modalView === 'game'" class="overflow-x-auto w-full bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/60">
-              <table class="w-full text-center font-mono text-xs text-zinc-300 min-w-[280px]">
-                <thead>
-                  <tr class="text-zinc-500 border-b border-zinc-800/80 pb-1.5 uppercase font-sans tracking-widest text-[10px]">
-                    <th class="text-left font-medium px-2">TEAM</th>
-                    <th v-for="head in linescoreHeaders" :key="head" class="px-2 font-black">{{ head }}</th>
-                    <th class="px-2 font-black text-white border-l border-zinc-800/80 pl-3">TOT</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-900/60">
-                  <tr class="h-9">
-                    <td class="text-left font-sans font-bold text-zinc-400 px-2">{{ modalData.teams.away.abbrev }}</td>
-                    <td v-for="(val, idx) in linescores.away" :key="'away-'+idx" class="px-2 font-bold text-zinc-300">{{ val }}</td>
-                    <td class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm">{{ modalData.teams.away.score }}</td>
-                  </tr>
-                  <tr class="h-9">
-                    <td class="text-left font-sans font-bold text-zinc-400 px-2">{{ modalData.teams.home.abbrev }}</td>
-                    <td v-for="(val, idx) in linescores.home" :key="'home-'+idx" class="px-2 font-bold text-zinc-300">{{ val }}</td>
-                    <td class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm">{{ modalData.teams.home.score }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div v-if="modalView === 'game'" class="flex bg-zinc-950/60 border-b border-zinc-800 p-1">
-            <button @click="modalTab = 'stats'" :class="modalTab === 'stats' ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400'" class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all">📊 TEAM STATS</button>
-            <button @click="modalTab = 'leaders'" :class="modalTab === 'leaders' ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400'" class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all">🏃 PLAYER LEADERS</button>
-          </div>
-
-          <div v-if="modalView === 'game'" class="p-6 flex-1 bg-zinc-900">
-            <div v-if="modalTab === 'stats'" class="space-y-6">
-              <div v-if="currentDrive" class="bg-blue-950/30 border border-blue-900/50 rounded-xl p-3.5 mb-4">
-                <div class="flex items-center justify-between mb-1.5 text-xs">
-                  <span class="text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> Live Drive
-                  </span>
-                  <span class="text-zinc-400 font-mono font-medium">{{ currentDrive.result || 'In progress...' }}</span>
-                </div>
-                <p class="text-white font-bold text-sm tracking-tight mb-0.5">{{ currentDrive.description }}</p>
-                <p v-if="currentDrive.recap" class="text-xs text-zinc-400 font-medium">{{ currentDrive.recap }}</p>
-              </div>
-
-              <div v-if="winProbabilityPoints" class="bg-zinc-950/40 border border-zinc-800/80 rounded-xl p-4">
-                <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Live Win Probability Trend</h4>
-                <div class="w-full h-24 relative bg-zinc-950/80 rounded-lg border border-zinc-900/60 p-1">
-                  <div class="absolute left-2 top-1.5 text-[9px] font-bold text-zinc-500 uppercase">{{ modalData.teams.away.abbrev }} Advantage</div>
-                  <div class="absolute left-2 bottom-1.5 text-[9px] font-bold text-zinc-500 uppercase">{{ modalData.teams.home.abbrev }} Advantage</div>
-                  <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <line x1="0" y1="50" x2="100" y2="50" stroke="#333333" stroke-width="1" stroke-dasharray="4" />
-                    <polyline fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :points="winProbabilityPoints" />
-                  </svg>
-                </div>
-              </div>
-
-              <div class="space-y-3.5 mt-2">
-                <!-- Loop through our customized teamStats computed property instead of raw attributes -->
-                <div v-for="stat in teamStats" :key="stat.label" class="border-b border-zinc-800/40 pb-3">
-                  <div class="flex justify-between items-center text-xs font-medium mb-1.5">
-                    <span class="font-mono text-zinc-300 font-bold">{{ stat.awayDisplay }}</span>
-                    <span class="text-zinc-400 uppercase tracking-wider font-semibold text-[10px]">{{ stat.label }}</span>
-                    <span class="font-mono text-zinc-300 font-bold">{{ stat.homeDisplay }}</span>
-                  </div>
-                  <div class="flex h-2 bg-zinc-950 rounded-full overflow-hidden">
-                    <div class="bg-blue-600 rounded-l-full transition-all duration-300" :style="{ width: stat.awayPct + '%' }"></div>
-                    <div class="bg-zinc-800/80 flex-1"></div>
-                    <div class="bg-emerald-600 rounded-r-full transition-all duration-300" :style="{ width: stat.homePct + '%' }"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- FIXED RENDER MATRIX FOR THE PLAYER LEADERS TAB GRID -->
-            <div v-else-if="modalTab === 'leaders'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div v-for="category in playerLeaders" :key="category.title" class="bg-zinc-950/40 border border-zinc-800/80 rounded-2xl p-4">
-                <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-800/60 pb-2 mb-3.5">{{ category.title }} Leaders</h4>
-                
-                <div class="space-y-4">
-                  <div v-for="player in category.athletes" :key="player.name" class="flex items-center gap-3 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/40">
-                    <img :src="player.headshot" class="w-10 h-10 rounded-full bg-zinc-800 object-cover border border-zinc-700/60 flex-shrink-0" />
-                    <div class="min-w-0 flex-1">
-                      <div class="font-bold text-white text-xs tracking-tight truncate">{{ player.name }}</div>
-                      <div class="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-0.5">{{ player.teamAbbrev }} · #{{ player.jersey }}</div>
-                      <div class="font-mono text-xs font-bold text-amber-400 mt-1 flex flex-wrap gap-1.5">
-                        <span v-for="(val, idx) in player.stats" :key="idx" class="bg-zinc-950 px-1.5 py-0.5 rounded text-[9px] border border-zinc-900">
-                          {{ category.labels[idx] || 'STAT' }}:{{ val }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div v-else class="p-4 sm:p-6 flex-1 bg-zinc-900 space-y-5 sm:space-y-6">
-            <div class="flex items-center justify-between gap-3">
-              <button @click="returnToGame" class="text-zinc-400 hover:text-white text-xs font-bold">← BACK TO GAME</button>
-              <span class="text-[10px] text-zinc-500 uppercase tracking-widest">Team Details</span>
-            </div>
-
-            <div v-if="teamLoading" class="flex flex-col items-center justify-center py-16 text-zinc-500">
-              <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-              <p class="text-xs">Fetching team details...</p>
-            </div>
-
-            <div v-else class="space-y-6">
-              <div v-if="teamData" class="flex items-center gap-3 sm:gap-4 border-b border-zinc-800 pb-5">
-                <img :src="teamData.team?.logos?.[0]?.href || teamData.team?.logo || selectedTeam.logo" class="w-16 h-16 object-contain" />
-                <div class="min-w-0">
-                  <h3 class="text-lg sm:text-xl font-black text-white truncate">{{ teamData.team?.displayName || selectedTeam.name }}</h3>
-                  <p class="text-xs text-zinc-400 mt-1">{{ teamData.team?.abbreviation || selectedTeam.abbrev }}<span v-if="teamData.team?.location"> · {{ teamData.team.location }}</span></p>
-                  <p v-if="teamData.groups?.name || teamData.team?.groups?.name" class="text-xs text-zinc-500 mt-1">{{ teamData.groups?.name || teamData.team.groups.name }}</p>
-                </div>
-              </div>
-
-              <div v-if="teamError" class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300">{{ teamError }}</div>
-
-              <div v-if="teamRecords.length || teamRecordStats.length" class="space-y-5">
-                <div v-if="teamRecords.length" class="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div v-for="record in teamRecords" :key="record.label" class="bg-gradient-to-br from-blue-950/60 to-zinc-950/60 border border-blue-900/50 rounded-2xl px-3 sm:px-4 py-3">
-                    <div class="text-[10px] text-blue-300/70 uppercase tracking-widest font-bold">{{ record.label }}</div>
-                    <div class="font-mono text-xl sm:text-2xl font-black text-white mt-1 truncate">{{ record.value }}</div>
-                  </div>
-                </div>
-
-                <div v-if="teamRecordStats.length" class="space-y-3">
-                  <button @click="showSeasonMetrics = !showSeasonMetrics" class="flex items-center justify-between w-full text-left text-xs font-black text-zinc-400 uppercase tracking-widest hover:text-white">
-                    <span>Season Metrics</span>
-                    <span class="text-base leading-none">{{ showSeasonMetrics ? '−' : '+' }}</span>
-                  </button>
-                  <div v-if="showSeasonMetrics" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                    <div v-for="stat in teamRecordStats" :key="stat.key" class="bg-zinc-950/70 border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-3">
-                      <div class="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight">{{ stat.label }}</div>
-                      <div class="font-mono text-base sm:text-lg font-black text-white mt-2 truncate">{{ stat.value }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Schedule</h4>
-                <div v-if="scheduleError" class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300">{{ scheduleError }}</div>
-                <div v-else-if="teamSchedule.length === 0" class="border border-dashed border-zinc-800 rounded-xl p-8 text-center text-sm text-zinc-500">No schedule available.</div>
-                <div v-else class="space-y-2">
-                  <div v-for="game in teamSchedule" :key="game.id" class="flex items-start justify-between gap-2 sm:gap-3 bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-2.5 sm:p-3">
-                    <div class="min-w-0">
-                      <div class="text-[10px] text-zinc-500">{{ game.date }}<span v-if="game.week"> · {{ game.week }}</span></div>
-                      <div class="flex items-center gap-2 text-sm font-bold text-white truncate mt-1">
-                        <img :src="game.opponentLogo" class="w-5 h-5 object-contain shrink-0" loading="lazy" />
-                        <span class="truncate">{{ game.homeAway === 'home' ? 'vs' : 'at' }} {{ game.opponent }}</span>
-                      </div>
-                      <div v-if="game.venue" class="text-[10px] text-zinc-500 mt-1 truncate">{{ game.venue }}</div>
-                    </div>
-                    <div class="text-right shrink-0">
-                      <div class="flex items-center gap-2 font-mono font-black text-white">
-                        <img :src="game.teamLogo" class="w-5 h-5 object-contain shrink-0" loading="lazy" />
-                        <span>{{ game.score }}</span>
-                      </div>
-                      <div class="text-[10px] text-zinc-400 uppercase mt-1">{{ game.result || game.status }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> <!-- /modalData check safety wrap -->
-
-      </div>
-    </div>
-  </div>
-  <script>
-    const { createApp, ref, computed, onMounted } = Vue;
-
-    createApp({
-      setup() {
-        const selectedLeague = ref('college-football');
-        const seasonType = ref(2);
-        const week = ref(1);
-        const selectedGroup = ref('80');
-        const mlbDate = ref(new Date().toLocaleDateString('en-CA'));
-        const games = ref([]);
-        const loading = ref(false);
-
-        const showModal = ref(false);
-        const modalLoading = ref(false);
-        const modalData = ref(null);
-        const modalTab = ref('stats');
-        const modalView = ref('game');
-        const selectedTeamSide = ref(null);
-        const teamData = ref(null);
-        const teamScheduleData = ref(null);
-        const teamLoading = ref(false);
-        const teamError = ref('');
-        const scheduleError = ref('');
-        const showSeasonMetrics = ref(false);
-        let teamRequestId = 0;
-        
-        let pollingInterval = null;
-
-        // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
-        const getFavoriteFilterText = () => {
-          if (selectedLeague.value === 'college-football') return 'Northwestern';
-          return 'Chicago';
-        };
-
-        const handleGameClick = (game) => {
-          if(getGameState(game) !== 'pre') {
-            openModal(game.id);
-          }
-        }
-
-        const fetchScoreboard = async (isInitialBoot = false) => {
-          if (isInitialBoot) loading.value = true;
-          try {
-            let endpoint = '';
-            if (selectedLeague.value === 'mlb') {
-              const cleanDate = mlbDate.value.replace(/-/g, '');
-              endpoint = `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${cleanDate}`;
-            } else {
-              if (isInitialBoot) {
-                endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard`;
-                if (selectedLeague.value === 'college-football' && selectedGroup.value) {
-                  endpoint += `?groups=${selectedGroup.value}`;
-                }
+          const fetchScoreboard = async (isInitialBoot = false) => {
+            if (isInitialBoot) loading.value = true;
+            try {
+              let endpoint = "";
+              if (selectedLeague.value === "mlb") {
+                const cleanDate = mlbDate.value.replace(/-/g, "");
+                endpoint = `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${cleanDate}`;
               } else {
-                endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard?week=${week.value}&seasontype=${seasonType.value}`;
-                if (selectedLeague.value === 'college-football' && selectedGroup.value) {
-                  endpoint += `&groups=${selectedGroup.value}`;
+                if (isInitialBoot) {
+                  endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard`;
+                  if (
+                    selectedLeague.value === "college-football" &&
+                    selectedGroup.value
+                  ) {
+                    endpoint += `?groups=${selectedGroup.value}`;
+                  }
+                } else {
+                  endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard?week=${week.value}&seasontype=${seasonType.value}`;
+                  if (
+                    selectedLeague.value === "college-football" &&
+                    selectedGroup.value
+                  ) {
+                    endpoint += `&groups=${selectedGroup.value}`;
+                  }
                 }
               }
-            }
 
-            const res = await fetch(endpoint);
-            const data = await res.json();
-            games.value = data.events || [];
-            
-            if (isInitialBoot && selectedLeague.value !== 'mlb' && data.week && data.week.number) {
-              week.value = data.week.number;
-              if (data.season && data.season.type) {
-                seasonType.value = data.season.type;
+              const res = await fetch(endpoint);
+              const data = await res.json();
+              games.value = data.events || [];
+
+              if (
+                isInitialBoot &&
+                selectedLeague.value !== "mlb" &&
+                data.week &&
+                data.week.number
+              ) {
+                week.value = data.week.number;
+                if (data.season && data.season.type) {
+                  seasonType.value = data.season.type;
+                }
               }
+            } catch (err) {
+              console.error("Scoreboard fetch error:", err);
+            } finally {
+              if (isInitialBoot) loading.value = false;
             }
-          } catch (err) {
-            console.error("Scoreboard fetch error:", err);
-          } finally {
-            if (isInitialBoot) loading.value = false;
-          }
-        };
-
-        const fetchGameDetail = async (eventId) => {
-          modalLoading.value = true;
-          try {
-            const sportPath = selectedLeague.value === 'mlb' ? 'baseball' : 'football';
-            const endpoint = `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}/summary?event=${eventId}`;
-            const res = await fetch(endpoint);
-            const data = await res.json();
-            
-            // 1. EXTRACT SCORES AND ABBREVIATIONS FROM THE HEADER (Competitions)
-            const headerComp = data.header?.competitions?.[0] || {};
-            const headerCompetitors = headerComp.competitors || [];
-            const headerAway = headerCompetitors.find(c => c.homeAway === 'away') || {};
-            const headerHome = headerCompetitors.find(c => c.homeAway === 'home') || {};
-
-            // 2. EXTRACT TEAM STATISTICS FROM THE BOXSCORE
-            const teamsArray = data.boxscore?.teams || [];
-            const awayRaw = teamsArray.find(t => t.homeAway === 'away') || {};
-            const homeRaw = teamsArray.find(t => t.homeAway === 'home') || {};
-            
-            // 3. COMBINE BOTH DATA STREAMS FOR AWAY (FIXED LOGO FALLBACKS)
-            const awayTeam = {
-              id: headerAway.id || "",
-              abbrev: headerAway.team?.abbreviation || "AWAY",
-              name: headerAway.team?.displayName || "Away Team",
-              rank: headerAway.rank || null,
-              // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
-              logo: (headerAway.team?.logos && headerAway.team.logos.length > 0) 
-                    ? headerAway.team.logos[0].href 
-                    : (awayRaw.team?.logo || "https://espncdn.com"),
-              score: headerAway.score || "0",
-              statistics: awayRaw.statistics || []
-            };
-
-            // 4. COMBINE BOTH DATA STREAMS FOR HOME (FIXED LOGO FALLBACKS)
-            const homeTeam = {
-              id: headerHome.id || "",
-              abbrev: headerHome.team?.abbreviation || "HOME",
-              name: headerHome.team?.displayName || "Home Team",
-              rank: headerHome.rank || null,
-              // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
-              logo: (headerHome.team?.logos && headerHome.team.logos.length > 0) 
-                    ? headerHome.team.logos[0].href 
-                    : (homeRaw.team?.logo || "https://espncdn.com"),
-              score: headerHome.score || "0",
-              statistics: homeRaw.statistics || []
-            };
-
-            modalData.value = {
-              id: eventId,
-              raw: data,
-              teams: { away: awayTeam, home: homeTeam },
-              scoringPlays: data.scoringPlays || [],
-              drives: data.drives || {},
-              winprobability: data.winprobability || []
-            };
-          } catch(err) {
-            console.error("Summary payload details parse error:", err);
-            modalData.value = null;
-          } {
-            modalLoading.value = false;
-          }
-        };
-        const getTeamApiBase = () => {
-          const sportPath = selectedLeague.value === 'mlb' ? 'baseball' : 'football';
-          return `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}`;
-        };
-
-        const selectedTeam = computed(() => modalData.value?.teams?.[selectedTeamSide.value] || {});
-        const formatScheduleDate = (date) => {
-          if (!date) return 'Date TBD';
-          try {
-            return new Date(date).toLocaleString('en-US', {
-              month: 'short', day: 'numeric', year: 'numeric',
-              hour: 'numeric', minute: '2-digit', hour12: true
-            });
-          } catch (err) {
-            return 'Date TBD';
-          }
-        };
-
-        const teamRecordStats = computed(() => {
-          const formatStatValue = (stat) => {
-            if (stat.displayValue !== undefined && stat.displayValue !== null) return stat.displayValue;
-            if (typeof stat.value !== 'number') return stat.value;
-            return Number(stat.value.toFixed(3));
           };
-          return (teamData.value?.team?.record?.items || []).flatMap(item => (item.stats || []).map(stat => ({
-            key: `${item.type || item.description || 'record'}-${stat.name}`,
-            label: stat.name.replace(/([A-Z])/g, ' $1').replace(/^./, letter => letter.toUpperCase()),
-            value: formatStatValue(stat)
-          })));
-        });
 
-        const teamRecords = computed(() => (teamData.value?.team?.record?.items || []).map(item => ({
-          label: item.description || item.displayName || 'Record',
-          value: item.summary || item.displayValue || '--'
-        })));
+          const fetchGameDetail = async (eventId) => {
+            modalLoading.value = true;
+            try {
+              const sportPath =
+                selectedLeague.value === "mlb" ? "baseball" : "football";
+              const endpoint = `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}/summary?event=${eventId}`;
+              const res = await fetch(endpoint);
+              const data = await res.json();
 
-        const teamSchedule = computed(() => {
-          const teamId = selectedTeam.value.id;
-          const isSelectedTeam = (competitor) => String(competitor?.id || competitor?.team?.id) === String(teamId);
-          const getScore = (competitor) => {
-            const score = competitor?.score;
-            if (score && typeof score === 'object') return score.displayValue || score.value || '--';
-            return score ?? '--';
+              // 1. EXTRACT SCORES AND ABBREVIATIONS FROM THE HEADER (Competitions)
+              const headerComp = data.header?.competitions?.[0] || {};
+              const headerCompetitors = headerComp.competitors || [];
+              const headerAway =
+                headerCompetitors.find((c) => c.homeAway === "away") || {};
+              const headerHome =
+                headerCompetitors.find((c) => c.homeAway === "home") || {};
+
+              // 2. EXTRACT TEAM STATISTICS FROM THE BOXSCORE
+              const teamsArray = data.boxscore?.teams || [];
+              const awayRaw =
+                teamsArray.find((t) => t.homeAway === "away") || {};
+              const homeRaw =
+                teamsArray.find((t) => t.homeAway === "home") || {};
+
+              // 3. COMBINE BOTH DATA STREAMS FOR AWAY (FIXED LOGO FALLBACKS)
+              const awayTeam = {
+                id: headerAway.id || "",
+                abbrev: headerAway.team?.abbreviation || "AWAY",
+                name: headerAway.team?.displayName || "Away Team",
+                rank: headerAway.rank || null,
+                // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
+                logo:
+                  headerAway.team?.logos && headerAway.team.logos.length > 0
+                    ? headerAway.team.logos[0].href
+                    : awayRaw.team?.logo || "https://espncdn.com",
+                score: headerAway.score || "0",
+                statistics: awayRaw.statistics || [],
+              };
+
+              // 4. COMBINE BOTH DATA STREAMS FOR HOME (FIXED LOGO FALLBACKS)
+              const homeTeam = {
+                id: headerHome.id || "",
+                abbrev: headerHome.team?.abbreviation || "HOME",
+                name: headerHome.team?.displayName || "Home Team",
+                rank: headerHome.rank || null,
+                // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
+                logo:
+                  headerHome.team?.logos && headerHome.team.logos.length > 0
+                    ? headerHome.team.logos[0].href
+                    : homeRaw.team?.logo || "https://espncdn.com",
+                score: headerHome.score || "0",
+                statistics: homeRaw.statistics || [],
+              };
+
+              modalData.value = {
+                id: eventId,
+                raw: data,
+                teams: { away: awayTeam, home: homeTeam },
+                scoringPlays: data.scoringPlays || [],
+                drives: data.drives || {},
+                winprobability: data.winprobability || [],
+              };
+            } catch (err) {
+              console.error("Summary payload details parse error:", err);
+              modalData.value = null;
+            }
+            {
+              modalLoading.value = false;
+            }
           };
-          return (teamScheduleData.value?.events || []).map(event => {
-            const competition = event.competitions?.[0] || {};
-            const competitors = competition.competitors || [];
-            const opponent = competitors.find(competitor => !isSelectedTeam(competitor)) || {};
-            const own = competitors.find(isSelectedTeam) || {};
-            const rawStatus = competition.status?.type?.shortDetail || competition.status?.type?.description || 'Scheduled';
-            const timeIsTBD = rawStatus.toUpperCase().includes('TBD') || event.timeValid === false || competition.timeValid === false;
-            return {
-              id: event.id,
-              date: timeIsTBD ? 'TBD' : formatScheduleDate(event.date),
-              week: event.week?.text || '',
-              opponent: opponent.team?.displayName || 'Opponent',
-              opponentLogo: opponent.team?.logos?.[0]?.href || opponent.team?.logo || 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png',
-              teamLogo: own.team?.logos?.[0]?.href || own.team?.logo || selectedTeam.value.logo || 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png',
-              homeAway: own.homeAway,
-              score: own.score !== undefined && opponent.score !== undefined ? `${getScore(own)}-${getScore(opponent)}` : '--',
-              result: own.winner === true ? 'W' : opponent.winner === true ? 'L' : '',
-              status: timeIsTBD
-                ? 'TBD'
-                : competition.status?.type?.state === 'pre'
-                  ? 'Scheduled'
-                  : rawStatus,
-              venue: competition.venue?.fullName || ''
+          const getTeamApiBase = () => {
+            const sportPath =
+              selectedLeague.value === "mlb" ? "baseball" : "football";
+            return `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}`;
+          };
+
+          const selectedTeam = computed(
+            () => modalData.value?.teams?.[selectedTeamSide.value] || {},
+          );
+          const formatScheduleDate = (date) => {
+            if (!date) return "Date TBD";
+            try {
+              return new Date(date).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              });
+            } catch (err) {
+              return "Date TBD";
+            }
+          };
+
+          const teamRecordStats = computed(() => {
+            const formatStatValue = (stat) => {
+              if (stat.displayValue !== undefined && stat.displayValue !== null)
+                return stat.displayValue;
+              if (typeof stat.value !== "number") return stat.value;
+              return Number(stat.value.toFixed(3));
             };
+            return (teamData.value?.team?.record?.items || []).flatMap((item) =>
+              (item.stats || []).map((stat) => ({
+                key: `${item.type || item.description || "record"}-${stat.name}`,
+                label: stat.name
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (letter) => letter.toUpperCase()),
+                value: formatStatValue(stat),
+              })),
+            );
           });
-        });
 
-        const resetTeamView = () => {
-          modalView.value = 'game';
-          selectedTeamSide.value = null;
-          teamData.value = null;
-          teamScheduleData.value = null;
-          teamLoading.value = false;
-          teamError.value = '';
-          scheduleError.value = '';
-          showSeasonMetrics.value = false;
-          teamRequestId++;
-        };
+          const teamRecords = computed(() =>
+            (teamData.value?.team?.record?.items || []).map((item) => ({
+              label: item.description || item.displayName || "Record",
+              value: item.summary || item.displayValue || "--",
+            })),
+          );
 
-        const openTeamDetails = async (side) => {
-          const team = modalData.value?.teams?.[side];
-          if (!team?.id) return;
-          const requestId = ++teamRequestId;
-          selectedTeamSide.value = side;
-          modalView.value = 'team';
-          teamData.value = null;
-          teamScheduleData.value = null;
-          teamError.value = '';
-          scheduleError.value = '';
-          teamLoading.value = true;
-          try {
-            const base = `${getTeamApiBase()}/teams/${team.id}`;
-            const responses = await Promise.all([fetch(base), fetch(`${base}/schedule`)]);
-            const payloads = await Promise.all(responses.map(async response => {
-              if (!response.ok) throw new Error(`ESPN request failed (${response.status})`);
-              return response.json();
-            }));
-            if (requestId !== teamRequestId || !showModal.value) return;
-            teamData.value = payloads[0];
-            teamScheduleData.value = payloads[1];
-          } catch (err) {
-            if (requestId === teamRequestId) {
-              teamError.value = err.message || 'Unable to load team details.';
-              scheduleError.value = 'Unable to load schedule.';
-            }
-          } finally {
-            if (requestId === teamRequestId) teamLoading.value = false;
-          }
-        };
-
-        const returnToGame = () => { modalView.value = 'game'; };
-        const openModal = (eventId) => {
-          showModal.value = true;
-          resetTeamView();
-          modalTab.value = 'stats';
-          fetchGameDetail(eventId);
-        };
-
-        const closeModal = () => {
-          showModal.value = false;
-          modalData.value = null;
-          resetTeamView();
-        };
-
-        const linescoreHeaders = computed(() => {
-          const compList = modalData.value?.raw?.header?.competitions;
-          const comp = (compList && compList.length > 0) ? compList[0] : null;
-          if (!comp) return [];
-          
-          const competitors = comp.competitors || [];
-          const awayLines = (competitors.length > 0) ? (competitors[0].linescores || []) : [];
-          const homeLines = (competitors.length > 1) ? (competitors[1].linescores || []) : [];
-          
-          const maxPeriods = Math.max(awayLines.length, homeLines.length, selectedLeague.value === 'mlb' ? 9 : 4);
-          const headers = [];
-          for (let i = 0; i < maxPeriods; i++) {
-            if (selectedLeague.value === 'mlb') {
-              headers.push(i + 1);
-            } else {
-              headers.push(i < 4 ? i + 1 : 'OT');
-            }
-          }
-          return headers;
-        });
-
-        const linescores = computed(() => {
-          const compList = modalData.value?.raw?.header?.competitions;
-          const comp = (compList && compList.length > 0) ? compList[0] : null;
-          if (!comp) return { away: [], home: [] };
-          
-          const competitors = comp.competitors || [];
-          const awayCompetitor = (competitors.length > 0) ? competitors[0] : {};
-          const homeCompetitor = (competitors.length > 1) ? competitors[1] : {};
-          
-          const awayLines = awayCompetitor.linescores || [];
-          const homeLines = homeCompetitor.linescores || [];
-          const totalPeriods = linescoreHeaders.value.length;
-          
-          const formatRow = (linesArray) => {
-            const row = [];
-            for (let i = 0; i < totalPeriods; i++) {
-              if (i < linesArray.length) {
-                const item = linesArray[i];
-                // FIX: Wrapped value fallback logic in parentheses to prevent SyntaxError
-                row.push(item.displayValue || (item.value ?? "0"));
-              } else {
-                row.push("-");
-              }
-            }
-            return row;
-          };
-
-          return {
-            away: formatRow(awayLines),
-            home: formatRow(homeLines)
-          };
-        });
-
-        const currentDrive = computed(() => {
-          const dr = modalData.value?.drives?.current;
-          if (!dr || Object.keys(dr).length === 0) return null;
-          return {
-            description: dr.description || "Active drive ongoing...",
-            result: dr.result || "Ongoing",
-            recap: dr.recap?.recap || ""
-          };
-        });
-
-        const winProbabilityPoints = computed(() => {
-          const wpArray = modalData.value?.winprobability;
-          if (!Array.isArray(wpArray) || wpArray.length === 0) return "";
-          
-          return wpArray.map((wp, index) => {
-            const x = (index / (wpArray.length - 1)) * 100;
-            const homeProb = wp.homeWinPercentage !== undefined ? wp.homeWinPercentage : (wp.homeProbability || 0.5);
-            const y = homeProb * 100; 
-            return `${x},${y}`;
-          }).join(" ");
-        });
-
-                const teamStats = computed(() => {
-          if (!modalData.value || !modalData.value.teams) return [];
-          
-          const awayStats = modalData.value.teams.away?.statistics || [];
-          const homeStats = modalData.value.teams.home?.statistics || [];
-          
-          // FIX: Force baseball logic explicitly by checking the active league string name instead of array lengths
-          if (selectedLeague.value === 'mlb') {
-            const rawBox = modalData.value.raw?.boxscore?.teams || [];
-            const awayBoxRaw = rawBox.find(t => t.homeAway === 'away') || {};
-            const homeBoxRaw = rawBox.find(t => t.homeAway === 'home') || {};
-            
-            // Navigate cleanly into the nested .stats lists hidden inside the top-level 'batting' object
-            const awayBattingGroup = (awayBoxRaw.statistics || []).find(s => s.name === 'batting') || {};
-            const homeBattingGroup = (homeBoxRaw.statistics || []).find(s => s.name === 'batting') || {};
-            
-            const awayStatsList = awayBattingGroup.stats || [];
-            const homeStatsList = homeBattingGroup.stats || [];
-            
-            const baseballMetrics = [
-              { key: 'hits', label: 'Hits' },
-              { key: 'runs', label: 'Runs Scored' },
-              { key: 'strikeouts', label: 'Strikeouts' },
-              { key: 'runnersLeftOnBase', label: 'Left On Base (LOB)' }
-            ];
-            
-            return baseballMetrics.map(metric => {
-              const aItem = awayStatsList.find(s => s.name === metric.key) || {};
-              const hItem = homeStatsList.find(s => s.name === metric.key) || {};
-              
-              const valA = parseFloat(aItem.value) || 0;
-              const valH = parseFloat(hItem.value) || 0;
-              const combined = valA + valH;
-              
-              let pctA = 50, pctH = 50;
-              if (combined > 0) {
-                pctA = (valA / combined) * 100;
-                pctH = (valH / combined) * 100;
-              } else if (valA === 0 && valH === 0) {
-                pctA = 0; pctH = 0;
-              }
-              
+          const teamSchedule = computed(() => {
+            const teamId = selectedTeam.value.id;
+            const isSelectedTeam = (competitor) =>
+              String(competitor?.id || competitor?.team?.id) === String(teamId);
+            const getScore = (competitor) => {
+              const score = competitor?.score;
+              if (score && typeof score === "object")
+                return score.displayValue || score.value || "--";
+              return score ?? "--";
+            };
+            return (teamScheduleData.value?.events || []).map((event) => {
+              const competition = event.competitions?.[0] || {};
+              const competitors = competition.competitors || [];
+              const opponent =
+                competitors.find((competitor) => !isSelectedTeam(competitor)) ||
+                {};
+              const own = competitors.find(isSelectedTeam) || {};
+              const rawStatus =
+                competition.status?.type?.shortDetail ||
+                competition.status?.type?.description ||
+                "Scheduled";
+              const timeIsTBD =
+                rawStatus.toUpperCase().includes("TBD") ||
+                event.timeValid === false ||
+                competition.timeValid === false;
               return {
-                label: metric.label,
-                awayDisplay: aItem.displayValue || "0",
-                homeDisplay: hItem.displayValue || "0",
-                awayPct: pctA,
-                homePct: pctH
+                id: event.id,
+                date: timeIsTBD ? "TBD" : formatScheduleDate(event.date),
+                week: event.week?.text || "",
+                opponent: opponent.team?.displayName || "Opponent",
+                opponentLogo:
+                  opponent.team?.logos?.[0]?.href ||
+                  opponent.team?.logo ||
+                  "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png",
+                teamLogo:
+                  own.team?.logos?.[0]?.href ||
+                  own.team?.logo ||
+                  selectedTeam.value.logo ||
+                  "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png",
+                homeAway: own.homeAway,
+                score:
+                  own.score !== undefined && opponent.score !== undefined
+                    ? `${getScore(own)}-${getScore(opponent)}`
+                    : "--",
+                result:
+                  own.winner === true
+                    ? "W"
+                    : opponent.winner === true
+                      ? "L"
+                      : "",
+                status: timeIsTBD
+                  ? "TBD"
+                  : competition.status?.type?.state === "pre"
+                    ? "Scheduled"
+                    : rawStatus,
+                venue: competition.venue?.fullName || "",
               };
             });
-          }
-          
-          // DEFAULT FOOTBALL PROGRESS GAUGE MAPS (CFB / NFL)
-          return awayStats.map(aStat => {
-            const hStat = homeStats.find(h => h.name === aStat.name) || {};
-            const label = aStat.label || aStat.name;
-            const valA = parseFloat(aStat.value) || 0;
-            const valH = parseFloat(hStat.value) || 0;
-            const total = valA + valH;
-            
-            let pctA = 50, pctH = 50;
-            if (total > 0) {
-              pctA = (valA / total) * 100;
-              pctH = (valH / total) * 100;
+          });
+
+          const resetTeamView = () => {
+            modalView.value = "game";
+            selectedTeamSide.value = null;
+            teamData.value = null;
+            teamScheduleData.value = null;
+            teamLoading.value = false;
+            teamError.value = "";
+            scheduleError.value = "";
+            showSeasonMetrics.value = false;
+            teamRequestId++;
+          };
+
+          const openTeamDetails = async (side) => {
+            const team = modalData.value?.teams?.[side];
+            if (!team?.id) return;
+            const requestId = ++teamRequestId;
+            selectedTeamSide.value = side;
+            modalView.value = "team";
+            teamData.value = null;
+            teamScheduleData.value = null;
+            teamError.value = "";
+            scheduleError.value = "";
+            teamLoading.value = true;
+            try {
+              const base = `${getTeamApiBase()}/teams/${team.id}`;
+              const responses = await Promise.all([
+                fetch(base),
+                fetch(`${base}/schedule`),
+              ]);
+              const payloads = await Promise.all(
+                responses.map(async (response) => {
+                  if (!response.ok)
+                    throw new Error(`ESPN request failed (${response.status})`);
+                  return response.json();
+                }),
+              );
+              if (requestId !== teamRequestId || !showModal.value) return;
+              teamData.value = payloads[0];
+              teamScheduleData.value = payloads[1];
+            } catch (err) {
+              if (requestId === teamRequestId) {
+                teamError.value = err.message || "Unable to load team details.";
+                scheduleError.value = "Unable to load schedule.";
+              }
+            } finally {
+              if (requestId === teamRequestId) teamLoading.value = false;
             }
+          };
+
+          const returnToGame = () => {
+            modalView.value = "game";
+          };
+          const openModal = (eventId) => {
+            showModal.value = true;
+            resetTeamView();
+            modalTab.value = "stats";
+            fetchGameDetail(eventId);
+          };
+
+          const closeModal = () => {
+            showModal.value = false;
+            modalData.value = null;
+            resetTeamView();
+          };
+
+          const linescoreHeaders = computed(() => {
+            const compList = modalData.value?.raw?.header?.competitions;
+            const comp = compList && compList.length > 0 ? compList[0] : null;
+            if (!comp) return [];
+
+            const competitors = comp.competitors || [];
+            const awayLines =
+              competitors.length > 0 ? competitors[0].linescores || [] : [];
+            const homeLines =
+              competitors.length > 1 ? competitors[1].linescores || [] : [];
+
+            const maxPeriods = Math.max(
+              awayLines.length,
+              homeLines.length,
+              selectedLeague.value === "mlb" ? 9 : 4,
+            );
+            const headers = [];
+            for (let i = 0; i < maxPeriods; i++) {
+              if (selectedLeague.value === "mlb") {
+                headers.push(i + 1);
+              } else {
+                headers.push(i < 4 ? i + 1 : "OT");
+              }
+            }
+            return headers;
+          });
+
+          const linescores = computed(() => {
+            const compList = modalData.value?.raw?.header?.competitions;
+            const comp = compList && compList.length > 0 ? compList[0] : null;
+            if (!comp) return { away: [], home: [] };
+
+            const competitors = comp.competitors || [];
+            const awayCompetitor = competitors.length > 0 ? competitors[0] : {};
+            const homeCompetitor = competitors.length > 1 ? competitors[1] : {};
+
+            const awayLines = awayCompetitor.linescores || [];
+            const homeLines = homeCompetitor.linescores || [];
+            const totalPeriods = linescoreHeaders.value.length;
+
+            const formatRow = (linesArray) => {
+              const row = [];
+              for (let i = 0; i < totalPeriods; i++) {
+                if (i < linesArray.length) {
+                  const item = linesArray[i];
+                  // FIX: Wrapped value fallback logic in parentheses to prevent SyntaxError
+                  row.push(item.displayValue || (item.value ?? "0"));
+                } else {
+                  row.push("-");
+                }
+              }
+              return row;
+            };
+
             return {
-              label,
-              awayDisplay: aStat.displayValue || "0",
-              homeDisplay: hStat.displayValue || "0",
-              awayPct: pctA,
-              homePct: pctH
+              away: formatRow(awayLines),
+              home: formatRow(homeLines),
             };
           });
-        });
 
-        const playerLeaders = computed(() => {
-          const playersArray = modalData.value?.raw?.boxscore?.players || [];
-          const outputCategories = [];
+          const currentDrive = computed(() => {
+            const dr = modalData.value?.drives?.current;
+            if (!dr || Object.keys(dr).length === 0) return null;
+            return {
+              description: dr.description || "Active drive ongoing...",
+              result: dr.result || "Ongoing",
+              recap: dr.recap?.recap || "",
+            };
+          });
 
-          playersArray.forEach(tBlock => {
-            const teamAbbrev = tBlock.team?.abbreviation || "";
-            if (!Array.isArray(tBlock.statistics)) return;
+          const winProbabilityPoints = computed(() => {
+            const wpArray = modalData.value?.winprobability;
+            if (!Array.isArray(wpArray) || wpArray.length === 0) return "";
 
-            tBlock.statistics.forEach(statCat => {
-              const catTitle = statCat.name || "";
-              if (!Array.isArray(statCat.athletes)) return;
+            return wpArray
+              .map((wp, index) => {
+                const x = (index / (wpArray.length - 1)) * 100;
+                const homeProb =
+                  wp.homeWinPercentage !== undefined
+                    ? wp.homeWinPercentage
+                    : wp.homeProbability || 0.5;
+                const y = homeProb * 100;
+                return `${x},${y}`;
+              })
+              .join(" ");
+          });
 
-              let existingGroup = outputCategories.find(c => c.title.toLowerCase() === catTitle.toLowerCase());
-              if (!existingGroup) {
-                existingGroup = {
-                  title: catTitle.charAt(0).toUpperCase() + catTitle.slice(1),
-                  labels: statCat.labels || [],
-                  athletes: []
+          const teamStats = computed(() => {
+            if (!modalData.value || !modalData.value.teams) return [];
+
+            const awayStats = modalData.value.teams.away?.statistics || [];
+            const homeStats = modalData.value.teams.home?.statistics || [];
+
+            // FIX: Force baseball logic explicitly by checking the active league string name instead of array lengths
+            if (selectedLeague.value === "mlb") {
+              const rawBox = modalData.value.raw?.boxscore?.teams || [];
+              const awayBoxRaw =
+                rawBox.find((t) => t.homeAway === "away") || {};
+              const homeBoxRaw =
+                rawBox.find((t) => t.homeAway === "home") || {};
+
+              // Navigate cleanly into the nested .stats lists hidden inside the top-level 'batting' object
+              const awayBattingGroup =
+                (awayBoxRaw.statistics || []).find(
+                  (s) => s.name === "batting",
+                ) || {};
+              const homeBattingGroup =
+                (homeBoxRaw.statistics || []).find(
+                  (s) => s.name === "batting",
+                ) || {};
+
+              const awayStatsList = awayBattingGroup.stats || [];
+              const homeStatsList = homeBattingGroup.stats || [];
+
+              const baseballMetrics = [
+                { key: "hits", label: "Hits" },
+                { key: "runs", label: "Runs Scored" },
+                { key: "strikeouts", label: "Strikeouts" },
+                { key: "runnersLeftOnBase", label: "Left On Base (LOB)" },
+              ];
+
+              return baseballMetrics.map((metric) => {
+                const aItem =
+                  awayStatsList.find((s) => s.name === metric.key) || {};
+                const hItem =
+                  homeStatsList.find((s) => s.name === metric.key) || {};
+
+                const valA = parseFloat(aItem.value) || 0;
+                const valH = parseFloat(hItem.value) || 0;
+                const combined = valA + valH;
+
+                let pctA = 50,
+                  pctH = 50;
+                if (combined > 0) {
+                  pctA = (valA / combined) * 100;
+                  pctH = (valH / combined) * 100;
+                } else if (valA === 0 && valH === 0) {
+                  pctA = 0;
+                  pctH = 0;
+                }
+
+                return {
+                  label: metric.label,
+                  awayDisplay: aItem.displayValue || "0",
+                  homeDisplay: hItem.displayValue || "0",
+                  awayPct: pctA,
+                  homePct: pctH,
                 };
-                outputCategories.push(existingGroup);
-              }
+              });
+            }
 
-              statCat.athletes.slice(0, 2).forEach(pRow => {
-                existingGroup.athletes.push({
-                  name: pRow.athlete?.displayName || "Player",
-                  jersey: pRow.athlete?.jersey || "-",
-                  headshot: pRow.athlete?.headshot?.href || "https://a.espncdn.com/i/headshots/placeholder.png",
-                  teamAbbrev,
-                  stats: pRow.stats || []
+            // DEFAULT FOOTBALL PROGRESS GAUGE MAPS (CFB / NFL)
+            return awayStats.map((aStat) => {
+              const hStat = homeStats.find((h) => h.name === aStat.name) || {};
+              const label = aStat.label || aStat.name;
+              const valA = parseFloat(aStat.value) || 0;
+              const valH = parseFloat(hStat.value) || 0;
+              const total = valA + valH;
+
+              let pctA = 50,
+                pctH = 50;
+              if (total > 0) {
+                pctA = (valA / total) * 100;
+                pctH = (valH / total) * 100;
+              }
+              return {
+                label,
+                awayDisplay: aStat.displayValue || "0",
+                homeDisplay: hStat.displayValue || "0",
+                awayPct: pctA,
+                homePct: pctH,
+              };
+            });
+          });
+
+          const playerLeaders = computed(() => {
+            const playersArray = modalData.value?.raw?.boxscore?.players || [];
+            const outputCategories = [];
+
+            playersArray.forEach((tBlock) => {
+              const teamAbbrev = tBlock.team?.abbreviation || "";
+              if (!Array.isArray(tBlock.statistics)) return;
+
+              tBlock.statistics.forEach((statCat) => {
+                const catTitle = statCat.name || "";
+                if (!Array.isArray(statCat.athletes)) return;
+
+                let existingGroup = outputCategories.find(
+                  (c) => c.title.toLowerCase() === catTitle.toLowerCase(),
+                );
+                if (!existingGroup) {
+                  existingGroup = {
+                    title: catTitle.charAt(0).toUpperCase() + catTitle.slice(1),
+                    labels: statCat.labels || [],
+                    athletes: [],
+                  };
+                  outputCategories.push(existingGroup);
+                }
+
+                statCat.athletes.slice(0, 2).forEach((pRow) => {
+                  existingGroup.athletes.push({
+                    name: pRow.athlete?.displayName || "Player",
+                    jersey: pRow.athlete?.jersey || "-",
+                    headshot:
+                      pRow.athlete?.headshot?.href ||
+                      "https://a.espncdn.com/i/headshots/placeholder.png",
+                    teamAbbrev,
+                    stats: pRow.stats || [],
+                  });
                 });
               });
             });
+
+            return outputCategories;
           });
 
-          return outputCategories;
-        });
+          const triggerImmediateFetch = async () => {
+            clearInterval(pollingInterval);
+            await fetchScoreboard(false);
+            startPoller();
+          };
 
-        const triggerImmediateFetch = async () => {
-          clearInterval(pollingInterval);
-          await fetchScoreboard(false);
-          startPoller();
-        };
+          const startPoller = () => {
+            pollingInterval = setInterval(() => {
+              fetchScoreboard(false);
+              if (showModal.value && modalData.value?.id) {
+                fetchGameDetail(modalData.value.id);
+              }
+            }, 15000);
+          };
 
-        const startPoller = () => {
-          pollingInterval = setInterval(() => {
-            fetchScoreboard(false);
-            if(showModal.value && modalData.value?.id) {
-              fetchGameDetail(modalData.value.id);
+          const switchTab = async (league) => {
+            resetTeamView();
+            selectedLeague.value = league;
+            selectedGroup.value = "";
+            if (league === "mlb") {
+              mlbDate.value = new Date().toLocaleDateString("en-CA");
+              await fetchScoreboard(true);
+            } else {
+              await fetchScoreboard(true);
             }
-          }, 15000);
-        };
+            triggerImmediateFetch();
+          };
 
-        const switchTab = async (league) => {
-          resetTeamView();
-          selectedLeague.value = league;
-          selectedGroup.value = '';
-          if (league === 'mlb') {
-            mlbDate.value = new Date().toLocaleDateString('en-CA');
-            await fetchScoreboard(true);
-          } else {
-            await fetchScoreboard(true);
-          }
-          triggerImmediateFetch();
-        };
+          const adjustWeek = (amount) => {
+            if (week.value + amount < 1) return;
+            week.value += amount;
+            triggerImmediateFetch();
+          };
 
-        const adjustWeek = (amount) => {
-          if (week.value + amount < 1) return;
-          week.value += amount;
-          triggerImmediateFetch();
-        };
+          const setSeasonType = (type) => {
+            seasonType.value = type;
+            week.value = 1;
+            triggerImmediateFetch();
+          };
 
-        const setSeasonType = (type) => {
-          seasonType.value = type;
-          week.value = 1;
-          triggerImmediateFetch();
-        };
+          const getGameState = (game) =>
+            String(game?.status?.type?.state || "").toLowerCase();
 
-        const getGameState = (game) => String(game?.status?.type?.state || "").toLowerCase();
-        
-        const getSituation = (game) => {
-          const competitionsList = game?.competitions || [];
-          const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-          if (selectedLeague.value === 'mlb') {
-            if (getGameState(game) === 'in') return game?.status?.type?.detail || "";
+          const getSituation = (game) => {
+            const competitionsList = game?.competitions || [];
+            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
+            if (selectedLeague.value === "mlb") {
+              if (getGameState(game) === "in")
+                return game?.status?.type?.detail || "";
+              return "";
+            }
+            return comp?.situation?.downDistanceText || "";
+          };
+
+          const hasPossession = (game, homeAway) => {
+            if (selectedLeague.value === "mlb") return false;
+            const competitionsList = game?.competitions || [];
+            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
+            const competitorsList = comp.competitors || [];
+            const teamId = competitorsList.find(
+              (c) => c.homeAway === homeAway,
+            )?.id;
+            return (
+              comp?.situation?.possession &&
+              comp?.situation?.possession === teamId
+            );
+          };
+
+          const getNetwork = (game) => {
+            const competitionsList = game?.competitions || [];
+            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
+            const broadcastsList = comp.broadcasts || [];
+            const geoBroadcastsList = comp.geoBroadcasts || [];
+
+            if (
+              broadcastsList.length > 0 &&
+              broadcastsList[0].names &&
+              broadcastsList[0].names.length > 0
+            ) {
+              return broadcastsList[0].names[0];
+            }
+            if (
+              geoBroadcastsList.length > 0 &&
+              geoBroadcastsList[0].media &&
+              geoBroadcastsList[0].media.shortName
+            ) {
+              return geoBroadcastsList[0].media.shortName;
+            }
             return "";
-          }
-          return comp?.situation?.downDistanceText || "";
-        };
+          };
 
-        const hasPossession = (game, homeAway) => {
-          if (selectedLeague.value === 'mlb') return false;
-          const competitionsList = game?.competitions || [];
-          const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-          const competitorsList = comp.competitors || [];
-          const teamId = competitorsList.find(c => c.homeAway === homeAway)?.id;
-          return comp?.situation?.possession && comp?.situation?.possession === teamId;
-        };
+          const formatGameTime = (game) => {
+            const state = getGameState(game);
+            const detail = game?.status?.type?.shortDetail || "";
+            if (state !== "pre" || !game.date) return detail;
+            try {
+              const gameDate = new Date(game.date);
+              const today = new Date();
+              const isToday =
+                gameDate.getDate() === today.getDate() &&
+                gameDate.getMonth() === today.getMonth() &&
+                gameDate.getFullYear() === today.getFullYear();
 
-        const getNetwork = (game) => {
-          const competitionsList = game?.competitions || [];
-          const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-          const broadcastsList = comp.broadcasts || [];
-          const geoBroadcastsList = comp.geoBroadcasts || [];
-          
-          if (broadcastsList.length > 0 && broadcastsList[0].names && broadcastsList[0].names.length > 0) {
-            return broadcastsList[0].names[0];
-          }
-          if (geoBroadcastsList.length > 0 && geoBroadcastsList[0].media && geoBroadcastsList[0].media.shortName) {
-            return geoBroadcastsList[0].media.shortName;
-          }
-          return "";
-        };
+              const options = {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              };
+              if (!isToday) options.weekday = "short";
 
-        const formatGameTime = (game) => {
-          const state = getGameState(game);
-          const detail = game?.status?.type?.shortDetail || "";
-          if (state !== 'pre' || !game.date) return detail;
-          try {
-            const gameDate = new Date(game.date);
-            const today = new Date();
-            const isToday = gameDate.getDate() === today.getDate() &&
-                            gameDate.getMonth() === today.getMonth() &&
-                            gameDate.getFullYear() === today.getFullYear();
-
-            const options = { hour: 'numeric', minute: '2-digit', hour12: true };
-            if (!isToday) options.weekday = 'short';
-
-            return gameDate.toLocaleTimeString('en-US', options);
-          } catch(e) {
-            return detail;
-          }
-        };
-
-        const getCompetitor = (game, type) => {
-          const competitionsList = game?.competitions || [];
-          const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-          const competitorsList = comp.competitors || [];
-          return competitorsList.find(c => c.homeAway === type) || {};
-        };
-        const getTeamName = (game, type) => {
-          const comp = getCompetitor(game, type);
-          return comp?.team?.displayName || comp?.team?.location || "Team";
-        };
-        const getTeamLogo = (game, type) => getCompetitor(game, type)?.team?.logo || "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png";
-        const getTeamScore = (game, type) => getCompetitor(game, type)?.score || "0";
-        const getTeamRank = (game, type) => {
-          const r = parseInt(getCompetitor(game, type)?.curatedRank?.current);
-          return (r > 0 && r < 99) ? r : null;
-        };
-        const isWinner = (game, type) => getCompetitor(game, type)?.winner === true;
-
-        const isTeamStringHighlighted = (name) => {
-          const matchStr = getFavoriteFilterText();
-          return name.toLowerCase().includes(matchStr.toLowerCase());
-        };
-
-        const isGameHighlighted = (game) => {
-          return isTeamStringHighlighted(getTeamName(game, 'home')) || isTeamStringHighlighted(getTeamName(game, 'away'));
-        };
-
-        const sortedGames = computed(() => {
-          return [...games.value].sort((gameA, gameB) => {
-            const stateA = getGameState(gameA);
-            const stateB = getGameState(gameB);
-
-            const getBucketWeight = (state) => {
-              if (state === "in") return 1;
-              if (state === "pre") return 2;
-              return 3;
-            };
-
-            const weightA = getBucketWeight(stateA);
-            const weightB = getBucketWeight(stateB);
-
-            if (weightA !== weightB) return weightA - weightB;
-
-            if (stateA === "pre" && stateB === "pre" && gameA.date && gameB.date) {
-              const dateA = new Date(gameA.date).getTime();
-              const dateB = new Date(gameB.date).getTime();
-              if (dateA !== dateB) return dateA - dateB;
+              return gameDate.toLocaleTimeString("en-US", options);
+            } catch (e) {
+              return detail;
             }
+          };
 
-            const getBestRank = (game) => {
-              const rHome = getTeamRank(game, 'home') || 99;
-              const rAway = getTeamRank(game, 'away') || 99;
-              return Math.min(rHome, rAway);
-            };
+          const getCompetitor = (game, type) => {
+            const competitionsList = game?.competitions || [];
+            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
+            const competitorsList = comp.competitors || [];
+            return competitorsList.find((c) => c.homeAway === type) || {};
+          };
+          const getTeamName = (game, type) => {
+            const comp = getCompetitor(game, type);
+            return comp?.team?.displayName || comp?.team?.location || "Team";
+          };
+          const getTeamLogo = (game, type) =>
+            getCompetitor(game, type)?.team?.logo ||
+            "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png";
+          const getTeamScore = (game, type) =>
+            getCompetitor(game, type)?.score || "0";
+          const getTeamRank = (game, type) => {
+            const r = parseInt(getCompetitor(game, type)?.curatedRank?.current);
+            return r > 0 && r < 99 ? r : null;
+          };
+          const isWinner = (game, type) =>
+            getCompetitor(game, type)?.winner === true;
 
-            return getBestRank(gameA) - getBestRank(gameB);
+          const isTeamStringHighlighted = (name) => {
+            const matchStr = getFavoriteFilterText();
+            return name.toLowerCase().includes(matchStr.toLowerCase());
+          };
+
+          const isGameHighlighted = (game) => {
+            return (
+              isTeamStringHighlighted(getTeamName(game, "home")) ||
+              isTeamStringHighlighted(getTeamName(game, "away"))
+            );
+          };
+
+          const sortedGames = computed(() => {
+            return [...games.value].sort((gameA, gameB) => {
+              const stateA = getGameState(gameA);
+              const stateB = getGameState(gameB);
+
+              const getBucketWeight = (state) => {
+                if (state === "in") return 1;
+                if (state === "pre") return 2;
+                return 3;
+              };
+
+              const weightA = getBucketWeight(stateA);
+              const weightB = getBucketWeight(stateB);
+
+              if (weightA !== weightB) return weightA - weightB;
+
+              if (
+                stateA === "pre" &&
+                stateB === "pre" &&
+                gameA.date &&
+                gameB.date
+              ) {
+                const dateA = new Date(gameA.date).getTime();
+                const dateB = new Date(gameB.date).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+              }
+
+              const getBestRank = (game) => {
+                const rHome = getTeamRank(game, "home") || 99;
+                const rAway = getTeamRank(game, "away") || 99;
+                return Math.min(rHome, rAway);
+              };
+
+              return getBestRank(gameA) - getBestRank(gameB);
+            });
           });
-        });
 
-        onMounted(async () => {
-          await fetchScoreboard(true);
-          startPoller();
-        });
+          onMounted(async () => {
+            await fetchScoreboard(true);
+            startPoller();
+          });
 
-        return {
-          selectedLeague,
-          seasonType,
-          week,
-          selectedGroup,
-          mlbDate,
-          games,
-          loading,
-          showModal,
-          modalLoading,
-          modalData,
-          modalTab,
-          modalView,
-          selectedTeamSide,
-          selectedTeam,
-          teamData,
-          teamLoading,
-          teamError,
-          scheduleError,
-          showSeasonMetrics,
-          teamRecords,
-          teamRecordStats,
-          teamSchedule,
-          sortedGames,
-          linescoreHeaders,
-          linescores,
-          currentDrive,
-          winProbabilityPoints,
-          teamStats,
-          playerLeaders,
-          switchTab,
-          adjustWeek,
-          setSeasonType,
-          triggerImmediateFetch,
-          openModal,
-          openTeamDetails,
-          returnToGame,
-          closeModal,
-          getGameState,
-          getSituation,
-          hasPossession,
-          getNetwork,
-          formatGameTime,
-          getTeamName,
-          getTeamLogo,
-          getTeamScore,
-          getTeamRank,
-          isWinner,
-          isTeamStringHighlighted,
-          isGameHighlighted,
-          handleGameClick
-        };
-      }
-    }).mount('#app');
-  </script>
-</body>
+          return {
+            selectedLeague,
+            seasonType,
+            week,
+            selectedGroup,
+            mlbDate,
+            games,
+            loading,
+            showModal,
+            modalLoading,
+            modalData,
+            modalTab,
+            modalView,
+            selectedTeamSide,
+            selectedTeam,
+            teamData,
+            teamLoading,
+            teamError,
+            scheduleError,
+            showSeasonMetrics,
+            teamRecords,
+            teamRecordStats,
+            teamSchedule,
+            sortedGames,
+            linescoreHeaders,
+            linescores,
+            currentDrive,
+            winProbabilityPoints,
+            teamStats,
+            playerLeaders,
+            switchTab,
+            adjustWeek,
+            setSeasonType,
+            triggerImmediateFetch,
+            openModal,
+            openTeamDetails,
+            returnToGame,
+            closeModal,
+            getGameState,
+            getSituation,
+            hasPossession,
+            getNetwork,
+            formatGameTime,
+            getTeamName,
+            getTeamLogo,
+            getTeamScore,
+            getTeamRank,
+            isWinner,
+            isTeamStringHighlighted,
+            isGameHighlighted,
+            handleGameClick,
+          };
+        },
+      }).mount("#app");
+    </script>
+  </body>
 </html>
