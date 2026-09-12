@@ -550,10 +550,15 @@
         };
 
         const teamRecordStats = computed(() => {
+          const formatStatValue = (stat) => {
+            if (stat.displayValue !== undefined && stat.displayValue !== null) return stat.displayValue;
+            if (typeof stat.value !== 'number') return stat.value;
+            return Number(stat.value.toFixed(3));
+          };
           return (teamData.value?.team?.record?.items || []).flatMap(item => (item.stats || []).map(stat => ({
             key: `${item.type || item.description || 'record'}-${stat.name}`,
             label: stat.name.replace(/([A-Z])/g, ' $1').replace(/^./, letter => letter.toUpperCase()),
-            value: stat.displayValue || stat.value
+            value: formatStatValue(stat)
           })));
         });
 
