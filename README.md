@@ -59,6 +59,7 @@ tests/fixtures/espn/               Trimmed ESPN response fixtures
 tests/live/                        Live ESPN smoke tests
 .github/workflows/build.yml        Pull request and push build workflow
 .github/workflows/espn-live.yml    Scheduled/manual live API workflow
+.github/workflows/release.yml      Version-tagged release workflow
 ```
 
 ## Requirements
@@ -149,7 +150,7 @@ Then open `http://localhost:8080`.
 
 ## GitHub Actions
 
-The repository includes two workflows.
+The repository includes three workflows.
 
 ### Build workflow
 
@@ -167,6 +168,27 @@ Configure the `Build / build` job as a required status check in branch protectio
 `.github/workflows/espn-live.yml` runs daily and supports manual dispatch from the Actions tab. It calls the real ESPN API using the configured default NFL team.
 
 GitHub-hosted standard runners are free for public repositories. Artifact storage and retention are still subject to GitHub limits. The live workflow does not require secrets because the tested ESPN endpoints are public.
+
+### Release workflow
+
+`.github/workflows/release.yml` runs when a semantic version tag matching `v*.*.*` is pushed. It installs dependencies, runs the test-gated build, packages `dist/` as a ZIP file, and creates a GitHub Release with generated release notes.
+
+The workflow requires `contents: write` permission so it can create the release. It does not require a personal access token or repository secret; `github.token` is supplied by GitHub Actions.
+
+Create and push a release tag from the project root:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The resulting release asset will be named like:
+
+```text
+sports-scoreboard-v1.0.0.zip
+```
+
+The release ZIP contains the generated `dist/` directory. For Home Assistant, extract the ZIP and copy the contents of `dist/` into a directory under `config/www`, as described below. Do not create a release from a pull request or ordinary branch push; releases are intentionally tag-driven.
 
 ## Deploy To Home Assistant
 
@@ -217,6 +239,18 @@ Home Assistant serves static files from its `www` directory. The URL is normally
 4. Reload the browser and open `/local/sports-scoreboard/`.
 
 Copy the contents of `dist/` rather than the `dist/` directory itself if you want `index.html` directly at the deployment path.
+
+### Option 3: Use a GitHub Release
+
+1. Open the desired release in the repository's **Releases** page.
+2. Download the `sports-scoreboard-vX.Y.Z.zip` asset.
+3. Extract the ZIP and copy the contents of its `dist/` directory into:
+
+   ```text
+   /config/www/sports-scoreboard/
+   ```
+
+4. Reload the browser and open `/local/sports-scoreboard/`.
 
 ### Home Assistant Notes
 
