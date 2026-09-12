@@ -912,7 +912,28 @@
         </div>
       </div>
     </div>
-    <script>
+    <script type="module">
+      import { getTeamUrls, fetchTeamDetails } from "./src/api/espn.js";
+      import {
+        formatGameTime as formatGameTimeUtil,
+        getFavoriteFilterText as getFavoriteFilterTextUtil,
+        getGameState as getGameStateUtil,
+        getNetwork as getNetworkUtil,
+        getSituation as getSituationUtil,
+        getTeamLogo as getTeamLogoUtil,
+        getTeamName as getTeamNameUtil,
+        getTeamRank as getTeamRankUtil,
+        getTeamScore as getTeamScoreUtil,
+        hasPossession as hasPossessionUtil,
+        isGameHighlighted as isGameHighlightedUtil,
+        isTeamStringHighlighted as isTeamStringHighlightedUtil,
+        isWinner as isWinnerUtil,
+        sortGames as sortGamesUtil,
+      } from "./src/app/scoreboard.js";
+      import { buildGameDetail } from "./src/domain/game.js";
+      import { normalizeSchedule } from "./src/domain/schedule.js";
+      import { getTeamRecords, getTeamRecordStats } from "./src/domain/team.js";
+
       const { createApp, ref, computed, onMounted } = Vue;
 
       createApp({
@@ -942,11 +963,8 @@
           let pollingInterval = null;
 
           // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
-          const getFavoriteFilterText = () => {
-            if (selectedLeague.value === "college-football")
-              return "Northwestern";
-            return "Chicago";
-          };
+          const getFavoriteFilterText = () =>
+            getFavoriteFilterTextUtil(selectedLeague.value);
 
           const handleGameClick = (game) => {
             if (getGameState(game) !== "pre") {
@@ -1011,60 +1029,7 @@
               const endpoint = `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}/summary?event=${eventId}`;
               const res = await fetch(endpoint);
               const data = await res.json();
-
-              // 1. EXTRACT SCORES AND ABBREVIATIONS FROM THE HEADER (Competitions)
-              const headerComp = data.header?.competitions?.[0] || {};
-              const headerCompetitors = headerComp.competitors || [];
-              const headerAway =
-                headerCompetitors.find((c) => c.homeAway === "away") || {};
-              const headerHome =
-                headerCompetitors.find((c) => c.homeAway === "home") || {};
-
-              // 2. EXTRACT TEAM STATISTICS FROM THE BOXSCORE
-              const teamsArray = data.boxscore?.teams || [];
-              const awayRaw =
-                teamsArray.find((t) => t.homeAway === "away") || {};
-              const homeRaw =
-                teamsArray.find((t) => t.homeAway === "home") || {};
-
-              // 3. COMBINE BOTH DATA STREAMS FOR AWAY (FIXED LOGO FALLBACKS)
-              const awayTeam = {
-                id: headerAway.id || "",
-                abbrev: headerAway.team?.abbreviation || "AWAY",
-                name: headerAway.team?.displayName || "Away Team",
-                rank: headerAway.rank || null,
-                // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
-                logo:
-                  headerAway.team?.logos && headerAway.team.logos.length > 0
-                    ? headerAway.team.logos[0].href
-                    : awayRaw.team?.logo || "https://espncdn.com",
-                score: headerAway.score || "0",
-                statistics: awayRaw.statistics || [],
-              };
-
-              // 4. COMBINE BOTH DATA STREAMS FOR HOME (FIXED LOGO FALLBACKS)
-              const homeTeam = {
-                id: headerHome.id || "",
-                abbrev: headerHome.team?.abbreviation || "HOME",
-                name: headerHome.team?.displayName || "Home Team",
-                rank: headerHome.rank || null,
-                // FIX: Checked header logos array structure first, falling back to boxscore team logo if array is missing
-                logo:
-                  headerHome.team?.logos && headerHome.team.logos.length > 0
-                    ? headerHome.team.logos[0].href
-                    : homeRaw.team?.logo || "https://espncdn.com",
-                score: headerHome.score || "0",
-                statistics: homeRaw.statistics || [],
-              };
-
-              modalData.value = {
-                id: eventId,
-                raw: data,
-                teams: { away: awayTeam, home: homeTeam },
-                scoringPlays: data.scoringPlays || [],
-                drives: data.drives || {},
-                winprobability: data.winprobability || [],
-              };
+              modalData.value = buildGameDetail(data, eventId);
             } catch (err) {
               console.error("Summary payload details parse error:", err);
               modalData.value = null;
@@ -1082,105 +1047,12 @@
           const selectedTeam = computed(
             () => modalData.value?.teams?.[selectedTeamSide.value] || {},
           );
-          const formatScheduleDate = (date) => {
-            if (!date) return "Date TBD";
-            try {
-              return new Date(date).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true,
-              });
-            } catch (err) {
-              return "Date TBD";
-            }
-          };
-
-          const teamRecordStats = computed(() => {
-            const formatStatValue = (stat) => {
-              if (stat.displayValue !== undefined && stat.displayValue !== null)
-                return stat.displayValue;
-              if (typeof stat.value !== "number") return stat.value;
-              return Number(stat.value.toFixed(3));
-            };
-            return (teamData.value?.team?.record?.items || []).flatMap((item) =>
-              (item.stats || []).map((stat) => ({
-                key: `${item.type || item.description || "record"}-${stat.name}`,
-                label: stat.name
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (letter) => letter.toUpperCase()),
-                value: formatStatValue(stat),
-              })),
-            );
-          });
-
-          const teamRecords = computed(() =>
-            (teamData.value?.team?.record?.items || []).map((item) => ({
-              label: item.description || item.displayName || "Record",
-              value: item.summary || item.displayValue || "--",
-            })),
-          );
-
+          const teamRecordStats = computed(() => getTeamRecordStats(teamData.value));
+          const teamRecords = computed(() => getTeamRecords(teamData.value));
           const teamSchedule = computed(() => {
             const teamId = selectedTeam.value.id;
-            const isSelectedTeam = (competitor) =>
-              String(competitor?.id || competitor?.team?.id) === String(teamId);
-            const getScore = (competitor) => {
-              const score = competitor?.score;
-              if (score && typeof score === "object")
-                return score.displayValue || score.value || "--";
-              return score ?? "--";
-            };
-            return (teamScheduleData.value?.events || []).map((event) => {
-              const competition = event.competitions?.[0] || {};
-              const competitors = competition.competitors || [];
-              const opponent =
-                competitors.find((competitor) => !isSelectedTeam(competitor)) ||
-                {};
-              const own = competitors.find(isSelectedTeam) || {};
-              const rawStatus =
-                competition.status?.type?.shortDetail ||
-                competition.status?.type?.description ||
-                "Scheduled";
-              const timeIsTBD =
-                rawStatus.toUpperCase().includes("TBD") ||
-                event.timeValid === false ||
-                competition.timeValid === false;
-              return {
-                id: event.id,
-                date: timeIsTBD ? "TBD" : formatScheduleDate(event.date),
-                week: event.week?.text || "",
-                opponent: opponent.team?.displayName || "Opponent",
-                opponentLogo:
-                  opponent.team?.logos?.[0]?.href ||
-                  opponent.team?.logo ||
-                  "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png",
-                teamLogo:
-                  own.team?.logos?.[0]?.href ||
-                  own.team?.logo ||
-                  selectedTeam.value.logo ||
-                  "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png",
-                homeAway: own.homeAway,
-                score:
-                  own.score !== undefined && opponent.score !== undefined
-                    ? `${getScore(own)}-${getScore(opponent)}`
-                    : "--",
-                result:
-                  own.winner === true
-                    ? "W"
-                    : opponent.winner === true
-                      ? "L"
-                      : "",
-                status: timeIsTBD
-                  ? "TBD"
-                  : competition.status?.type?.state === "pre"
-                    ? "Scheduled"
-                    : rawStatus,
-                venue: competition.venue?.fullName || "",
-              };
-            });
+            if (!teamId) return [];
+            return normalizeSchedule(teamScheduleData.value, teamId, "en-US");
           });
 
           const resetTeamView = () => {
@@ -1207,21 +1079,15 @@
             scheduleError.value = "";
             teamLoading.value = true;
             try {
-              const base = `${getTeamApiBase()}/teams/${team.id}`;
-              const responses = await Promise.all([
-                fetch(base),
-                fetch(`${base}/schedule`),
-              ]);
-              const payloads = await Promise.all(
-                responses.map(async (response) => {
-                  if (!response.ok)
-                    throw new Error(`ESPN request failed (${response.status})`);
-                  return response.json();
-                }),
+              const urls = getTeamUrls(selectedLeague.value, team.id);
+              const { details, schedule } = await fetchTeamDetails(
+                selectedLeague.value,
+                team.id,
+                fetch,
               );
               if (requestId !== teamRequestId || !showModal.value) return;
-              teamData.value = payloads[0];
-              teamScheduleData.value = payloads[1];
+              teamData.value = details;
+              teamScheduleData.value = schedule;
             } catch (err) {
               if (requestId === teamRequestId) {
                 teamError.value = err.message || "Unable to load team details.";
@@ -1504,152 +1370,28 @@
             triggerImmediateFetch();
           };
 
-          const getGameState = (game) =>
-            String(game?.status?.type?.state || "").toLowerCase();
+          const sortedGames = computed(() =>
+            sortGamesUtil(games.value, selectedLeague.value),
+          );
 
-          const getSituation = (game) => {
-            const competitionsList = game?.competitions || [];
-            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-            if (selectedLeague.value === "mlb") {
-              if (getGameState(game) === "in")
-                return game?.status?.type?.detail || "";
-              return "";
-            }
-            return comp?.situation?.downDistanceText || "";
-          };
+          const isTeamStringHighlighted = (name) =>
+            isTeamStringHighlightedUtil(name, getFavoriteFilterText());
 
-          const hasPossession = (game, homeAway) => {
-            if (selectedLeague.value === "mlb") return false;
-            const competitionsList = game?.competitions || [];
-            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-            const competitorsList = comp.competitors || [];
-            const teamId = competitorsList.find(
-              (c) => c.homeAway === homeAway,
-            )?.id;
-            return (
-              comp?.situation?.possession &&
-              comp?.situation?.possession === teamId
-            );
-          };
+          const isGameHighlighted = (game) =>
+            isGameHighlightedUtil(game, getFavoriteFilterText());
 
-          const getNetwork = (game) => {
-            const competitionsList = game?.competitions || [];
-            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-            const broadcastsList = comp.broadcasts || [];
-            const geoBroadcastsList = comp.geoBroadcasts || [];
+          const getSituation = (game) => getSituationUtil(game, selectedLeague.value);
+          const hasPossession = (game, homeAway) =>
+            hasPossessionUtil(game, homeAway, selectedLeague.value);
 
-            if (
-              broadcastsList.length > 0 &&
-              broadcastsList[0].names &&
-              broadcastsList[0].names.length > 0
-            ) {
-              return broadcastsList[0].names[0];
-            }
-            if (
-              geoBroadcastsList.length > 0 &&
-              geoBroadcastsList[0].media &&
-              geoBroadcastsList[0].media.shortName
-            ) {
-              return geoBroadcastsList[0].media.shortName;
-            }
-            return "";
-          };
-
-          const formatGameTime = (game) => {
-            const state = getGameState(game);
-            const detail = game?.status?.type?.shortDetail || "";
-            if (state !== "pre" || !game.date) return detail;
-            try {
-              const gameDate = new Date(game.date);
-              const today = new Date();
-              const isToday =
-                gameDate.getDate() === today.getDate() &&
-                gameDate.getMonth() === today.getMonth() &&
-                gameDate.getFullYear() === today.getFullYear();
-
-              const options = {
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true,
-              };
-              if (!isToday) options.weekday = "short";
-
-              return gameDate.toLocaleTimeString("en-US", options);
-            } catch (e) {
-              return detail;
-            }
-          };
-
-          const getCompetitor = (game, type) => {
-            const competitionsList = game?.competitions || [];
-            const comp = competitionsList.length > 0 ? competitionsList[0] : {};
-            const competitorsList = comp.competitors || [];
-            return competitorsList.find((c) => c.homeAway === type) || {};
-          };
-          const getTeamName = (game, type) => {
-            const comp = getCompetitor(game, type);
-            return comp?.team?.displayName || comp?.team?.location || "Team";
-          };
-          const getTeamLogo = (game, type) =>
-            getCompetitor(game, type)?.team?.logo ||
-            "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png";
-          const getTeamScore = (game, type) =>
-            getCompetitor(game, type)?.score || "0";
-          const getTeamRank = (game, type) => {
-            const r = parseInt(getCompetitor(game, type)?.curatedRank?.current);
-            return r > 0 && r < 99 ? r : null;
-          };
-          const isWinner = (game, type) =>
-            getCompetitor(game, type)?.winner === true;
-
-          const isTeamStringHighlighted = (name) => {
-            const matchStr = getFavoriteFilterText();
-            return name.toLowerCase().includes(matchStr.toLowerCase());
-          };
-
-          const isGameHighlighted = (game) => {
-            return (
-              isTeamStringHighlighted(getTeamName(game, "home")) ||
-              isTeamStringHighlighted(getTeamName(game, "away"))
-            );
-          };
-
-          const sortedGames = computed(() => {
-            return [...games.value].sort((gameA, gameB) => {
-              const stateA = getGameState(gameA);
-              const stateB = getGameState(gameB);
-
-              const getBucketWeight = (state) => {
-                if (state === "in") return 1;
-                if (state === "pre") return 2;
-                return 3;
-              };
-
-              const weightA = getBucketWeight(stateA);
-              const weightB = getBucketWeight(stateB);
-
-              if (weightA !== weightB) return weightA - weightB;
-
-              if (
-                stateA === "pre" &&
-                stateB === "pre" &&
-                gameA.date &&
-                gameB.date
-              ) {
-                const dateA = new Date(gameA.date).getTime();
-                const dateB = new Date(gameB.date).getTime();
-                if (dateA !== dateB) return dateA - dateB;
-              }
-
-              const getBestRank = (game) => {
-                const rHome = getTeamRank(game, "home") || 99;
-                const rAway = getTeamRank(game, "away") || 99;
-                return Math.min(rHome, rAway);
-              };
-
-              return getBestRank(gameA) - getBestRank(gameB);
-            });
-          });
+          const isWinner = (game, type) => isWinnerUtil(game, type);
+          const getGameState = (game) => getGameStateUtil(game);
+          const getNetwork = (game) => getNetworkUtil(game);
+          const formatGameTime = (game) => formatGameTimeUtil(game);
+          const getTeamName = (game, type) => getTeamNameUtil(game, type);
+          const getTeamLogo = (game, type) => getTeamLogoUtil(game, type);
+          const getTeamScore = (game, type) => getTeamScoreUtil(game, type);
+          const getTeamRank = (game, type) => getTeamRankUtil(game, type);
 
           onMounted(async () => {
             await fetchScoreboard(true);

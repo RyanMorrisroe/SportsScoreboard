@@ -1,0 +1,15 @@
+{
+  "name": "sports-scoreboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm test && node ./scripts/build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "latest",
+    "vitest": "latest"
+  }
+}
