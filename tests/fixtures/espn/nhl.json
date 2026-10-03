@@ -1,0 +1,138 @@
+{
+  "league": "nhl",
+  "teamId": "28",
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401688890",
+        "name": "New Jersey Devils at Boston Bruins",
+        "date": "2025-04-15T23:00:00Z",
+        "status": { "type": { "state": "post", "detail": "Final/OT", "shortDetail": "Final/OT" } },
+        "competitions": [
+          {
+            "competitors": [
+              { "id": "1", "homeAway": "home", "score": "4", "team": { "displayName": "Boston Bruins", "abbreviation": "BOS" } },
+              { "id": "11", "homeAway": "away", "score": "5", "team": { "displayName": "New Jersey Devils", "abbreviation": "NJ" } }
+            ],
+            "broadcasts": []
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "id": "401688890",
+    "header": {
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "id": "1",
+              "homeAway": "home",
+              "score": "4",
+              "linescores": [
+                { "displayValue": "1", "value": 1 },
+                { "displayValue": "2", "value": 2 },
+                { "displayValue": "1", "value": 1 },
+                { "displayValue": "0", "value": 0 }
+              ],
+              "team": { "displayName": "Boston Bruins", "abbreviation": "BOS", "logo": "https://a.espncdn.com/i/teamlogos/nhl/500/bos.png" }
+            },
+            {
+              "id": "11",
+              "homeAway": "away",
+              "score": "5",
+              "linescores": [
+                { "displayValue": "1", "value": 1 },
+                { "displayValue": "3", "value": 3 },
+                { "displayValue": "0", "value": 0 },
+                { "displayValue": "1", "value": 1 }
+              ],
+              "team": { "displayName": "New Jersey Devils", "abbreviation": "NJ", "logo": "https://a.espncdn.com/i/teamlogos/nhl/500/nj.png" }
+            }
+          ]
+        }
+      ]
+    },
+    "boxscore": {
+      "teams": [
+        {
+          "homeAway": "away",
+          "team": { "id": "11", "displayName": "New Jersey Devils", "abbreviation": "NJ" },
+          "statistics": [
+            { "name": "blockedShots", "label": "Blocked Shots", "displayValue": "8" },
+            { "name": "hits", "label": "Hits", "displayValue": "20" }
+          ]
+        },
+        {
+          "homeAway": "home",
+          "team": { "id": "1", "displayName": "Boston Bruins", "abbreviation": "BOS" },
+          "statistics": [
+            { "name": "blockedShots", "label": "Blocked Shots", "displayValue": "14" },
+            { "name": "hits", "label": "Hits", "displayValue": "28" }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "team": { "abbreviation": "NJ" },
+          "statistics": [
+            {
+              "name": "forwards",
+              "labels": ["BS", "HT", "G", "A", "SOG"],
+              "athletes": [
+                { "athlete": { "displayName": "Nathan Bastian", "jersey": "14" }, "stats": ["0", "1", "0", "0", "1"] }
+              ]
+            }
+          ]
+        },
+        {
+          "team": { "abbreviation": "BOS" },
+          "statistics": [
+            {
+              "name": "forwards",
+              "labels": ["BS", "HT", "G", "A", "SOG"],
+              "athletes": [
+                { "athlete": { "displayName": "John Farinacci", "jersey": "56" }, "stats": ["0", "0", "0", "0", "0"] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "teamDetails": {
+    "team": {
+      "id": "28",
+      "displayName": "Winnipeg Jets",
+      "abbreviation": "WPG",
+      "record": {
+        "items": [
+          {
+            "description": "Overall Record",
+            "summary": "0-0-1",
+            "stats": [{ "name": "otLosses", "value": 1 }, { "name": "otWins", "value": 0 }]
+          }
+        ]
+      }
+    }
+  },
+  "teamSchedule": {
+    "events": [
+      {
+        "id": "401891831",
+        "date": "2026-10-03T00:00:00Z",
+        "competitions": [
+          {
+            "status": { "type": { "state": "post", "shortDetail": "Final/OT" } },
+            "venue": { "fullName": "Canada Life Centre" },
+            "competitors": [
+              { "id": "28", "homeAway": "home", "score": { "displayValue": "3" }, "winner": false, "team": { "displayName": "Winnipeg Jets" } },
+              { "id": "1", "homeAway": "away", "score": { "displayValue": "4" }, "winner": true, "team": { "displayName": "Boston Bruins" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

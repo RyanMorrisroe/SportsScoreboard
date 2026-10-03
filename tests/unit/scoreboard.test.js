@@ -1,16 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   formatGameTime,
   getCompetitor,
   getFavoriteFilterText,
   getGameState,
+  getLinescoreHeaders,
+  getLinescoreValues,
   getNetwork,
+  getPlayerLeaders,
   getSituation,
   getTeamLogo,
   getTeamName,
   getTeamRank,
   getTeamScore,
+  getTeamStatComparisons,
   hasPossession,
+  getWinProbabilityChart,
   isGameHighlighted,
   isTeamStringHighlighted,
   isWinner,
@@ -61,6 +66,156 @@ describe("scoreboard helpers", () => {
     expect(getSituation(game, "football")).toBe("2nd & 5");
     expect(getSituation({ status: { type: { state: "in", detail: "Top 9th" } }, competitions: [{}] }, "mlb")).toBe("Top 9th");
     expect(getSituation({ status: { type: { state: "pre" } }, competitions: [{}] }, "mlb")).toBe("");
+    expect(getSituation(makeGame(), "nba")).toBe("Q2 08:10");
+    expect(getSituation(makeGame(), "nhl")).toBe("Q2 08:10");
+    expect(getSituation({ status: { type: { state: "pre" } }, competitions: [{}] }, "nba")).toBe("");
+  });
+
+  it("uses sport-specific linescore periods and overtime labels", () => {
+    expect(getLinescoreHeaders("mlb")).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(getLinescoreHeaders("nba")).toEqual([1, 2, 3, 4]);
+    expect(getLinescoreHeaders("nba", Array(6).fill({}))).toEqual([
+      1, 2, 3, 4, "OT", "2OT",
+    ]);
+    expect(getLinescoreHeaders("nhl")).toEqual([1, 2, 3]);
+    expect(getLinescoreHeaders("nhl", [], Array(5).fill({}))).toEqual([
+      1, 2, 3, "OT", "2OT",
+    ]);
+    expect(getLinescoreHeaders("nfl", Array(5).fill({}))).toEqual([
+      1, 2, 3, 4, "OT",
+    ]);
+  });
+
+  it("maps linescores by home/away even when ESPN returns home first", () => {
+    expect(getLinescoreValues({
+      competitors: [
+        { homeAway: "home", linescores: [{ displayValue: "27" }, { displayValue: "30" }] },
+        { homeAway: "away", linescores: [{ displayValue: "19" }, { displayValue: "26" }] },
+      ],
+    }, 3)).toEqual({
+      away: ["19", "26", "-"],
+      home: ["27", "30", "-"],
+    });
+    expect(getLinescoreValues({}, 0)).toEqual({ away: [], home: [] });
+    expect(getLinescoreValues({
+      competitors: [
+        { homeAway: "away", linescores: [{ value: 0 }, { value: 2 }, { displayValue: "" }] },
+        { homeAway: "home", linescores: [] },
+      ],
+    }, 3)).toEqual({ away: [0, 2, "0"], home: ["-", "-", "-"] });
+  });
+
+  it("normalizes NBA and NHL player leader groups with optional names", () => {
+    const nbaPlayers = getPlayerLeaders({
+      raw: {
+        boxscore: {
+          players: [{
+            team: { abbreviation: "NY" },
+            statistics: [{
+              labels: ["PTS", "REB"],
+              athletes: [{
+                athlete: { displayName: "NBA Player", jersey: "8" },
+                stats: ["25", "6"],
+              }],
+            }],
+          }],
+        },
+      },
+    });
+    expect(nbaPlayers).toEqual([{
+      title: "Player stats",
+      labels: ["PTS", "REB"],
+      athletes: [{
+        name: "NBA Player",
+        jersey: "8",
+        headshot: "https://a.espncdn.com/i/headshots/placeholder.png",
+        teamAbbrev: "NY",
+        stats: ["25", "6"],
+      }],
+    }]);
+
+    expect(getPlayerLeaders({
+      raw: {
+        boxscore: {
+          players: [{
+            team: { abbreviation: "BOS" },
+            statistics: [
+              { name: "forwards", athletes: [{ athlete: { displayName: "Forward" } }] },
+              { name: "skaters", athletes: [] },
+            ],
+          }],
+        },
+      },
+    })[0].title).toBe("Forwards");
+    expect(getPlayerLeaders({})).toEqual([]);
+    expect(getPlayerLeaders({
+      raw: { boxscore: { players: [{ statistics: [{ athletes: [{}] }] }] } },
+    })[0].athletes[0]).toMatchObject({
+      name: "Player",
+      jersey: "-",
+      teamAbbrev: "",
+      stats: [],
+    });
+  });
+
+  it("builds a win probability chart for series, singleton, zero, and missing data", () => {
+    expect(getWinProbabilityChart([
+      { homeWinPercentage: 0.2 },
+      { homeWinPercentage: 0.55 },
+      { homeWinPercentage: 0.8 },
+    ])).toEqual({
+      points: "0,20 50,55 100,80",
+      singlePoint: null,
+    });
+    expect(getWinProbabilityChart([{ homeWinPercentage: 0.72 }])).toEqual({
+      points: "50,72",
+      singlePoint: { x: 50, y: 72 },
+    });
+    expect(getWinProbabilityChart([
+      { homeProbability: 0 },
+      { homeWinPercentage: 1 },
+    ])).toEqual({ points: "0,0 100,100", singlePoint: null });
+    expect(getWinProbabilityChart([{ homeWinPercentage: "invalid" }])).toEqual({
+      points: "",
+      singlePoint: null,
+    });
+    expect(getWinProbabilityChart([{}])).toEqual({
+      points: "",
+      singlePoint: null,
+    });
+    expect(getWinProbabilityChart([])).toEqual({ points: "", singlePoint: null });
+    expect(getWinProbabilityChart(null)).toEqual({ points: "", singlePoint: null });
+  });
+
+  it("compares stats from ESPN numeric and displayValue fields", () => {
+    const comparisons = getTeamStatComparisons(
+      [
+        { name: "hits", label: "Hits", displayValue: "20" },
+        { name: "fieldGoals", label: "FG", displayValue: "36-90" },
+        { name: "assists", label: "Assists", value: 12 },
+        { name: "empty", label: "Empty", displayValue: "0" },
+      ],
+      [
+        { name: "hits", label: "Hits", displayValue: "28" },
+        { name: "fieldGoals", label: "FG", displayValue: "43-89" },
+        { name: "assists", label: "Assists", displayValue: "31" },
+        { name: "empty", label: "Empty", displayValue: "0" },
+      ],
+    );
+
+    expect(comparisons[0]).toMatchObject({
+      label: "Hits",
+      awayDisplay: "20",
+      homeDisplay: "28",
+    });
+    expect(comparisons[0].awayPct).toBeCloseTo(41.67);
+    expect(comparisons[0].homePct).toBeCloseTo(58.33);
+    expect(comparisons[1].awayPct).toBeCloseTo(45.57);
+    expect(comparisons[1].homePct).toBeCloseTo(54.43);
+    expect(comparisons[2].awayPct).toBeCloseTo((12 / 43) * 100);
+    expect(comparisons[2].homePct).toBeCloseTo((31 / 43) * 100);
+    expect(comparisons[3]).toMatchObject({ awayPct: 50, homePct: 50 });
+    expect(getTeamStatComparisons()).toEqual([]);
   });
 
   it("reports possession, network, and winner details", () => {
@@ -69,6 +224,8 @@ describe("scoreboard helpers", () => {
     expect(hasPossession(game, "home", "football")).toBe(true);
     expect(hasPossession(game, "away", "football")).toBe(false);
     expect(hasPossession(game, "home", "mlb")).toBe(false);
+    expect(hasPossession(game, "home", "nba")).toBe(false);
+    expect(hasPossession(game, "home", "nhl")).toBe(false);
     expect(getNetwork(game)).toBe("ESPN");
     expect(getNetwork({ competitions: [{ geoBroadcasts: [{ media: { shortName: "ABC" } }] }] })).toBe("ABC");
     expect(getNetwork({ competitions: [{}] })).toBe("");
@@ -95,6 +252,15 @@ describe("scoreboard helpers", () => {
 
     expect(formatGameTime({ status: { type: { state: "post", shortDetail: "Final" } } })).toBe("Final");
     expect(formatGameTime({ date: "bad-date", status: { type: { state: "pre", shortDetail: "Game time" } } })).toBe("Game time");
+
+    const timeFormatter = vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(() => {
+      throw new Error("formatter unavailable");
+    });
+    expect(formatGameTime(makeGame({
+      date: new Date(Date.now() + 86400000).toISOString(),
+      status: { type: { state: "pre", shortDetail: "Time TBD" } },
+    }))).toBe("Time TBD");
+    timeFormatter.mockRestore();
   });
 
   it("handles competitor lookups and fallback values", () => {
@@ -182,5 +348,27 @@ describe("scoreboard helpers", () => {
       makeGame({ id: "a", date: "2026-09-19T17:00:00Z", status: { type: { state: "pre", detail: "Pre" } } }),
       makeGame({ id: "b", date: "2026-09-19T18:00:00Z", status: { type: { state: "pre", detail: "Pre 2" } } }),
     ], "nfl").map((game) => game.id)).toEqual(["a", "b"]);
+    const rankedFinals = [
+      makeGame({
+        id: "rank-20",
+        status: { type: { state: "post" } },
+        competitions: [{ competitors: [
+          makeCompetitor("away", { curatedRank: { current: "99" } }),
+          makeCompetitor("home", { curatedRank: { current: "20" } }),
+        ] }],
+      }),
+      makeGame({
+        id: "rank-3",
+        status: { type: { state: "post" } },
+        competitions: [{ competitors: [
+          makeCompetitor("away", { curatedRank: { current: "99" } }),
+          makeCompetitor("home", { curatedRank: { current: "3" } }),
+        ] }],
+      }),
+    ];
+    expect(sortGames(rankedFinals, "nba").map((game) => game.id)).toEqual([
+      "rank-3",
+      "rank-20",
+    ]);
   });
 });

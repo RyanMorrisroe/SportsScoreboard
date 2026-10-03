@@ -14,11 +14,17 @@ export function getSituation(game, selectedLeague) {
     if (getGameState(game) === "in") return game?.status?.type?.detail || "";
     return "";
   }
-  return comp?.situation?.downDistanceText || "";
+  if (selectedLeague === "nfl" || selectedLeague === "college-football" || selectedLeague === "football") {
+    return comp?.situation?.downDistanceText || "";
+  }
+  if (getGameState(game) === "in") {
+    return game?.status?.type?.detail || game?.status?.type?.shortDetail || "";
+  }
+  return "";
 }
 
 export function hasPossession(game, homeAway, selectedLeague) {
-  if (selectedLeague === "mlb") return false;
+  if (!["nfl", "college-football", "football"].includes(selectedLeague)) return false;
   const competitionsList = game?.competitions || [];
   const comp = competitionsList.length > 0 ? competitionsList[0] : {};
   const competitorsList = comp.competitors || [];
@@ -27,6 +33,138 @@ export function hasPossession(game, homeAway, selectedLeague) {
     comp?.situation?.possession &&
     comp?.situation?.possession === teamId
   );
+}
+
+export function getLinescoreHeaders(selectedLeague, awayLines = [], homeLines = []) {
+  const defaultPeriods = {
+    mlb: 9,
+    nba: 4,
+    nhl: 3,
+    nfl: 4,
+    "college-football": 4,
+    football: 4,
+  }[selectedLeague] || 0;
+  const periodCount = Math.max(awayLines.length, homeLines.length, defaultPeriods);
+
+  return Array.from({ length: periodCount }, (_, index) => {
+    if (selectedLeague === "mlb") return index + 1;
+    const regulationPeriods = selectedLeague === "nhl" ? 3 : 4;
+    if (index < regulationPeriods) return index + 1;
+    return index === regulationPeriods ? "OT" : `${index - regulationPeriods + 1}OT`;
+  });
+}
+
+export function getLinescoreValues(competition, periodCount) {
+  const competitors = competition?.competitors || [];
+  const formatTeamLines = (homeAway) => {
+    const linescores = competitors.find((team) => team.homeAway === homeAway)?.linescores || [];
+    return Array.from({ length: periodCount }, (_, index) => {
+      const line = linescores[index];
+      return line ? line.displayValue || (line.value ?? "0") : "-";
+    });
+  };
+
+  return {
+    away: formatTeamLines("away"),
+    home: formatTeamLines("home"),
+  };
+}
+
+export function getPlayerLeaders(gameDetail) {
+  const players = gameDetail?.raw?.boxscore?.players || [];
+  const categories = [];
+
+  players.forEach((teamBlock) => {
+    const teamAbbrev = teamBlock.team?.abbreviation || "";
+    if (!Array.isArray(teamBlock.statistics)) return;
+
+    teamBlock.statistics.forEach((statCategory) => {
+      if (!Array.isArray(statCategory.athletes) || !statCategory.athletes.length) return;
+      const title = statCategory.name || statCategory.displayName || "Player stats";
+      let category = categories.find(
+        (item) => item.title.toLowerCase() === title.toLowerCase(),
+      );
+      if (!category) {
+        category = {
+          title: title.charAt(0).toUpperCase() + title.slice(1),
+          labels: statCategory.labels || [],
+          athletes: [],
+        };
+        categories.push(category);
+      }
+
+      statCategory.athletes.slice(0, 2).forEach((playerRow) => {
+        category.athletes.push({
+          name: playerRow.athlete?.displayName || "Player",
+          jersey: playerRow.athlete?.jersey || "-",
+          headshot:
+            playerRow.athlete?.headshot?.href ||
+            "https://a.espncdn.com/i/headshots/placeholder.png",
+          teamAbbrev,
+          stats: playerRow.stats || [],
+        });
+      });
+    });
+  });
+
+  return categories;
+}
+
+function getNumericStatValue(stat) {
+  const value = Number.parseFloat(stat?.value);
+  if (Number.isFinite(value)) return value;
+
+  const displayValue = Number.parseFloat(stat?.displayValue);
+  return Number.isFinite(displayValue) ? displayValue : 0;
+}
+
+export function getTeamStatComparisons(awayStats = [], homeStats = []) {
+  return awayStats.map((awayStat) => {
+    const homeStat = homeStats.find((stat) => stat.name === awayStat.name) || {};
+    const awayValue = getNumericStatValue(awayStat);
+    const homeValue = getNumericStatValue(homeStat);
+    const total = awayValue + homeValue;
+    const awayPct = total > 0 ? (awayValue / total) * 100 : 50;
+
+    return {
+      label: awayStat.label || awayStat.name,
+      awayDisplay: awayStat.displayValue ?? awayStat.value ?? "0",
+      homeDisplay: homeStat.displayValue ?? homeStat.value ?? "0",
+      awayPct,
+      homePct: total > 0 ? (homeValue / total) * 100 : 50,
+    };
+  });
+}
+
+export function getWinProbabilityChart(probabilities) {
+  if (!Array.isArray(probabilities) || probabilities.length === 0) {
+    return { points: "", singlePoint: null };
+  }
+
+  const values = probabilities
+    .map((entry) => {
+      const rawProbability = entry?.homeWinPercentage ?? entry?.homeProbability;
+      if (rawProbability === null || rawProbability === undefined || rawProbability === "") {
+        return null;
+      }
+      const probability = Number(rawProbability);
+      return Number.isFinite(probability)
+        ? Math.min(1, Math.max(0, probability))
+        : null;
+    })
+    .filter((probability) => probability !== null);
+
+  if (values.length === 0) return { points: "", singlePoint: null };
+
+  const coordinates = values.map((probability, index) => ({
+    x: values.length === 1 ? 50 : Number(((index / (values.length - 1)) * 100).toFixed(2)),
+    y: Number((probability * 100).toFixed(2)),
+  }));
+
+  return {
+    points: coordinates.map(({ x, y }) => `${x},${y}`).join(" "),
+    singlePoint: coordinates.length === 1 ? coordinates[0] : null,
+  };
 }
 
 export function getNetwork(game) {
