@@ -4,9 +4,9 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 ## Features
 
-- College Football, NFL, and MLB scoreboard tabs
+- College Football, NFL, MLB, NBA, and NHL scoreboard tabs
 - Football week and season-type controls
-- MLB date selection
+- Calendar date selection for MLB, NBA, and NHL
 - Live, upcoming, and completed game views
 - Automatic scoreboard refresh every 15 seconds
 - Game detail modal with scores, team statistics, scoring plays, drives, and win probability when supplied by ESPN
@@ -41,7 +41,7 @@ Team schedule:
 https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{teamId}/schedule
 ```
 
-Football leagues use the `football` sport path. MLB uses `baseball`.
+College Football and NFL use the `football` sport path. MLB uses `baseball`, NBA uses `basketball`, and NHL uses `hockey`. Date-based leagues send the selected date as `dates=YYYYMMDD`; football uses week and season-type parameters.
 
 ## Project Structure
 
@@ -266,10 +266,10 @@ To add another ESPN league:
 
 1. Confirm the ESPN sport and league identifiers used by the site API.
 2. Add the tab and league-specific controls in `index.html`.
-3. Update sport-path handling in `src/api/espn.js` if the league is not football or baseball.
-4. Check whether scoreboard, summary, team, and schedule payloads have sport-specific shapes.
-5. Add representative fixtures and normalization tests before enabling the league in the UI.
-6. Run the complete test and build commands.
+3. Update sport-path and URL handling in `src/api/espn.js`.
+4. Check scoreboard, summary, team, and schedule response shapes, including optional and missing fields.
+5. Add representative fixtures and unit/integration coverage for league routing, presentation, and normalization before enabling the league in the UI.
+6. Run `npm test`, inspect `npm run test:coverage` for uncovered changed branches, and run `npm run build`.
 
 The API and normalizer modules are intentionally separated from the UI so sport-specific payload differences can be handled without introducing a backend.
 

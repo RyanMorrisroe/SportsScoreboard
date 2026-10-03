@@ -1,0 +1,84 @@
+{
+  "teams": [
+    {
+      "homeAway": "away",
+      "team": { "abbreviation": "ATL" },
+      "statistics": [
+        { "name": "batting", "stats": [
+          { "name": "atBats", "displayName": "At Bats", "displayValue": "33", "value": 33 },
+          { "name": "runs", "displayName": "Runs", "displayValue": "6", "value": 6 },
+          { "name": "hits", "displayName": "Hits", "displayValue": "7", "value": 7 },
+          { "name": "homeRuns", "displayName": "Home Runs", "displayValue": "3", "value": 3 },
+          { "name": "RBIs", "displayName": "Runs Batted In", "displayValue": "6", "value": 6 },
+          { "name": "walks", "displayName": "Walks", "displayValue": "6", "value": 6 },
+          { "name": "strikeouts", "displayName": "Strikeouts", "displayValue": "6", "value": 6 },
+          { "name": "stolenBases", "displayName": "Stolen Bases", "displayValue": "1", "value": 1 },
+          { "name": "runnersLeftOnBase", "displayName": "Runners Left On Base", "displayValue": "12", "value": 12 },
+          { "name": "avg", "displayName": "Batting Average", "displayValue": ".212", "value": 0.21212122 },
+          { "name": "onBasePct", "displayName": "On Base Percentage", "displayValue": ".333", "value": 0.33333334 },
+          { "name": "slugAvg", "displayName": "Slugging Percentage", "displayValue": ".485", "value": 0.4848485 },
+          { "name": "OPS", "displayName": "OBP Pct + SLG Pct", "displayValue": ".818", "value": 0.8181819 }
+        ] },
+        { "name": "pitching", "stats": [
+          { "name": "innings", "displayName": "Innings Pitched", "displayValue": "9.0", "value": 9 },
+          { "name": "hits", "displayName": "Hits", "displayValue": "9", "value": 9 },
+          { "name": "runs", "displayName": "Runs", "displayValue": "5", "value": 5 },
+          { "name": "earnedRuns", "displayName": "Earned Runs", "displayValue": "5", "value": 5 },
+          { "name": "strikeouts", "displayName": "Strikeouts", "displayValue": "11", "value": 11 },
+          { "name": "walks", "displayName": "Walks", "displayValue": "2", "value": 2 },
+          { "name": "homeRuns", "displayName": "Home Runs", "displayValue": "2", "value": 2 },
+          { "name": "pitches", "displayName": "Pitches", "displayValue": "142", "value": 142 },
+          { "name": "ERA", "displayName": "Earned Run Average", "displayValue": "5.00", "value": 5 },
+          { "name": "WHIP", "displayName": "Walks Plus Hits Per Inning Pitched", "displayValue": "1.22", "value": 1.2222222 }
+        ] },
+        { "name": "fielding", "stats": [
+          { "name": "errors", "displayName": "Errors", "displayValue": "0", "value": 0 },
+          { "name": "assists", "displayName": "Assists", "displayValue": "3", "value": 3 },
+          { "name": "putouts", "displayName": "Putouts", "displayValue": "27", "value": 27 },
+          { "name": "doublePlays", "displayName": "Double Plays", "displayValue": "0", "value": 0 },
+          { "name": "fieldingPct", "displayName": "Fielding Percentage", "displayValue": "0.000", "value": 0 }
+        ] }
+      ]
+    },
+    {
+      "homeAway": "home",
+      "team": { "abbreviation": "DET" },
+      "statistics": [
+        { "name": "batting", "stats": [
+          { "name": "atBats", "displayName": "At Bats", "displayValue": "35", "value": 35 },
+          { "name": "runs", "displayName": "Runs", "displayValue": "5", "value": 5 },
+          { "name": "hits", "displayName": "Hits", "displayValue": "9", "value": 9 },
+          { "name": "homeRuns", "displayName": "Home Runs", "displayValue": "2", "value": 2 },
+          { "name": "RBIs", "displayName": "Runs Batted In", "displayValue": "5", "value": 5 },
+          { "name": "walks", "displayName": "Walks", "displayValue": "2", "value": 2 },
+          { "name": "strikeouts", "displayName": "Strikeouts", "displayValue": "11", "value": 11 },
+          { "name": "stolenBases", "displayName": "Stolen Bases", "displayValue": "0", "value": 0 },
+          { "name": "runnersLeftOnBase", "displayName": "Runners Left On Base", "displayValue": "11", "value": 11 },
+          { "name": "avg", "displayName": "Batting Average", "displayValue": ".257", "value": 0.25714287 },
+          { "name": "onBasePct", "displayName": "On Base Percentage", "displayValue": ".289", "value": 0.28947368 },
+          { "name": "slugAvg", "displayName": "Slugging Percentage", "displayValue": ".429", "value": 0.42857143 },
+          { "name": "OPS", "displayName": "OBP Pct + SLG Pct", "displayValue": ".718", "value": 0.7180451 }
+        ] },
+        { "name": "pitching", "stats": [
+          { "name": "innings", "displayName": "Innings Pitched", "displayValue": "9.0", "value": 9 },
+          { "name": "hits", "displayName": "Hits", "displayValue": "7", "value": 7 },
+          { "name": "runs", "displayName": "Runs", "displayValue": "6", "value": 6 },
+          { "name": "earnedRuns", "displayName": "Earned Runs", "displayValue": "6", "value": 6 },
+          { "name": "strikeouts", "displayName": "Strikeouts", "displayValue": "6", "value": 6 },
+          { "name": "walks", "displayName": "Walks", "displayValue": "6", "value": 6 },
+          { "name": "homeRuns", "displayName": "Home Runs", "displayValue": "3", "value": 3 },
+          { "name": "pitches", "displayName": "Pitches", "displayValue": "173", "value": 173 },
+          { "name": "ERA", "displayName": "Earned Run Average", "displayValue": "6.00", "value": 6 },
+          { "name": "WHIP", "displayName": "Walks Plus Hits Per Inning Pitched", "displayValue": "1.44", "value": 1.4444444 }
+        ] },
+        { "name": "fielding", "stats": [
+          { "name": "errors", "displayName": "Errors", "displayValue": "0", "value": 0 },
+          { "name": "assists", "displayName": "Assists", "displayValue": "10", "value": 10 },
+          { "name": "putouts", "displayName": "Putouts", "displayValue": "27", "value": 27 },
+          { "name": "doublePlays", "displayName": "Double Plays", "displayValue": "3", "value": 3 },
+          { "name": "fieldingPct", "displayName": "Fielding Percentage", "displayValue": "0.000", "value": 0 }
+        ] }
+      ]
+    }
+  ]
+}

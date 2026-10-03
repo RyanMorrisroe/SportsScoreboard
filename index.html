@@ -58,6 +58,20 @@
         >
           ⚾ MLB
         </button>
+        <button
+          @click="switchTab('nba')"
+          :class="selectedLeague === 'nba' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+        >
+          🏀 NBA
+        </button>
+        <button
+          @click="switchTab('nhl')"
+          :class="selectedLeague === 'nhl' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+        >
+          🏒 NHL
+        </button>
       </div>
 
       <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
@@ -88,7 +102,7 @@
 
           <!-- FOOTBALL WEEK CHANGER CONTROLS -->
           <div
-            v-if="selectedLeague !== 'mlb'"
+            v-if="selectedLeague === 'college-football' || selectedLeague === 'nfl'"
             class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-1 h-[38px]"
           >
             <button
@@ -111,7 +125,7 @@
 
           <!-- FOOTBALL SEASON TYPE SEGMENT CONTROLLER -->
           <div
-            v-if="selectedLeague !== 'mlb'"
+            v-if="selectedLeague === 'college-football' || selectedLeague === 'nfl'"
             class="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl h-[38px]"
           >
             <button
@@ -130,9 +144,9 @@
             </button>
           </div>
 
-          <!-- MLB CALENDAR DATE PICKER WITH SHOWPICKER INTERCEPT -->
+          <!-- CALENDAR DATE PICKER WITH SHOWPICKER INTERCEPT -->
           <div
-            v-if="selectedLeague === 'mlb'"
+            v-if="isDateLeague"
             class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 h-[38px] cursor-pointer"
             onclick="this.querySelector('input').showPicker()"
           >
@@ -142,7 +156,7 @@
             >
             <input
               type="date"
-              v-model="mlbDate"
+              v-model="selectedDate"
               @change="triggerImmediateFetch"
               class="bg-transparent text-white text-sm font-semibold focus:outline-none scheme-dark cursor-pointer border-none p-0 min-w-[110px]"
             />
@@ -573,7 +587,7 @@
                 </div>
 
                 <div
-                  v-if="winProbabilityPoints"
+                  v-if="winProbabilityChart.points"
                   class="bg-zinc-950/40 border border-zinc-800/80 rounded-xl p-4"
                 >
                   <h4
@@ -614,13 +628,33 @@
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        :points="winProbabilityPoints"
+                        :points="winProbabilityChart.points"
+                      />
+                      <circle
+                        v-if="winProbabilityChart.singlePoint"
+                        :cx="winProbabilityChart.singlePoint.x"
+                        :cy="winProbabilityChart.singlePoint.y"
+                        r="2.5"
+                        fill="#eab308"
+                        stroke="#18181b"
+                        stroke-width="1"
                       />
                     </svg>
                   </div>
                 </div>
 
                 <div class="space-y-3.5 mt-2">
+                  <div v-if="selectedLeague === 'mlb'" class="flex justify-end">
+                    <select
+                      v-model="mlbStatGroup"
+                      aria-label="MLB stat category"
+                      class="bg-zinc-950 border border-zinc-800 text-zinc-200 rounded-lg px-3 py-2 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="batting">Batting</option>
+                      <option value="pitching">Pitching</option>
+                      <option value="fielding">Fielding</option>
+                    </select>
+                  </div>
                   <!-- Loop through our customized teamStats computed property instead of raw attributes -->
                   <div
                     v-for="stat in teamStats"
@@ -645,13 +679,13 @@
                       class="flex h-2 bg-zinc-950 rounded-full overflow-hidden"
                     >
                       <div
-                        class="bg-blue-600 rounded-l-full transition-all duration-300"
-                        :style="{ width: stat.awayPct + '%' }"
+                        class="rounded-l-full transition-all duration-300"
+                        :style="{ width: stat.awayPct + '%', backgroundColor: teamStatBarColors.away }"
                       ></div>
                       <div class="bg-zinc-800/80 flex-1"></div>
                       <div
-                        class="bg-emerald-600 rounded-r-full transition-all duration-300"
-                        :style="{ width: stat.homePct + '%' }"
+                        class="rounded-r-full transition-all duration-300"
+                        :style="{ width: stat.homePct + '%', backgroundColor: teamStatBarColors.home }"
                       ></div>
                     </div>
                   </div>
@@ -913,17 +947,29 @@
       </div>
     </div>
     <script type="module">
-      import { getTeamUrls, fetchTeamDetails } from "./src/api/espn.js";
+      import {
+        fetchTeamDetails,
+        getGameSummaryUrl,
+        getScoreboardRequestParams,
+        getScoreboardUrl,
+      } from "./src/api/espn.js";
       import {
         formatGameTime as formatGameTimeUtil,
         getFavoriteFilterText as getFavoriteFilterTextUtil,
         getGameState as getGameStateUtil,
+        getLinescoreHeaders as getLinescoreHeadersUtil,
+        getLinescoreValues as getLinescoreValuesUtil,
+        getPlayerLeaders as getPlayerLeadersUtil,
+        getBaseballTeamStatComparisons as getBaseballTeamStatComparisonsUtil,
         getNetwork as getNetworkUtil,
+        getWinProbabilityChart as getWinProbabilityChartUtil,
         getSituation as getSituationUtil,
         getTeamLogo as getTeamLogoUtil,
         getTeamName as getTeamNameUtil,
         getTeamRank as getTeamRankUtil,
         getTeamScore as getTeamScoreUtil,
+        getTeamStatComparisons as getTeamStatComparisonsUtil,
+        getTeamStatBarColors as getTeamStatBarColorsUtil,
         hasPossession as hasPossessionUtil,
         isGameHighlighted as isGameHighlightedUtil,
         isTeamStringHighlighted as isTeamStringHighlightedUtil,
@@ -942,7 +988,11 @@
           const seasonType = ref(2);
           const week = ref(1);
           const selectedGroup = ref("80");
-          const mlbDate = ref(new Date().toLocaleDateString("en-CA"));
+          const selectedDate = ref(new Date().toLocaleDateString("en-CA"));
+          const mlbStatGroup = ref("batting");
+          const isDateLeague = computed(() =>
+            ["mlb", "nba", "nhl"].includes(selectedLeague.value),
+          );
           const games = ref([]);
           const loading = ref(false);
 
@@ -975,29 +1025,14 @@
           const fetchScoreboard = async (isInitialBoot = false) => {
             if (isInitialBoot) loading.value = true;
             try {
-              let endpoint = "";
-              if (selectedLeague.value === "mlb") {
-                const cleanDate = mlbDate.value.replace(/-/g, "");
-                endpoint = `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${cleanDate}`;
-              } else {
-                if (isInitialBoot) {
-                  endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard`;
-                  if (
-                    selectedLeague.value === "college-football" &&
-                    selectedGroup.value
-                  ) {
-                    endpoint += `?groups=${selectedGroup.value}`;
-                  }
-                } else {
-                  endpoint = `https://site.api.espn.com/apis/site/v2/sports/football/${selectedLeague.value}/scoreboard?week=${week.value}&seasontype=${seasonType.value}`;
-                  if (
-                    selectedLeague.value === "college-football" &&
-                    selectedGroup.value
-                  ) {
-                    endpoint += `&groups=${selectedGroup.value}`;
-                  }
-                }
-              }
+              const params = getScoreboardRequestParams(selectedLeague.value, {
+                date: selectedDate.value,
+                week: week.value,
+                seasonType: seasonType.value,
+                group: selectedGroup.value,
+                initial: isInitialBoot,
+              });
+              const endpoint = getScoreboardUrl(selectedLeague.value, params);
 
               const res = await fetch(endpoint);
               const data = await res.json();
@@ -1005,7 +1040,7 @@
 
               if (
                 isInitialBoot &&
-                selectedLeague.value !== "mlb" &&
+                !isDateLeague.value &&
                 data.week &&
                 data.week.number
               ) {
@@ -1024,9 +1059,7 @@
           const fetchGameDetail = async (eventId) => {
             modalLoading.value = true;
             try {
-              const sportPath =
-                selectedLeague.value === "mlb" ? "baseball" : "football";
-              const endpoint = `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}/summary?event=${eventId}`;
+              const endpoint = getGameSummaryUrl(selectedLeague.value, eventId);
               const res = await fetch(endpoint);
               const data = await res.json();
               modalData.value = buildGameDetail(data, eventId);
@@ -1038,12 +1071,6 @@
               modalLoading.value = false;
             }
           };
-          const getTeamApiBase = () => {
-            const sportPath =
-              selectedLeague.value === "mlb" ? "baseball" : "football";
-            return `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/${selectedLeague.value}`;
-          };
-
           const selectedTeam = computed(
             () => modalData.value?.teams?.[selectedTeamSide.value] || {},
           );
@@ -1079,7 +1106,6 @@
             scheduleError.value = "";
             teamLoading.value = true;
             try {
-              const urls = getTeamUrls(selectedLeague.value, team.id);
               const { details, schedule } = await fetchTeamDetails(
                 selectedLeague.value,
                 team.id,
@@ -1125,56 +1151,20 @@
             const homeLines =
               competitors.length > 1 ? competitors[1].linescores || [] : [];
 
-            const maxPeriods = Math.max(
-              awayLines.length,
-              homeLines.length,
-              selectedLeague.value === "mlb" ? 9 : 4,
-            );
-            const headers = [];
-            for (let i = 0; i < maxPeriods; i++) {
-              if (selectedLeague.value === "mlb") {
-                headers.push(i + 1);
-              } else {
-                headers.push(i < 4 ? i + 1 : "OT");
-              }
-            }
-            return headers;
+            return getLinescoreHeadersUtil(selectedLeague.value, awayLines, homeLines);
           });
 
           const linescores = computed(() => {
             const compList = modalData.value?.raw?.header?.competitions;
             const comp = compList && compList.length > 0 ? compList[0] : null;
             if (!comp) return { away: [], home: [] };
-
-            const competitors = comp.competitors || [];
-            const awayCompetitor = competitors.length > 0 ? competitors[0] : {};
-            const homeCompetitor = competitors.length > 1 ? competitors[1] : {};
-
-            const awayLines = awayCompetitor.linescores || [];
-            const homeLines = homeCompetitor.linescores || [];
-            const totalPeriods = linescoreHeaders.value.length;
-
-            const formatRow = (linesArray) => {
-              const row = [];
-              for (let i = 0; i < totalPeriods; i++) {
-                if (i < linesArray.length) {
-                  const item = linesArray[i];
-                  // FIX: Wrapped value fallback logic in parentheses to prevent SyntaxError
-                  row.push(item.displayValue || (item.value ?? "0"));
-                } else {
-                  row.push("-");
-                }
-              }
-              return row;
-            };
-
-            return {
-              away: formatRow(awayLines),
-              home: formatRow(homeLines),
-            };
+            return getLinescoreValuesUtil(comp, linescoreHeaders.value.length);
           });
 
           const currentDrive = computed(() => {
+            if (!["nfl", "college-football"].includes(selectedLeague.value)) {
+              return null;
+            }
             const dr = modalData.value?.drives?.current;
             if (!dr || Object.keys(dr).length === 0) return null;
             return {
@@ -1184,22 +1174,9 @@
             };
           });
 
-          const winProbabilityPoints = computed(() => {
-            const wpArray = modalData.value?.winprobability;
-            if (!Array.isArray(wpArray) || wpArray.length === 0) return "";
-
-            return wpArray
-              .map((wp, index) => {
-                const x = (index / (wpArray.length - 1)) * 100;
-                const homeProb =
-                  wp.homeWinPercentage !== undefined
-                    ? wp.homeWinPercentage
-                    : wp.homeProbability || 0.5;
-                const y = homeProb * 100;
-                return `${x},${y}`;
-              })
-              .join(" ");
-          });
+          const winProbabilityChart = computed(() =>
+            getWinProbabilityChartUtil(modalData.value?.winprobability),
+          );
 
           const teamStats = computed(() => {
             if (!modalData.value || !modalData.value.teams) return [];
@@ -1207,128 +1184,24 @@
             const awayStats = modalData.value.teams.away?.statistics || [];
             const homeStats = modalData.value.teams.home?.statistics || [];
 
-            // FIX: Force baseball logic explicitly by checking the active league string name instead of array lengths
             if (selectedLeague.value === "mlb") {
               const rawBox = modalData.value.raw?.boxscore?.teams || [];
-              const awayBoxRaw =
-                rawBox.find((t) => t.homeAway === "away") || {};
-              const homeBoxRaw =
-                rawBox.find((t) => t.homeAway === "home") || {};
-
-              // Navigate cleanly into the nested .stats lists hidden inside the top-level 'batting' object
-              const awayBattingGroup =
-                (awayBoxRaw.statistics || []).find(
-                  (s) => s.name === "batting",
-                ) || {};
-              const homeBattingGroup =
-                (homeBoxRaw.statistics || []).find(
-                  (s) => s.name === "batting",
-                ) || {};
-
-              const awayStatsList = awayBattingGroup.stats || [];
-              const homeStatsList = homeBattingGroup.stats || [];
-
-              const baseballMetrics = [
-                { key: "hits", label: "Hits" },
-                { key: "runs", label: "Runs Scored" },
-                { key: "strikeouts", label: "Strikeouts" },
-                { key: "runnersLeftOnBase", label: "Left On Base (LOB)" },
-              ];
-
-              return baseballMetrics.map((metric) => {
-                const aItem =
-                  awayStatsList.find((s) => s.name === metric.key) || {};
-                const hItem =
-                  homeStatsList.find((s) => s.name === metric.key) || {};
-
-                const valA = parseFloat(aItem.value) || 0;
-                const valH = parseFloat(hItem.value) || 0;
-                const combined = valA + valH;
-
-                let pctA = 50,
-                  pctH = 50;
-                if (combined > 0) {
-                  pctA = (valA / combined) * 100;
-                  pctH = (valH / combined) * 100;
-                } else if (valA === 0 && valH === 0) {
-                  pctA = 0;
-                  pctH = 0;
-                }
-
-                return {
-                  label: metric.label,
-                  awayDisplay: aItem.displayValue || "0",
-                  homeDisplay: hItem.displayValue || "0",
-                  awayPct: pctA,
-                  homePct: pctH,
-                };
-              });
+              return getBaseballTeamStatComparisonsUtil(
+                rawBox,
+                mlbStatGroup.value,
+              );
             }
 
-            // DEFAULT FOOTBALL PROGRESS GAUGE MAPS (CFB / NFL)
-            return awayStats.map((aStat) => {
-              const hStat = homeStats.find((h) => h.name === aStat.name) || {};
-              const label = aStat.label || aStat.name;
-              const valA = parseFloat(aStat.value) || 0;
-              const valH = parseFloat(hStat.value) || 0;
-              const total = valA + valH;
-
-              let pctA = 50,
-                pctH = 50;
-              if (total > 0) {
-                pctA = (valA / total) * 100;
-                pctH = (valH / total) * 100;
-              }
-              return {
-                label,
-                awayDisplay: aStat.displayValue || "0",
-                homeDisplay: hStat.displayValue || "0",
-                awayPct: pctA,
-                homePct: pctH,
-              };
-            });
+            return getTeamStatComparisonsUtil(awayStats, homeStats);
           });
 
-          const playerLeaders = computed(() => {
-            const playersArray = modalData.value?.raw?.boxscore?.players || [];
-            const outputCategories = [];
+          const teamStatBarColors = computed(() =>
+            getTeamStatBarColorsUtil(modalData.value?.teams),
+          );
 
-            playersArray.forEach((tBlock) => {
-              const teamAbbrev = tBlock.team?.abbreviation || "";
-              if (!Array.isArray(tBlock.statistics)) return;
-
-              tBlock.statistics.forEach((statCat) => {
-                const catTitle = statCat.name || "";
-                if (!Array.isArray(statCat.athletes)) return;
-
-                let existingGroup = outputCategories.find(
-                  (c) => c.title.toLowerCase() === catTitle.toLowerCase(),
-                );
-                if (!existingGroup) {
-                  existingGroup = {
-                    title: catTitle.charAt(0).toUpperCase() + catTitle.slice(1),
-                    labels: statCat.labels || [],
-                    athletes: [],
-                  };
-                  outputCategories.push(existingGroup);
-                }
-
-                statCat.athletes.slice(0, 2).forEach((pRow) => {
-                  existingGroup.athletes.push({
-                    name: pRow.athlete?.displayName || "Player",
-                    jersey: pRow.athlete?.jersey || "-",
-                    headshot:
-                      pRow.athlete?.headshot?.href ||
-                      "https://a.espncdn.com/i/headshots/placeholder.png",
-                    teamAbbrev,
-                    stats: pRow.stats || [],
-                  });
-                });
-              });
-            });
-
-            return outputCategories;
-          });
+          const playerLeaders = computed(() =>
+            getPlayerLeadersUtil(modalData.value),
+          );
 
           const triggerImmediateFetch = async () => {
             clearInterval(pollingInterval);
@@ -1349,8 +1222,8 @@
             resetTeamView();
             selectedLeague.value = league;
             selectedGroup.value = "";
-            if (league === "mlb") {
-              mlbDate.value = new Date().toLocaleDateString("en-CA");
+            if (["mlb", "nba", "nhl"].includes(league)) {
+              selectedDate.value = new Date().toLocaleDateString("en-CA");
               await fetchScoreboard(true);
             } else {
               await fetchScoreboard(true);
@@ -1403,7 +1276,9 @@
             seasonType,
             week,
             selectedGroup,
-            mlbDate,
+            selectedDate,
+            mlbStatGroup,
+            isDateLeague,
             games,
             loading,
             showModal,
@@ -1425,8 +1300,9 @@
             linescoreHeaders,
             linescores,
             currentDrive,
-            winProbabilityPoints,
+            winProbabilityChart,
             teamStats,
+            teamStatBarColors,
             playerLeaders,
             switchTab,
             adjustWeek,

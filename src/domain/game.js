@@ -28,6 +28,8 @@ export function buildGameDetail(data, fallbackId = undefined) {
     name: headerAway.team?.displayName || awayRaw.team?.displayName || "Away Team",
     rank: headerAway.rank || null,
     logo: getTeamLogo(headerAway.team, awayRaw.team?.logo || "https://espncdn.com"),
+    color: headerAway.team?.color || awayRaw.team?.color || null,
+    alternateColor: headerAway.team?.alternateColor || awayRaw.team?.alternateColor || null,
     score: headerAway.score || "0",
     statistics: awayRaw.statistics || [],
   };
@@ -38,6 +40,8 @@ export function buildGameDetail(data, fallbackId = undefined) {
     name: headerHome.team?.displayName || homeRaw.team?.displayName || "Home Team",
     rank: headerHome.rank || null,
     logo: getTeamLogo(headerHome.team, homeRaw.team?.logo || "https://espncdn.com"),
+    color: headerHome.team?.color || homeRaw.team?.color || null,
+    alternateColor: headerHome.team?.alternateColor || homeRaw.team?.alternateColor || null,
     score: headerHome.score || "0",
     statistics: homeRaw.statistics || [],
   };
