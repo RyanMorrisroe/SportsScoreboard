@@ -11,6 +11,7 @@ import {
   getPlayerLeaders,
   getTeamName,
   getTeamScore,
+  getTeamStatBarColors,
   getTeamStatComparisons,
   getBaseballTeamStatComparisons,
   hasPossession,
@@ -80,6 +81,7 @@ describe("ESPN fixture contracts", () => {
       homeLines: ["27", "27", "31", "30"],
       leadersTitle: "Player stats",
       firstStatAwayPct: (36 / (36 + 43)) * 100,
+      statBarColors: { away: "#f58426", home: "#008ca8" },
       recordLabel: "Overall Record",
       record: "0-0",
       schedule: {
@@ -100,6 +102,7 @@ describe("ESPN fixture contracts", () => {
       homeLines: ["1", "2", "1", "0"],
       leadersTitle: "Forwards",
       firstStatAwayPct: (8 / (8 + 14)) * 100,
+      statBarColors: { away: "#e30b2b", home: "#918f90" },
       recordLabel: "Overall Record",
       record: "0-0-1",
       schedule: {
@@ -123,6 +126,7 @@ describe("ESPN fixture contracts", () => {
     expect(detail.teams.away.name).toBe(expected.away);
     expect(detail.teams.away.score).toBe(expected.awayScore);
     expect(detail.teams.home.score).toBe(expected.homeScore);
+    expect(getTeamStatBarColors(detail.teams)).toEqual(expected.statBarColors);
     const statComparisons = getTeamStatComparisons(
       detail.teams.away.statistics,
       detail.teams.home.statistics,

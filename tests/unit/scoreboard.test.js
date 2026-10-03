@@ -14,6 +14,7 @@ import {
   getTeamRank,
   getTeamScore,
   getTeamStatComparisons,
+  getTeamStatBarColors,
   getBaseballTeamStatComparisons,
   hasPossession,
   getWinProbabilityChart,
@@ -279,6 +280,32 @@ describe("scoreboard helpers", () => {
     });
     expect(getBaseballTeamStatComparisons(boxscoreTeams, "invalid")).toEqual([]);
     expect(getBaseballTeamStatComparisons([], "batting")).toEqual([]);
+  });
+
+  it("uses valid team colors and keeps dark colors readable on the stat bars", () => {
+    expect(getTeamStatBarColors({
+      away: { color: "008ca8", alternateColor: "1d1060" },
+      home: { color: "231f20", alternateColor: null },
+    })).toEqual({
+      away: "#008ca8",
+      home: "#918f90",
+    });
+    expect(getTeamStatBarColors({
+      away: { color: "231f20", alternateColor: "ffb81c" },
+    })).toEqual({
+      away: "#ffb81c",
+      home: "#059669",
+    });
+    expect(getTeamStatBarColors({
+      away: { color: "231f20", alternateColor: "1d1060" },
+    }).away).toBe("#918f90");
+    expect(getTeamStatBarColors({
+      away: { color: "not-a-color" },
+      home: {},
+    })).toEqual({
+      away: "#2563eb",
+      home: "#059669",
+    });
   });
 
   it("reports possession, network, and winner details", () => {

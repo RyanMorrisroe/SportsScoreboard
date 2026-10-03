@@ -203,6 +203,56 @@ export function getBaseballTeamStatComparisons(boxscoreTeams, groupName) {
   });
 }
 
+function normalizeHexColor(value) {
+  if (typeof value !== "string") return null;
+  const hex = value.trim().replace(/^#/, "");
+  return /^[\da-f]{6}$/i.test(hex) ? `#${hex}` : null;
+}
+
+function relativeLuminance(hexColor) {
+  const channels = hexColor.slice(1).match(/.{2}/g).map((channel) => {
+    const value = parseInt(channel, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+function lightenHexColor(hexColor, amount = 0.5) {
+  const channels = hexColor.slice(1).match(/.{2}/g).map((channel) => {
+    const value = parseInt(channel, 16);
+    return Math.round(value + (255 - value) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  });
+  return `#${channels.join("")}`;
+}
+
+function getTeamStatBarColor(team, fallback) {
+  const primary = normalizeHexColor(team?.color);
+  const alternate = normalizeHexColor(team?.alternateColor);
+  if (!primary) return alternate || fallback;
+
+  const primaryLuminance = relativeLuminance(primary);
+  if (primaryLuminance < 0.12) {
+    if (
+      alternate &&
+      relativeLuminance(alternate) >= 0.12 &&
+      relativeLuminance(alternate) > primaryLuminance
+    ) {
+      return alternate;
+    }
+    return lightenHexColor(primary);
+  }
+  return primary;
+}
+
+export function getTeamStatBarColors(teams) {
+  return {
+    away: getTeamStatBarColor(teams?.away, "#2563eb"),
+    home: getTeamStatBarColor(teams?.home, "#059669"),
+  };
+}
+
 export function getWinProbabilityChart(probabilities) {
   if (!Array.isArray(probabilities) || probabilities.length === 0) {
     return { points: "", singlePoint: null };

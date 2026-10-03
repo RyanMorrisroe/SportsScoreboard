@@ -679,13 +679,13 @@
                       class="flex h-2 bg-zinc-950 rounded-full overflow-hidden"
                     >
                       <div
-                        class="bg-blue-600 rounded-l-full transition-all duration-300"
-                        :style="{ width: stat.awayPct + '%' }"
+                        class="rounded-l-full transition-all duration-300"
+                        :style="{ width: stat.awayPct + '%', backgroundColor: teamStatBarColors.away }"
                       ></div>
                       <div class="bg-zinc-800/80 flex-1"></div>
                       <div
-                        class="bg-emerald-600 rounded-r-full transition-all duration-300"
-                        :style="{ width: stat.homePct + '%' }"
+                        class="rounded-r-full transition-all duration-300"
+                        :style="{ width: stat.homePct + '%', backgroundColor: teamStatBarColors.home }"
                       ></div>
                     </div>
                   </div>
@@ -969,6 +969,7 @@
         getTeamRank as getTeamRankUtil,
         getTeamScore as getTeamScoreUtil,
         getTeamStatComparisons as getTeamStatComparisonsUtil,
+        getTeamStatBarColors as getTeamStatBarColorsUtil,
         hasPossession as hasPossessionUtil,
         isGameHighlighted as isGameHighlightedUtil,
         isTeamStringHighlighted as isTeamStringHighlightedUtil,
@@ -1194,6 +1195,10 @@
             return getTeamStatComparisonsUtil(awayStats, homeStats);
           });
 
+          const teamStatBarColors = computed(() =>
+            getTeamStatBarColorsUtil(modalData.value?.teams),
+          );
+
           const playerLeaders = computed(() =>
             getPlayerLeadersUtil(modalData.value),
           );
@@ -1297,6 +1302,7 @@
             currentDrive,
             winProbabilityChart,
             teamStats,
+            teamStatBarColors,
             playerLeaders,
             switchTab,
             adjustWeek,
