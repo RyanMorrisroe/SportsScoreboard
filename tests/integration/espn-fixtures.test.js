@@ -3,6 +3,7 @@ import details from "../fixtures/espn/nfl-team-details.json";
 import schedule from "../fixtures/espn/nfl-team-schedule.json";
 import nba from "../fixtures/espn/nba.json";
 import nhl from "../fixtures/espn/nhl.json";
+import mlbBoxscoreStats from "../fixtures/espn/mlb-boxscore-stats.json";
 import { fetchTeamDetails, getTeamUrls } from "../../src/api/espn.js";
 import {
   getLinescoreHeaders,
@@ -11,6 +12,7 @@ import {
   getTeamName,
   getTeamScore,
   getTeamStatComparisons,
+  getBaseballTeamStatComparisons,
   hasPossession,
   getWinProbabilityChart,
 } from "../../src/app/scoreboard.js";
@@ -162,5 +164,31 @@ describe("ESPN fixture contracts", () => {
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(1, getTeamUrls(league, fixture.teamId).details);
     expect(fetchImpl).toHaveBeenNthCalledWith(2, getTeamUrls(league, fixture.teamId).schedule);
+  });
+
+  it("exposes batting, pitching, and fielding stats from an MLB boxscore", () => {
+    const batting = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "batting");
+    const pitching = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "pitching");
+    const fielding = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "fielding");
+
+    expect(batting).toHaveLength(13);
+    expect(batting.find((stat) => stat.label === "Hits")).toMatchObject({
+      awayDisplay: "7",
+      homeDisplay: "9",
+      awayPct: 43.75,
+      homePct: 56.25,
+    });
+    expect(pitching).toHaveLength(10);
+    expect(pitching.find((stat) => stat.label === "ERA")).toMatchObject({
+      awayDisplay: "5.00",
+      homeDisplay: "6.00",
+    });
+    expect(fielding).toHaveLength(5);
+    expect(fielding.find((stat) => stat.label === "Errors")).toMatchObject({
+      awayDisplay: "0",
+      homeDisplay: "0",
+      awayPct: 0,
+      homePct: 0,
+    });
   });
 });

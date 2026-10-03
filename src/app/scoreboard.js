@@ -136,6 +136,73 @@ export function getTeamStatComparisons(awayStats = [], homeStats = []) {
   });
 }
 
+const BASEBALL_STAT_GROUPS = {
+  batting: [
+    { key: "atBats", label: "At Bats" },
+    { key: "runs", label: "Runs" },
+    { key: "hits", label: "Hits" },
+    { key: "homeRuns", label: "Home Runs" },
+    { key: "RBIs", label: "Runs Batted In" },
+    { key: "walks", label: "Walks" },
+    { key: "strikeouts", label: "Strikeouts" },
+    { key: "stolenBases", label: "Stolen Bases" },
+    { key: "runnersLeftOnBase", label: "Left On Base" },
+    { key: "avg", label: "Batting Average" },
+    { key: "onBasePct", label: "On-Base Percentage" },
+    { key: "slugAvg", label: "Slugging Percentage" },
+    { key: "OPS", label: "OPS" },
+  ],
+  pitching: [
+    { key: "innings", label: "Innings Pitched" },
+    { key: "hits", label: "Hits Allowed" },
+    { key: "runs", label: "Runs Allowed" },
+    { key: "earnedRuns", label: "Earned Runs" },
+    { key: "strikeouts", label: "Strikeouts" },
+    { key: "walks", label: "Walks" },
+    { key: "homeRuns", label: "Home Runs Allowed" },
+    { key: "pitches", label: "Pitches" },
+    { key: "ERA", label: "ERA" },
+    { key: "WHIP", label: "WHIP" },
+  ],
+  fielding: [
+    { key: "errors", label: "Errors" },
+    { key: "assists", label: "Assists" },
+    { key: "putouts", label: "Putouts" },
+    { key: "doublePlays", label: "Double Plays" },
+    { key: "fieldingPct", label: "Fielding Percentage" },
+  ],
+};
+
+export function getBaseballTeamStatComparisons(boxscoreTeams, groupName) {
+  const metrics = BASEBALL_STAT_GROUPS[groupName];
+  if (!metrics || !Array.isArray(boxscoreTeams)) return [];
+
+  const getGroupStats = (homeAway) => {
+    const team = boxscoreTeams.find((entry) => entry.homeAway === homeAway);
+    return team?.statistics?.find((group) => group.name === groupName)?.stats || [];
+  };
+  const awayStats = getGroupStats("away");
+  const homeStats = getGroupStats("home");
+
+  return metrics.flatMap((metric) => {
+    const awayStat = awayStats.find((stat) => stat.name === metric.key);
+    const homeStat = homeStats.find((stat) => stat.name === metric.key);
+    if (!awayStat && !homeStat) return [];
+
+    const awayValue = getNumericStatValue(awayStat);
+    const homeValue = getNumericStatValue(homeStat);
+    const total = awayValue + homeValue;
+
+    return [{
+      label: metric.label,
+      awayDisplay: awayStat?.displayValue ?? awayStat?.value ?? "0",
+      homeDisplay: homeStat?.displayValue ?? homeStat?.value ?? "0",
+      awayPct: total > 0 ? (awayValue / total) * 100 : 0,
+      homePct: total > 0 ? (homeValue / total) * 100 : 0,
+    }];
+  });
+}
+
 export function getWinProbabilityChart(probabilities) {
   if (!Array.isArray(probabilities) || probabilities.length === 0) {
     return { points: "", singlePoint: null };
@@ -193,7 +260,18 @@ export function getNetwork(game) {
 export function formatGameTime(game) {
   const state = getGameState(game);
   const detail = game?.status?.type?.shortDetail || "";
-  if (state !== "pre" || !game.date) return detail;
+  const statusDetail = game?.status?.type?.detail || "";
+  if (state !== "pre") return detail;
+
+  const competition = game?.competitions?.[0];
+  if (
+    game?.timeValid === false ||
+    competition?.timeValid === false ||
+    /\bTBD\b/i.test(`${detail} ${statusDetail}`)
+  ) {
+    return "TBD";
+  }
+  if (!game.date) return detail;
 
   const gameDate = new Date(game.date);
   if (Number.isNaN(gameDate.getTime())) {

@@ -644,6 +644,17 @@
                 </div>
 
                 <div class="space-y-3.5 mt-2">
+                  <div v-if="selectedLeague === 'mlb'" class="flex justify-end">
+                    <select
+                      v-model="mlbStatGroup"
+                      aria-label="MLB stat category"
+                      class="bg-zinc-950 border border-zinc-800 text-zinc-200 rounded-lg px-3 py-2 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="batting">Batting</option>
+                      <option value="pitching">Pitching</option>
+                      <option value="fielding">Fielding</option>
+                    </select>
+                  </div>
                   <!-- Loop through our customized teamStats computed property instead of raw attributes -->
                   <div
                     v-for="stat in teamStats"
@@ -949,6 +960,7 @@
         getLinescoreHeaders as getLinescoreHeadersUtil,
         getLinescoreValues as getLinescoreValuesUtil,
         getPlayerLeaders as getPlayerLeadersUtil,
+        getBaseballTeamStatComparisons as getBaseballTeamStatComparisonsUtil,
         getNetwork as getNetworkUtil,
         getWinProbabilityChart as getWinProbabilityChartUtil,
         getSituation as getSituationUtil,
@@ -976,6 +988,7 @@
           const week = ref(1);
           const selectedGroup = ref("80");
           const selectedDate = ref(new Date().toLocaleDateString("en-CA"));
+          const mlbStatGroup = ref("batting");
           const isDateLeague = computed(() =>
             ["mlb", "nba", "nhl"].includes(selectedLeague.value),
           );
@@ -1170,62 +1183,12 @@
             const awayStats = modalData.value.teams.away?.statistics || [];
             const homeStats = modalData.value.teams.home?.statistics || [];
 
-            // FIX: Force baseball logic explicitly by checking the active league string name instead of array lengths
             if (selectedLeague.value === "mlb") {
               const rawBox = modalData.value.raw?.boxscore?.teams || [];
-              const awayBoxRaw =
-                rawBox.find((t) => t.homeAway === "away") || {};
-              const homeBoxRaw =
-                rawBox.find((t) => t.homeAway === "home") || {};
-
-              // Navigate cleanly into the nested .stats lists hidden inside the top-level 'batting' object
-              const awayBattingGroup =
-                (awayBoxRaw.statistics || []).find(
-                  (s) => s.name === "batting",
-                ) || {};
-              const homeBattingGroup =
-                (homeBoxRaw.statistics || []).find(
-                  (s) => s.name === "batting",
-                ) || {};
-
-              const awayStatsList = awayBattingGroup.stats || [];
-              const homeStatsList = homeBattingGroup.stats || [];
-
-              const baseballMetrics = [
-                { key: "hits", label: "Hits" },
-                { key: "runs", label: "Runs Scored" },
-                { key: "strikeouts", label: "Strikeouts" },
-                { key: "runnersLeftOnBase", label: "Left On Base (LOB)" },
-              ];
-
-              return baseballMetrics.map((metric) => {
-                const aItem =
-                  awayStatsList.find((s) => s.name === metric.key) || {};
-                const hItem =
-                  homeStatsList.find((s) => s.name === metric.key) || {};
-
-                const valA = parseFloat(aItem.value) || 0;
-                const valH = parseFloat(hItem.value) || 0;
-                const combined = valA + valH;
-
-                let pctA = 50,
-                  pctH = 50;
-                if (combined > 0) {
-                  pctA = (valA / combined) * 100;
-                  pctH = (valH / combined) * 100;
-                } else if (valA === 0 && valH === 0) {
-                  pctA = 0;
-                  pctH = 0;
-                }
-
-                return {
-                  label: metric.label,
-                  awayDisplay: aItem.displayValue || "0",
-                  homeDisplay: hItem.displayValue || "0",
-                  awayPct: pctA,
-                  homePct: pctH,
-                };
-              });
+              return getBaseballTeamStatComparisonsUtil(
+                rawBox,
+                mlbStatGroup.value,
+              );
             }
 
             return getTeamStatComparisonsUtil(awayStats, homeStats);
@@ -1309,6 +1272,7 @@
             week,
             selectedGroup,
             selectedDate,
+            mlbStatGroup,
             isDateLeague,
             games,
             loading,

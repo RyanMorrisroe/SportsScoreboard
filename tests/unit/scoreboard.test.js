@@ -14,6 +14,7 @@ import {
   getTeamRank,
   getTeamScore,
   getTeamStatComparisons,
+  getBaseballTeamStatComparisons,
   hasPossession,
   getWinProbabilityChart,
   isGameHighlighted,
@@ -218,6 +219,68 @@ describe("scoreboard helpers", () => {
     expect(getTeamStatComparisons()).toEqual([]);
   });
 
+  it("builds grouped MLB batting, pitching, and fielding comparisons", () => {
+    const boxscoreTeams = [
+      {
+        homeAway: "away",
+        statistics: [
+          { name: "batting", stats: [
+            { name: "hits", displayName: "Hits", displayValue: "7", value: 7 },
+            { name: "homeRuns", displayName: "Home Runs", displayValue: "3", value: 3 },
+            { name: "avg", displayName: "Batting Average", displayValue: ".212", value: 0.212 },
+          ] },
+          { name: "pitching", stats: [
+            { name: "strikeouts", displayName: "Strikeouts", displayValue: "11", value: 11 },
+            { name: "ERA", displayName: "Earned Run Average", displayValue: "5.00", value: 5 },
+          ] },
+          { name: "fielding", stats: [
+            { name: "errors", displayName: "Errors", displayValue: "0", value: 0 },
+          ] },
+        ],
+      },
+      {
+        homeAway: "home",
+        statistics: [
+          { name: "batting", stats: [
+            { name: "hits", displayName: "Hits", displayValue: "9", value: 9 },
+            { name: "homeRuns", displayName: "Home Runs", displayValue: "2", value: 2 },
+            { name: "avg", displayName: "Batting Average", displayValue: ".257", value: 0.257 },
+          ] },
+          { name: "pitching", stats: [
+            { name: "strikeouts", displayName: "Strikeouts", displayValue: "6", value: 6 },
+            { name: "ERA", displayName: "Earned Run Average", displayValue: "6.00", value: 6 },
+          ] },
+          { name: "fielding", stats: [
+            { name: "errors", displayName: "Errors", displayValue: "1", value: 1 },
+          ] },
+        ],
+      },
+    ];
+
+    const batting = getBaseballTeamStatComparisons(boxscoreTeams, "batting");
+    const pitching = getBaseballTeamStatComparisons(boxscoreTeams, "pitching");
+    const fielding = getBaseballTeamStatComparisons(boxscoreTeams, "fielding");
+    expect(batting).toHaveLength(3);
+    expect(batting.find((stat) => stat.label === "Hits")).toMatchObject({
+      awayDisplay: "7",
+      homeDisplay: "9",
+      awayPct: 43.75,
+      homePct: 56.25,
+    });
+    expect(pitching).toHaveLength(2);
+    expect(pitching.find((stat) => stat.label === "ERA")).toMatchObject({
+      awayDisplay: "5.00",
+      homeDisplay: "6.00",
+    });
+    expect(fielding).toHaveLength(1);
+    expect(fielding.find((stat) => stat.label === "Errors")).toMatchObject({
+      awayPct: 0,
+      homePct: 100,
+    });
+    expect(getBaseballTeamStatComparisons(boxscoreTeams, "invalid")).toEqual([]);
+    expect(getBaseballTeamStatComparisons([], "batting")).toEqual([]);
+  });
+
   it("reports possession, network, and winner details", () => {
     const game = makeGame();
 
@@ -252,14 +315,28 @@ describe("scoreboard helpers", () => {
 
     expect(formatGameTime({ status: { type: { state: "post", shortDetail: "Final" } } })).toBe("Final");
     expect(formatGameTime({ date: "bad-date", status: { type: { state: "pre", shortDetail: "Game time" } } })).toBe("Game time");
+    expect(formatGameTime(makeGame({
+      timeValid: false,
+      status: { type: { state: "pre", shortDetail: "Fri 11:00 PM" } },
+    }))).toBe("TBD");
+    expect(formatGameTime(makeGame({
+      competitions: [makeCompetition({ timeValid: false })],
+      status: { type: { state: "pre", shortDetail: "Fri 11:00 PM" } },
+    }))).toBe("TBD");
+    expect(formatGameTime(makeGame({
+      status: { type: { state: "pre", shortDetail: "Fri - TBD" } },
+    }))).toBe("TBD");
+    expect(formatGameTime(makeGame({
+      status: { type: { state: "pre", detail: "Game time TBD" } },
+    }))).toBe("TBD");
 
     const timeFormatter = vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(() => {
       throw new Error("formatter unavailable");
     });
     expect(formatGameTime(makeGame({
       date: new Date(Date.now() + 86400000).toISOString(),
-      status: { type: { state: "pre", shortDetail: "Time TBD" } },
-    }))).toBe("Time TBD");
+      status: { type: { state: "pre", shortDetail: "Time unknown" } },
+    }))).toBe("Time unknown");
     timeFormatter.mockRestore();
   });
 
