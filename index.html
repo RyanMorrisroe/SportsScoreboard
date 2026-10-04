@@ -14,6 +14,28 @@
         color: #e0e0e0;
         font-family: system-ui, sans-serif;
       }
+      @media (hover: hover) and (pointer: fine) {
+        * {
+          scrollbar-color: #52525b transparent;
+          scrollbar-width: thin;
+        }
+        *::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        *::-webkit-scrollbar-thumb {
+          background-color: #52525b;
+          border: 2px solid transparent;
+          border-radius: 9999px;
+          background-clip: padding-box;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background-color: #71717a;
+        }
+      }
       .live-pulse {
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
@@ -162,11 +184,115 @@
             />
           </div>
         </div>
+        <div
+          class="flex items-center gap-1 bg-zinc-950 border border-zinc-800 p-1 rounded-xl w-fit"
+          aria-label="Dashboard view"
+        >
+          <button
+            @click="setDashboardView('scoreboard')"
+            :aria-pressed="viewMode === 'scoreboard'"
+            :class="viewMode === 'scoreboard' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+            class="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+          >
+            Scoreboard
+          </button>
+          <button
+            @click="setDashboardView('standings')"
+            :aria-pressed="viewMode === 'standings'"
+            :class="viewMode === 'standings' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+            class="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+          >
+            Standings
+          </button>
+        </div>
       </div>
 
       <!-- MAIN SCORE CARD GRID -->
+      <section v-if="viewMode === 'standings'" class="space-y-6">
+        <div
+          v-if="standingsLoading"
+          class="flex flex-col items-center justify-center py-24 text-zinc-500"
+        >
+          <div
+            class="w-9 h-9 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"
+          ></div>
+          <p class="text-sm tracking-wide">Loading standings...</p>
+        </div>
+        <div
+          v-else-if="standingsError"
+          class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+        >
+          {{ standingsError }}
+        </div>
+        <div
+          v-else-if="standings.length === 0"
+          class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10"
+        >
+          <p class="text-zinc-400 font-semibold text-base">
+            No standings are available for this league.
+          </p>
+        </div>
+        <section
+          v-for="group in standings"
+          :key="group.id"
+          class="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-4 sm:p-5"
+          :style="{ marginLeft: `${Math.min(group.depth, 3) * 1}rem` }"
+        >
+          <h2 class="text-sm sm:text-base font-black text-white mb-3">
+            {{ group.name }}
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-max text-left text-xs sm:text-sm">
+              <thead class="text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
+                <tr>
+                  <th class="py-2 pr-4">Team</th>
+                  <th
+                    v-for="column in group.columns"
+                    :key="column.key"
+                    class="py-2 px-3 text-right"
+                  >
+                    {{ column.label }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="team in group.teams"
+                  :key="team.id"
+                  class="border-b border-zinc-800/60 last:border-0"
+                >
+                  <td class="py-2.5 pr-4">
+                    <div class="flex items-center gap-2 min-w-[150px]">
+                      <img
+                        v-if="team.logo"
+                        :src="team.logo"
+                        :alt="`${team.name} logo`"
+                        class="w-6 h-6 object-contain"
+                        loading="lazy"
+                      />
+                      <span class="font-bold text-white">{{ team.name }}</span>
+                      <span
+                        v-if="team.note"
+                        class="text-[10px] text-emerald-400"
+                        :title="team.note"
+                      >*</span>
+                    </div>
+                  </td>
+                  <td
+                    v-for="column in group.columns"
+                    :key="column.key"
+                    class="py-2.5 px-3 text-right font-mono text-zinc-300"
+                  >
+                    {{ getStandingStat(team, column.key) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
       <div
-        v-if="loading"
+        v-else-if="loading"
         class="flex flex-col items-center justify-center py-24 text-zinc-500"
       >
         <div
@@ -948,6 +1074,7 @@
     </div>
     <script type="module">
       import {
+        fetchStandings as fetchStandingsApi,
         fetchTeamDetails,
         getGameSummaryUrl,
         getScoreboardRequestParams,
@@ -978,6 +1105,7 @@
       } from "./src/app/scoreboard.js";
       import { buildGameDetail } from "./src/domain/game.js";
       import { normalizeSchedule } from "./src/domain/schedule.js";
+      import { normalizeStandings } from "./src/domain/standings.js";
       import { getTeamRecords, getTeamRecordStats } from "./src/domain/team.js";
 
       const { createApp, ref, computed, onMounted } = Vue;
@@ -995,6 +1123,11 @@
           );
           const games = ref([]);
           const loading = ref(false);
+          const viewMode = ref("scoreboard");
+          const standings = ref([]);
+          const standingsLoading = ref(false);
+          const standingsError = ref("");
+          let standingsRequestId = 0;
 
           const showModal = ref(false);
           const modalLoading = ref(false);
@@ -1071,6 +1204,30 @@
               modalLoading.value = false;
             }
           };
+          const fetchStandings = async () => {
+            const requestId = ++standingsRequestId;
+            standingsLoading.value = true;
+            standingsError.value = "";
+            try {
+              const response = await fetchStandingsApi(selectedLeague.value, fetch);
+              if (requestId !== standingsRequestId) return;
+              standings.value = normalizeStandings(response);
+            } catch (err) {
+              if (requestId === standingsRequestId) {
+                standingsError.value = err.message || "Unable to load standings.";
+                console.error("Standings fetch error:", err);
+              }
+            } finally {
+              if (requestId === standingsRequestId) standingsLoading.value = false;
+            }
+          };
+          const setDashboardView = async (view) => {
+            viewMode.value = view;
+            if (view === "standings") await fetchStandings();
+          };
+          const getStandingStat = (team, key) =>
+            team.stats.find((stat) => stat.key === key)?.value ?? "--";
+
           const selectedTeam = computed(
             () => modalData.value?.teams?.[selectedTeamSide.value] || {},
           );
@@ -1221,6 +1378,10 @@
           const switchTab = async (league) => {
             resetTeamView();
             selectedLeague.value = league;
+            standingsRequestId++;
+            standingsLoading.value = false;
+            standings.value = [];
+            standingsError.value = "";
             selectedGroup.value = "";
             if (["mlb", "nba", "nhl"].includes(league)) {
               selectedDate.value = new Date().toLocaleDateString("en-CA");
@@ -1229,6 +1390,7 @@
               await fetchScoreboard(true);
             }
             triggerImmediateFetch();
+            if (viewMode.value === "standings") await fetchStandings();
           };
 
           const adjustWeek = (amount) => {
@@ -1281,6 +1443,12 @@
             isDateLeague,
             games,
             loading,
+            viewMode,
+            standings,
+            standingsLoading,
+            standingsError,
+            setDashboardView,
+            getStandingStat,
             showModal,
             modalLoading,
             modalData,

@@ -1,0 +1,69 @@
+{
+  "name": "National Basketball Association",
+  "children": [
+    {
+      "id": "east",
+      "name": "Eastern Conference",
+      "abbreviation": "East",
+      "standings": {
+        "entries": [
+          {
+            "team": {
+              "id": "2",
+              "displayName": "Boston Celtics",
+              "abbreviation": "BOS",
+              "logo": "celtics.png"
+            },
+            "stats": [
+              { "name": "playoffSeed", "shortDisplayName": "POS", "displayValue": "1" },
+              { "name": "wins", "shortDisplayName": "W", "displayValue": "52" },
+              { "name": "losses", "shortDisplayName": "L", "displayValue": "14" },
+              { "name": "winPercent", "shortDisplayName": "PCT", "displayValue": ".788" }
+            ]
+          }
+        ]
+      },
+      "children": [
+        {
+          "id": "atlantic",
+          "name": "Atlantic Division",
+          "standings": {
+            "entries": [
+              {
+                "team": {
+                  "id": "2",
+                  "displayName": "Boston Celtics",
+                  "abbreviation": "BOS",
+                  "logo": "celtics.png"
+                },
+                "stats": [
+                  { "name": "wins", "abbreviation": "W", "value": 52 },
+                  { "name": "divisionRecord", "displayName": "Division Record", "summary": "10-2" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "west",
+      "name": "Western Conference",
+      "standings": {
+        "entries": [
+          {
+            "team": {
+              "id": "9",
+              "displayName": "Golden State Warriors",
+              "abbreviation": "GS",
+              "logos": [{ "href": "warriors.png" }]
+            },
+            "stats": [
+              { "name": "wins", "displayName": "Wins", "value": 41 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

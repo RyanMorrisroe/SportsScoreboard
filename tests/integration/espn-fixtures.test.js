@@ -4,7 +4,8 @@ import schedule from "../fixtures/espn/nfl-team-schedule.json";
 import nba from "../fixtures/espn/nba.json";
 import nhl from "../fixtures/espn/nhl.json";
 import mlbBoxscoreStats from "../fixtures/espn/mlb-boxscore-stats.json";
-import { fetchTeamDetails, getTeamUrls } from "../../src/api/espn.js";
+import standingsFixture from "../fixtures/espn/standings.json";
+import { fetchStandings, fetchTeamDetails, getTeamUrls, getStandingsUrl } from "../../src/api/espn.js";
 import {
   getLinescoreHeaders,
   getLinescoreValues,
@@ -19,6 +20,7 @@ import {
 } from "../../src/app/scoreboard.js";
 import { buildGameDetail } from "../../src/domain/game.js";
 import { normalizeSchedule } from "../../src/domain/schedule.js";
+import { normalizeStandings } from "../../src/domain/standings.js";
 import { getTeamRecordStats, getTeamRecords } from "../../src/domain/team.js";
 
 const jsonResponse = (body) => ({
@@ -28,6 +30,21 @@ const jsonResponse = (body) => ({
 });
 
 describe("ESPN fixture contracts", () => {
+  it("fetches and normalizes the nested standings fixture", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(standingsFixture))
+      .mockResolvedValueOnce(jsonResponse({ children: [] }));
+
+    const response = await fetchStandings("nba", fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledWith(getStandingsUrl("nba"));
+    expect(normalizeStandings(response).map((group) => group.name)).toEqual([
+      "Eastern Conference",
+      "Atlantic Division",
+      "Western Conference",
+    ]);
+  });
+
   it("normalizes representative team details and schedule payloads", async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(details))

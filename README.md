@@ -5,6 +5,7 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 ## Features
 
 - College Football, NFL, MLB, NBA, and NHL scoreboard tabs
+- Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
 - Calendar date selection for MLB, NBA, and NHL
 - Live, upcoming, and completed game views
@@ -39,9 +40,13 @@ https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{teamId}
 
 Team schedule:
 https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{teamId}/schedule
+
+Standings:
+https://site.api.espn.com/apis/v2/sports/{sport}/{league}/standings
 ```
 
 College Football and NFL use the `football` sport path. MLB uses `baseball`, NBA uses `basketball`, and NHL uses `hockey`. Date-based leagues send the selected date as `dates=YYYYMMDD`; football uses week and season-type parameters.
+Standings use ESPN's v2 Site API endpoint, whose response contains league-specific groups and team statistics. ESPN may expose additional levels through a `group` query parameter; the app follows group IDs from the response to load those levels and renders the resulting hierarchy without assuming each sport uses the same conference or division structure.
 
 ## Project Structure
 
@@ -267,7 +272,7 @@ To add another ESPN league:
 1. Confirm the ESPN sport and league identifiers used by the site API.
 2. Add the tab and league-specific controls in `index.html`.
 3. Update sport-path and URL handling in `src/api/espn.js`.
-4. Check scoreboard, summary, team, and schedule response shapes, including optional and missing fields.
+4. Check scoreboard, summary, team, schedule, and standings response shapes, including optional and missing fields.
 5. Add representative fixtures and unit/integration coverage for league routing, presentation, and normalization before enabling the league in the UI.
 6. Run `npm test`, inspect `npm run test:coverage` for uncovered changed branches, and run `npm run build`.
 
@@ -282,6 +287,10 @@ Check the browser developer console and network panel. Confirm the ESPN request 
 ### Team details do not load
 
 Confirm that the game response includes a team ID and that the team and schedule endpoints are reachable. The team detail view makes two requests: one for details and one for schedule.
+
+### Standings do not load
+
+Check the browser developer console and network panel for the ESPN v2 standings request. ESPN may return different grouping hierarchies by league; if the payload has no team entries, the dashboard reports that standings are unavailable.
 
 ### The page works locally but not in Home Assistant
 
