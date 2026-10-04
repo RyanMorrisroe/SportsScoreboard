@@ -176,24 +176,24 @@ GitHub-hosted standard runners are free for public repositories. Artifact storag
 
 ### Release workflow
 
-`.github/workflows/release.yml` runs when a semantic version tag matching `v*.*.*` is pushed. It installs dependencies, runs the test-gated build, packages `dist/` as a ZIP file, and creates a GitHub Release with generated release notes.
+`.github/workflows/release.yml` can be run manually from the Actions tab or triggered by pushing a semantic version tag matching `v*.*.*`. A manual run finds the latest semantic version tag and creates the next minor version (for example, `v1.0.0` becomes `v1.1.0`). It installs dependencies, runs the test-gated build, packages `dist/` as a ZIP file, and creates a GitHub Release with generated release notes.
 
 The workflow requires `contents: write` permission so it can create the release. It does not require a personal access token or repository secret; `github.token` is supplied by GitHub Actions.
 
-Create and push a release tag from the project root:
+To release with the automatic minor version bump, run **Release** from the Actions tab. To publish a specific version manually, create and push its tag from the project root:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 The resulting release asset will be named like:
 
 ```text
-sports-scoreboard-v1.0.0.zip
+sports-scoreboard-v1.1.0.zip
 ```
 
-The release ZIP contains the generated `dist/` directory. For Home Assistant, extract the ZIP and copy the contents of `dist/` into a directory under `config/www`, as described below. Do not create a release from a pull request or ordinary branch push; releases are intentionally tag-driven.
+The release ZIP contains the generated `dist/` directory. For Home Assistant, extract the ZIP and copy the contents of `dist/` into a directory under `config/www`, as described below. Do not create a release from a pull request or ordinary branch push.
 
 ## Deploy To Home Assistant
 
