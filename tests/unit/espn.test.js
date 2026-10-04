@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   fetchJson,
+  fetchStandings,
   fetchTeamDetails,
   getGameSummaryUrl,
   getLeagueBaseUrl,
   getScoreboardRequestParams,
   getScoreboardUrl,
   getTeamUrls,
+  getStandingsUrl,
   getSportPath,
 } from "../../src/api/espn.js";
 
@@ -35,6 +37,24 @@ describe("ESPN API helpers", () => {
       details: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/12",
       schedule: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/12/schedule",
     });
+  });
+
+  it.each([
+    ["college-football", "football"],
+    ["nfl", "football"],
+    ["mlb", "baseball"],
+    ["nba", "basketball"],
+    ["nhl", "hockey"],
+  ])("builds the v2 standings URL for %s", (league, sport) => {
+    expect(getStandingsUrl(league)).toBe(
+      `https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings`,
+    );
+  });
+
+  it("adds an ESPN group identifier to standings requests", () => {
+    expect(getStandingsUrl("nfl", { group: "8" })).toBe(
+      "https://site.api.espn.com/apis/v2/sports/football/nfl/standings?group=8",
+    );
   });
 
   it.each([
@@ -101,6 +121,37 @@ describe("ESPN API helpers", () => {
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(1, expect.stringContaining("/teams/12"));
     expect(fetchImpl).toHaveBeenNthCalledWith(2, expect.stringContaining("/teams/12/schedule"));
+  });
+
+  it("fetches standings from the v2 Site API", async () => {
+    const body = {
+      children: [{
+        id: "8",
+        name: "American Football Conference",
+        standings: { entries: [{ team: { id: "1" } }] },
+      }],
+    };
+    const subgroups = {
+      children: [{ id: "4", name: "AFC East", standings: { entries: [] } }],
+    };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(body))
+      .mockResolvedValueOnce(jsonResponse(subgroups));
+
+    await expect(fetchStandings("nfl", fetchImpl)).resolves.toEqual({
+      children: [{
+        ...body.children[0],
+        children: subgroups.children,
+      }],
+    });
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      1,
+      "https://site.api.espn.com/apis/v2/sports/football/nfl/standings",
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      "https://site.api.espn.com/apis/v2/sports/football/nfl/standings?group=8",
+    );
   });
 
   it("rejects non-OK responses", async () => {
