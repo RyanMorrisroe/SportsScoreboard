@@ -355,6 +355,45 @@ export function getCompetitor(game, type) {
   return competitorsList.find((c) => c.homeAway === type) || {};
 }
 
+export function getSeriesSummary(competition) {
+  const series = competition?.series;
+  const seriesCompetitors = series?.competitors;
+  if (!Array.isArray(seriesCompetitors) || seriesCompetitors.length !== 2) return "";
+
+  const records = seriesCompetitors.map((record) => {
+    const competitor = competition.competitors?.find(
+      (candidate) => String(candidate.id) === String(record.id),
+    );
+    const wins = Number(record.wins);
+    const name = competitor?.team?.displayName || competitor?.team?.location;
+    if (!name || !Number.isFinite(wins) || wins < 0) return null;
+    return { name, wins };
+  });
+  if (records.some((record) => !record)) return "";
+
+  const [first, second] = records;
+  const bestOf = Number(series.totalCompetitions);
+  const hasBestOf = Number.isInteger(bestOf) && bestOf > 0;
+  const bestOfLabel = hasBestOf ? `Best of ${bestOf} · ` : "";
+  const tieCounts = seriesCompetitors
+    .map((record) => Number(record.ties))
+    .filter((ties) => Number.isFinite(ties) && ties > 0);
+  const tiedGames = tieCounts.length ? Math.max(...tieCounts) : 0;
+  const isNonPlayoff =
+    typeof series.type === "string" && series.type.toLowerCase() !== "playoff";
+  const isComplete =
+    series.completed === true ||
+    (isNonPlayoff && hasBestOf && first.wins + second.wins + tiedGames === bestOf);
+  const resultLabel = first.wins === second.wins
+    ? `Series tied ${first.wins}-${second.wins}`
+    : `${first.wins > second.wins ? first.name : second.name} ${isComplete ? "wins series" : "lead"} ${Math.max(first.wins, second.wins)}-${Math.min(first.wins, second.wins)}`;
+  const tiesLabel = tiedGames > 0
+    ? ` · ${tiedGames} tied game${tiedGames === 1 ? "" : "s"}`
+    : "";
+
+  return `${bestOfLabel}${resultLabel}${tiesLabel}`;
+}
+
 export function getTeamName(game, type) {
   const comp = getCompetitor(game, type);
   return comp?.team?.displayName || comp?.team?.location || "Team";

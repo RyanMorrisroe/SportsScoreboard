@@ -362,6 +362,13 @@
             </div>
           </div>
 
+          <p
+            v-if="getSeriesSummary(game.competitions?.[0])"
+            class="-mt-2 mb-3 text-[11px] font-semibold text-zinc-400 truncate"
+          >
+            {{ getSeriesSummary(game.competitions?.[0]) }}
+          </p>
+
           <!-- TEAM MATRIX VALUES ROW (RANK INLINE & STRIPPED) -->
           <div class="space-y-3.5">
             <!-- AWAY SLOT -->
@@ -591,6 +598,13 @@
                   />
                 </div>
               </div>
+
+              <p
+                v-if="modalView === 'game' && modalSeriesSummary"
+                class="mb-4 text-center text-xs font-semibold text-zinc-400"
+              >
+                {{ modalSeriesSummary }}
+              </p>
 
               <div
                 v-if="modalView === 'game'"
@@ -1084,6 +1098,7 @@
         formatGameTime as formatGameTimeUtil,
         getFavoriteFilterText as getFavoriteFilterTextUtil,
         getGameState as getGameStateUtil,
+        getSeriesSummary as getSeriesSummaryUtil,
         getLinescoreHeaders as getLinescoreHeadersUtil,
         getLinescoreValues as getLinescoreValuesUtil,
         getPlayerLeaders as getPlayerLeadersUtil,
@@ -1132,6 +1147,7 @@
           const showModal = ref(false);
           const modalLoading = ref(false);
           const modalData = ref(null);
+          const selectedGame = ref(null);
           const modalTab = ref("stats");
           const modalView = ref("game");
           const selectedTeamSide = ref(null);
@@ -1151,7 +1167,7 @@
 
           const handleGameClick = (game) => {
             if (getGameState(game) !== "pre") {
-              openModal(game.id);
+              openModal(game);
             }
           };
 
@@ -1228,6 +1244,13 @@
           const getStandingStat = (team, key) =>
             team.stats.find((stat) => stat.key === key)?.value ?? "--";
 
+          const modalSeriesSummary = computed(() => {
+            const summaryCompetition = modalData.value?.raw?.header?.competitions?.[0];
+            return (
+              getSeriesSummary(summaryCompetition) ||
+              getSeriesSummary(selectedGame.value?.competitions?.[0])
+            );
+          });
           const selectedTeam = computed(
             () => modalData.value?.teams?.[selectedTeamSide.value] || {},
           );
@@ -1284,16 +1307,18 @@
           const returnToGame = () => {
             modalView.value = "game";
           };
-          const openModal = (eventId) => {
+          const openModal = (game) => {
             showModal.value = true;
+            selectedGame.value = game;
             resetTeamView();
             modalTab.value = "stats";
-            fetchGameDetail(eventId);
+            fetchGameDetail(game.id);
           };
 
           const closeModal = () => {
             showModal.value = false;
             modalData.value = null;
+            selectedGame.value = null;
             resetTeamView();
           };
 
@@ -1421,6 +1446,8 @@
 
           const isWinner = (game, type) => isWinnerUtil(game, type);
           const getGameState = (game) => getGameStateUtil(game);
+          const getSeriesSummary = (competition) =>
+            getSeriesSummaryUtil(competition);
           const getNetwork = (game) => getNetworkUtil(game);
           const formatGameTime = (game) => formatGameTimeUtil(game);
           const getTeamName = (game, type) => getTeamNameUtil(game, type);
@@ -1481,6 +1508,8 @@
             returnToGame,
             closeModal,
             getGameState,
+            getSeriesSummary,
+            modalSeriesSummary,
             getSituation,
             hasPossession,
             getNetwork,
