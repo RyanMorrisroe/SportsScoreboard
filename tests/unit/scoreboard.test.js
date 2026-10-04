@@ -4,6 +4,7 @@ import {
   getCompetitor,
   getFavoriteFilterText,
   getGameState,
+  getSeriesSummary,
   getLinescoreHeaders,
   getLinescoreValues,
   getNetwork,
@@ -71,6 +72,72 @@ describe("scoreboard helpers", () => {
     expect(getSituation(makeGame(), "nba")).toBe("Q2 08:10");
     expect(getSituation(makeGame(), "nhl")).toBe("Q2 08:10");
     expect(getSituation({ status: { type: { state: "pre" } }, competitions: [{}] }, "nba")).toBe("");
+  });
+
+  it("summarizes series wins and counts tied games once", () => {
+    const competition = makeCompetition({
+      series: {
+        totalCompetitions: 5,
+        competitors: [
+          { id: "2", wins: 1, ties: 1 },
+          { id: "1", wins: 0, ties: 1 },
+        ],
+      },
+    });
+
+    expect(getSeriesSummary(competition)).toBe("Best of 5 · Home Team lead 1-0 · 1 tied game");
+    expect(getSeriesSummary(makeCompetition({
+      series: {
+        totalCompetitions: 7,
+        competitors: [
+          { id: "1", wins: 2, ties: 0 },
+          { id: "2", wins: 2, ties: 0 },
+        ],
+      },
+    }))).toBe("Best of 7 · Series tied 2-2");
+  });
+
+  it("uses completed wording for ended series only", () => {
+    const makeSeriesCompetition = (series) => makeCompetition({
+      series: {
+        totalCompetitions: 3,
+        competitors: [
+          { id: "2", wins: 2, ties: 0 },
+          { id: "1", wins: 1, ties: 0 },
+        ],
+        ...series,
+      },
+    });
+
+    expect(getSeriesSummary(makeSeriesCompetition({ type: "playoff", completed: true })))
+      .toBe("Best of 3 · Home Team wins series 2-1");
+    expect(getSeriesSummary(makeSeriesCompetition({ type: "regular" })))
+      .toBe("Best of 3 · Home Team wins series 2-1");
+    expect(getSeriesSummary(makeSeriesCompetition({ type: "playoff", completed: false })))
+      .toBe("Best of 3 · Home Team lead 2-1");
+  });
+
+  it("counts a tied game once when detecting a completed non-playoff series", () => {
+    const competition = makeCompetition({
+      series: {
+        type: "regular",
+        totalCompetitions: 4,
+        competitors: [
+          { id: "2", wins: 2, ties: 1 },
+          { id: "1", wins: 1, ties: 1 },
+        ],
+      },
+    });
+
+    expect(getSeriesSummary(competition))
+      .toBe("Best of 4 · Home Team wins series 2-1 · 1 tied game");
+  });
+
+  it("omits unusable series data", () => {
+    expect(getSeriesSummary(makeCompetition())).toBe("");
+    expect(getSeriesSummary(makeCompetition({
+      series: { competitors: [{ id: "unknown", wins: 1 }, { id: "2", wins: 0 }] },
+    }))).toBe("");
   });
 
   it("uses sport-specific linescore periods and overtime labels", () => {
