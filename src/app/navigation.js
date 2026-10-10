@@ -38,7 +38,6 @@ function isValidEntry(entry) {
   return (
     isObject(entry) &&
     entry.version === HISTORY_STATE_VERSION &&
-    typeof entry.sessionId === "string" &&
     Number.isInteger(entry.index) &&
     Number.isInteger(entry.rootIndex) &&
     entry.index >= entry.rootIndex &&
@@ -47,13 +46,6 @@ function isValidEntry(entry) {
         entry.modalBaseIndex >= entry.rootIndex &&
         entry.modalBaseIndex <= entry.index)) &&
     isValidSnapshot(entry.snapshot)
-  );
-}
-
-function createSessionId() {
-  return (
-    globalThis.crypto?.randomUUID?.() ||
-    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   );
 }
 
@@ -73,7 +65,6 @@ export function initializeAppHistory(history, snapshot) {
 
   const entry = {
     version: HISTORY_STATE_VERSION,
-    sessionId: createSessionId(),
     index: 0,
     rootIndex: 0,
     modalBaseIndex: null,
@@ -94,7 +85,6 @@ export function pushAppHistoryEntry(history, snapshot) {
     : null;
   const entry = {
     version: HISTORY_STATE_VERSION,
-    sessionId: current?.sessionId || createSessionId(),
     index,
     rootIndex,
     modalBaseIndex,
@@ -110,7 +100,6 @@ export function replaceAppHistoryEntry(history, snapshot) {
   const index = current?.index ?? rootIndex;
   const entry = {
     version: HISTORY_STATE_VERSION,
-    sessionId: current?.sessionId || createSessionId(),
     index,
     rootIndex,
     modalBaseIndex: snapshot.modal

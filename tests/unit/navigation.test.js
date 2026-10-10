@@ -61,7 +61,7 @@ describe("navigation history helpers", () => {
 
     expect(first.index).toBe(1);
     expect(second.index).toBe(2);
-    expect(second.sessionId).toBe(first.sessionId);
+    expect(first.rootIndex).toBe(second.rootIndex);
     expect(canGoBackWithinApp(second)).toBe(true);
     expect(history.pushState).toHaveBeenCalledTimes(2);
     expect(history.pushState.mock.calls.every((call) => call.length === 2)).toBe(true);
