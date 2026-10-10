@@ -105,7 +105,7 @@
           <select
             v-if="selectedLeague === 'college-football'"
             v-model="selectedGroup"
-            @change="triggerImmediateFetch"
+            @change="handleGroupChange"
             class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
           >
             <option value="80">All</option>
@@ -179,7 +179,7 @@
             <input
               type="date"
               v-model="selectedDate"
-              @change="triggerImmediateFetch"
+              @change="handleDateChange"
               class="bg-transparent text-white text-sm font-semibold focus:outline-none scheme-dark cursor-pointer border-none p-0 min-w-[110px]"
             />
           </div>
@@ -1138,6 +1138,13 @@
       import { buildGameDetail } from "./src/domain/game.js";
       import { normalizeSchedule } from "./src/domain/schedule.js";
       import {
+        canGoBackWithinApp,
+        initializeAppHistory,
+        pushAppHistoryEntry,
+        readAppHistoryEntry,
+        replaceAppHistoryEntry,
+      } from "./src/app/navigation.js";
+      import {
         normalizeStandings,
         sortStandingTeams as sortStandingTeamsUtil,
       } from "./src/domain/standings.js";
@@ -1164,6 +1171,8 @@
           const standingsError = ref("");
           const standingsSort = ref({});
           let standingsRequestId = 0;
+          let scoreboardRequestId = 0;
+          let gameRequestId = 0;
 
           const showModal = ref(false);
           const modalLoading = ref(false);
@@ -1183,6 +1192,43 @@
 
           let pollingInterval = null;
 
+          const createNavigationSnapshot = (modal = null) => ({
+            league: selectedLeague.value,
+            view: viewMode.value,
+            week: week.value,
+            seasonType: seasonType.value,
+            selectedGroup: selectedGroup.value,
+            selectedDate: selectedDate.value,
+            modal,
+          });
+          const pushNavigationEntry = (modal = null) =>
+            pushAppHistoryEntry(
+              window.history,
+              createNavigationSnapshot(modal),
+            );
+          const replaceCurrentNavigationEntry = (modal) => {
+            const currentEntry = readAppHistoryEntry(window.history.state);
+            const nextModal =
+              modal === undefined ? currentEntry?.snapshot.modal ?? null : modal;
+            replaceAppHistoryEntry(
+              window.history,
+              createNavigationSnapshot(nextModal),
+            );
+          };
+          const hasSavedNavigation = Boolean(
+            readAppHistoryEntry(window.history.state),
+          );
+          const initialNavigationEntry = initializeAppHistory(
+            window.history,
+            createNavigationSnapshot(),
+          );
+          selectedLeague.value = initialNavigationEntry.snapshot.league;
+          viewMode.value = initialNavigationEntry.snapshot.view;
+          week.value = initialNavigationEntry.snapshot.week;
+          seasonType.value = initialNavigationEntry.snapshot.seasonType;
+          selectedGroup.value = initialNavigationEntry.snapshot.selectedGroup;
+          selectedDate.value = initialNavigationEntry.snapshot.selectedDate;
+
           // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
           const getFavoriteFilterText = () =>
             getFavoriteFilterTextUtil(selectedLeague.value);
@@ -1193,8 +1239,12 @@
             }
           };
 
-          const fetchScoreboard = async (isInitialBoot = false) => {
-            if (isInitialBoot) loading.value = true;
+          const fetchScoreboard = async (
+            isInitialBoot = false,
+            showLoading = isInitialBoot,
+          ) => {
+            const requestId = ++scoreboardRequestId;
+            if (showLoading) loading.value = true;
             try {
               const params = getScoreboardRequestParams(selectedLeague.value, {
                 date: selectedDate.value,
@@ -1207,6 +1257,7 @@
 
               const res = await fetch(endpoint);
               const data = await res.json();
+              if (requestId !== scoreboardRequestId) return;
               games.value = data.events || [];
 
               if (
@@ -1219,27 +1270,40 @@
                 if (data.season && data.season.type) {
                   seasonType.value = data.season.type;
                 }
+                replaceCurrentNavigationEntry();
               }
             } catch (err) {
-              console.error("Scoreboard fetch error:", err);
+              if (requestId === scoreboardRequestId) {
+                console.error("Scoreboard fetch error:", err);
+              }
             } finally {
-              if (isInitialBoot) loading.value = false;
+              if (requestId === scoreboardRequestId && showLoading) {
+                loading.value = false;
+              }
             }
           };
 
           const fetchGameDetail = async (eventId) => {
+            const requestId = ++gameRequestId;
             modalLoading.value = true;
             try {
               const endpoint = getGameSummaryUrl(selectedLeague.value, eventId);
               const res = await fetch(endpoint);
               const data = await res.json();
+              if (
+                requestId !== gameRequestId ||
+                !showModal.value ||
+                modalView.value !== "game" ||
+                String(selectedGame.value?.id) !== String(eventId)
+              ) return;
               modalData.value = buildGameDetail(data, eventId);
             } catch (err) {
-              console.error("Summary payload details parse error:", err);
-              modalData.value = null;
-            }
-            {
-              modalLoading.value = false;
+              if (requestId === gameRequestId) {
+                console.error("Summary payload details parse error:", err);
+                modalData.value = null;
+              }
+            } finally {
+              if (requestId === gameRequestId) modalLoading.value = false;
             }
           };
           const fetchStandings = async () => {
@@ -1260,8 +1324,18 @@
             }
           };
           const setDashboardView = async (view) => {
+            if (viewMode.value === view) return;
             viewMode.value = view;
+            pushNavigationEntry();
             if (view === "standings") await fetchStandings();
+          };
+          const handleGroupChange = () => {
+            pushNavigationEntry();
+            triggerImmediateFetch();
+          };
+          const handleDateChange = () => {
+            pushNavigationEntry();
+            triggerImmediateFetch();
           };
           const getStandingStat = (team, key) =>
             team.stats.find((stat) => stat.key === key)?.value ?? "--";
@@ -1328,7 +1402,7 @@
             teamRequestId++;
           };
 
-          const openTeamDetails = async (teamOrSide) => {
+          const openTeamDetails = async (teamOrSide, { pushHistory = true } = {}) => {
             const team =
               typeof teamOrSide === "string"
                 ? modalData.value?.teams?.[teamOrSide]
@@ -1347,6 +1421,22 @@
               showModal.value = true;
             }
             modalView.value = "team";
+            if (pushHistory) {
+              pushNavigationEntry({
+                type: "team",
+                teamId: String(team.id),
+                team: {
+                  id: String(team.id),
+                  name: team.name || team.abbrev || team.abbreviation || "Team",
+                  abbrev: team.abbrev || team.abbreviation || "",
+                  logo: team.logo || "",
+                },
+                source: typeof teamOrSide === "string" ? "game" : "standings",
+                ...(typeof teamOrSide === "string"
+                  ? { gameId: String(modalData.value?.id || selectedGame.value?.id || ""), side: teamOrSide }
+                  : {}),
+              });
+            }
             teamData.value = null;
             teamScheduleData.value = null;
             teamError.value = "";
@@ -1372,25 +1462,108 @@
           };
 
           const returnToGame = () => {
+            const currentEntry = readAppHistoryEntry(window.history.state);
+            if (
+              currentEntry?.snapshot.modal?.type === "team" &&
+              canGoBackWithinApp(currentEntry) &&
+              currentEntry.index >
+                (currentEntry.modalBaseIndex ?? currentEntry.rootIndex)
+            ) {
+              window.history.back();
+              return;
+            }
             if (modalData.value) {
               modalView.value = "game";
+              replaceCurrentNavigationEntry({
+                type: "game",
+                eventId: String(modalData.value.id),
+              });
             } else {
               closeModal();
             }
           };
-          const openModal = (game) => {
+          const openModal = (game, { pushHistory = true } = {}) => {
             showModal.value = true;
             selectedGame.value = game;
             resetTeamView();
+            modalData.value = null;
             modalTab.value = "stats";
+            if (pushHistory) {
+              pushNavigationEntry({ type: "game", eventId: String(game.id) });
+            }
             fetchGameDetail(game.id);
           };
 
           const closeModal = () => {
+            const currentEntry = readAppHistoryEntry(window.history.state);
+            if (currentEntry?.snapshot.modal) {
+              const modalBaseIndex =
+                currentEntry.modalBaseIndex ?? currentEntry.rootIndex;
+              const historySteps = modalBaseIndex - currentEntry.index;
+              if (historySteps < 0) {
+                window.history.go(historySteps);
+                return;
+              }
+            }
             showModal.value = false;
             modalData.value = null;
             selectedGame.value = null;
+            gameRequestId++;
             resetTeamView();
+            replaceCurrentNavigationEntry(null);
+          };
+
+          const restoreNavigationEntry = async (entry, isInitialLoad = false) => {
+            const snapshot = entry.snapshot;
+            scoreboardRequestId++;
+            standingsRequestId++;
+            gameRequestId++;
+            teamRequestId++;
+            selectedLeague.value = snapshot.league;
+            viewMode.value = snapshot.view;
+            week.value = snapshot.week;
+            seasonType.value = snapshot.seasonType;
+            selectedGroup.value = snapshot.selectedGroup;
+            selectedDate.value = snapshot.selectedDate;
+            standings.value = [];
+            standingsLoading.value = false;
+            standingsError.value = "";
+            modalData.value = null;
+            selectedGame.value = null;
+            selectedTeamSide.value = null;
+            selectedTeamOverride.value = null;
+            teamData.value = null;
+            teamScheduleData.value = null;
+            teamLoading.value = false;
+            modalLoading.value = false;
+            teamError.value = "";
+            scheduleError.value = "";
+            showSeasonMetrics.value = false;
+            showModal.value = false;
+            modalView.value = "game";
+
+            const pendingRequests = [
+              fetchScoreboard(
+                isInitialLoad && !hasSavedNavigation,
+                isInitialLoad,
+              ),
+            ];
+            if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
+            if (snapshot.modal?.type === "game") {
+              openModal({ id: snapshot.modal.eventId }, { pushHistory: false });
+            } else if (snapshot.modal?.type === "team") {
+              const team = snapshot.modal.team || {
+                id: snapshot.modal.teamId,
+                name: "Team",
+              };
+              openTeamDetails(team, { pushHistory: false });
+            }
+            await Promise.all(pendingRequests);
+          };
+
+          const handlePopState = (event) => {
+            const entry = readAppHistoryEntry(event.state);
+            if (entry) restoreNavigationEntry(entry);
           };
 
           const linescoreHeaders = computed(() => {
@@ -1465,13 +1638,14 @@
           const startPoller = () => {
             pollingInterval = setInterval(() => {
               fetchScoreboard(false);
-              if (showModal.value && modalData.value?.id) {
+              if (showModal.value && modalView.value === "game" && modalData.value?.id) {
                 fetchGameDetail(modalData.value.id);
               }
             }, 15000);
           };
 
           const switchTab = async (league) => {
+            if (selectedLeague.value === league) return;
             resetTeamView();
             selectedLeague.value = league;
             standingsRequestId++;
@@ -1481,10 +1655,9 @@
             selectedGroup.value = "";
             if (["mlb", "nba", "nhl"].includes(league)) {
               selectedDate.value = new Date().toLocaleDateString("en-CA");
-              await fetchScoreboard(true);
-            } else {
-              await fetchScoreboard(true);
             }
+            pushNavigationEntry();
+            await fetchScoreboard(true);
             triggerImmediateFetch();
             if (viewMode.value === "standings") await fetchStandings();
           };
@@ -1492,12 +1665,15 @@
           const adjustWeek = (amount) => {
             if (week.value + amount < 1) return;
             week.value += amount;
+            pushNavigationEntry();
             triggerImmediateFetch();
           };
 
           const setSeasonType = (type) => {
+            if (seasonType.value === type && week.value === 1) return;
             seasonType.value = type;
             week.value = 1;
+            pushNavigationEntry();
             triggerImmediateFetch();
           };
 
@@ -1527,7 +1703,11 @@
           const getTeamRank = (game, type) => getTeamRankUtil(game, type);
 
           onMounted(async () => {
-            await fetchScoreboard(true);
+            window.addEventListener("popstate", handlePopState);
+            await restoreNavigationEntry(
+              initialNavigationEntry,
+              !hasSavedNavigation,
+            );
             startPoller();
           });
 
@@ -1577,6 +1757,8 @@
             adjustWeek,
             setSeasonType,
             triggerImmediateFetch,
+            handleGroupChange,
+            handleDateChange,
             openModal,
             openTeamDetails,
             returnToGame,
