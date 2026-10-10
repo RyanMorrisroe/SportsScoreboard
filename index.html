@@ -249,15 +249,25 @@
                   <th
                     v-for="column in group.columns"
                     :key="column.key"
+                    :aria-sort="getStandingSortDirection(group.id, column.key) === 'asc' ? 'ascending' : getStandingSortDirection(group.id, column.key) === 'desc' ? 'descending' : 'none'"
                     class="py-2 px-3 text-right"
                   >
-                    {{ column.label }}
+                    <button
+                      type="button"
+                      class="inline-flex w-full items-center justify-end gap-1 hover:text-zinc-200"
+                      @click="toggleStandingsSort(group.id, column.key)"
+                    >
+                      {{ column.label }}
+                      <span aria-hidden="true" class="text-zinc-500">
+                        {{ getStandingSortDirection(group.id, column.key) === 'asc' ? '↑' : getStandingSortDirection(group.id, column.key) === 'desc' ? '↓' : '↕' }}
+                      </span>
+                    </button>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="team in group.teams"
+                  v-for="team in getSortedStandingTeams(group)"
                   :key="team.id"
                   class="border-b border-zinc-800/60 last:border-0"
                 >
@@ -1127,7 +1137,10 @@
       } from "./src/app/scoreboard.js";
       import { buildGameDetail } from "./src/domain/game.js";
       import { normalizeSchedule } from "./src/domain/schedule.js";
-      import { normalizeStandings } from "./src/domain/standings.js";
+      import {
+        normalizeStandings,
+        sortStandingTeams as sortStandingTeamsUtil,
+      } from "./src/domain/standings.js";
       import { getTeamRecords, getTeamRecordStats } from "./src/domain/team.js";
 
       const { createApp, ref, computed, onMounted } = Vue;
@@ -1149,6 +1162,7 @@
           const standings = ref([]);
           const standingsLoading = ref(false);
           const standingsError = ref("");
+          const standingsSort = ref({});
           let standingsRequestId = 0;
 
           const showModal = ref(false);
@@ -1251,6 +1265,34 @@
           };
           const getStandingStat = (team, key) =>
             team.stats.find((stat) => stat.key === key)?.value ?? "--";
+          const getStandingSortDirection = (groupId, key) =>
+            standingsSort.value[groupId]?.key === key
+              ? standingsSort.value[groupId].direction
+              : null;
+          const toggleStandingsSort = (groupId, key) => {
+            const current = standingsSort.value[groupId];
+            if (current?.key !== key) {
+              standingsSort.value = {
+                ...standingsSort.value,
+                [groupId]: { key, direction: "asc" },
+              };
+            } else if (current.direction === "asc") {
+              standingsSort.value = {
+                ...standingsSort.value,
+                [groupId]: { key, direction: "desc" },
+              };
+            } else {
+              const nextSort = { ...standingsSort.value };
+              delete nextSort[groupId];
+              standingsSort.value = nextSort;
+            }
+          };
+          const getSortedStandingTeams = (group) => {
+            const sort = standingsSort.value[group.id];
+            return sort
+              ? sortStandingTeamsUtil(group.teams, sort.key, sort.direction)
+              : group.teams;
+          };
 
           const modalSeriesSummary = computed(() => {
             const summaryCompetition = modalData.value?.raw?.header?.competitions?.[0];
@@ -1505,6 +1547,9 @@
             standingsError,
             setDashboardView,
             getStandingStat,
+            getStandingSortDirection,
+            toggleStandingsSort,
+            getSortedStandingTeams,
             showModal,
             modalLoading,
             modalData,
