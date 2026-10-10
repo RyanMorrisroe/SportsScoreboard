@@ -270,7 +270,11 @@
                         class="w-6 h-6 object-contain"
                         loading="lazy"
                       />
-                      <span class="font-bold text-white">{{ team.name }}</span>
+                      <button
+                        type="button"
+                        class="font-bold text-white hover:text-blue-400"
+                        @click="openTeamDetails(team)"
+                      >{{ team.name }}</button>
                       <span
                         v-if="team.note"
                         class="text-[10px] text-emerald-400"
@@ -459,7 +463,7 @@
           </div>
 
           <div
-            v-else-if="!modalData"
+            v-else-if="!modalData && modalView !== 'team'"
             class="p-8 text-center text-zinc-400 relative"
           >
             <button
@@ -472,7 +476,7 @@
           </div>
 
           <!-- RE-IMPLEMENTED SAFETY WRAPPER: Completely gates property lookups until modalData populates -->
-          <div v-if="modalData" class="flex flex-col w-full">
+          <div v-if="modalData || modalView === 'team'" class="flex flex-col w-full">
             <div
               class="flex justify-end p-2 border-b border-zinc-800/40 bg-zinc-950/20"
             >
@@ -484,7 +488,10 @@
               </button>
             </div>
 
-            <div class="p-6 border-b border-zinc-800 bg-zinc-950/40">
+            <div
+              v-if="modalView === 'game'"
+              class="p-6 border-b border-zinc-800 bg-zinc-950/40"
+            >
               <div
                 class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40"
               >
@@ -896,7 +903,7 @@
                   @click="returnToGame"
                   class="text-zinc-400 hover:text-white text-xs font-bold"
                 >
-                  ← BACK TO GAME
+                  ← BACK
                 </button>
                 <span
                   class="text-[10px] text-zinc-500 uppercase tracking-widest"
@@ -930,7 +937,7 @@
                       {{ teamData.team?.displayName || selectedTeam.name }}
                     </h3>
                     <p class="text-xs text-zinc-400 mt-1">
-                      {{ teamData.team?.abbreviation || selectedTeam.abbrev
+                      {{ teamData.team?.abbreviation || selectedTeam.abbrev || selectedTeam.abbreviation
                       }}<span v-if="teamData.team?.location">
                         · {{ teamData.team.location }}</span
                       >
@@ -1151,6 +1158,7 @@
           const modalTab = ref("stats");
           const modalView = ref("game");
           const selectedTeamSide = ref(null);
+          const selectedTeamOverride = ref(null);
           const teamData = ref(null);
           const teamScheduleData = ref(null);
           const teamLoading = ref(false);
@@ -1252,7 +1260,10 @@
             );
           });
           const selectedTeam = computed(
-            () => modalData.value?.teams?.[selectedTeamSide.value] || {},
+            () =>
+              selectedTeamOverride.value ||
+              modalData.value?.teams?.[selectedTeamSide.value] ||
+              {},
           );
           const teamRecordStats = computed(() => getTeamRecordStats(teamData.value));
           const teamRecords = computed(() => getTeamRecords(teamData.value));
@@ -1265,6 +1276,7 @@
           const resetTeamView = () => {
             modalView.value = "game";
             selectedTeamSide.value = null;
+            selectedTeamOverride.value = null;
             teamData.value = null;
             teamScheduleData.value = null;
             teamLoading.value = false;
@@ -1274,11 +1286,24 @@
             teamRequestId++;
           };
 
-          const openTeamDetails = async (side) => {
-            const team = modalData.value?.teams?.[side];
+          const openTeamDetails = async (teamOrSide) => {
+            const team =
+              typeof teamOrSide === "string"
+                ? modalData.value?.teams?.[teamOrSide]
+                : teamOrSide;
             if (!team?.id) return;
             const requestId = ++teamRequestId;
-            selectedTeamSide.value = side;
+            if (typeof teamOrSide === "string") {
+              selectedTeamSide.value = teamOrSide;
+              selectedTeamOverride.value = null;
+            } else {
+              selectedTeamSide.value = null;
+              selectedTeamOverride.value = team;
+              selectedGame.value = null;
+              modalData.value = null;
+              modalLoading.value = false;
+              showModal.value = true;
+            }
             modalView.value = "team";
             teamData.value = null;
             teamScheduleData.value = null;
@@ -1305,7 +1330,11 @@
           };
 
           const returnToGame = () => {
-            modalView.value = "game";
+            if (modalData.value) {
+              modalView.value = "game";
+            } else {
+              closeModal();
+            }
           };
           const openModal = (game) => {
             showModal.value = true;
