@@ -249,15 +249,25 @@
                   <th
                     v-for="column in group.columns"
                     :key="column.key"
+                    :aria-sort="getStandingSortDirection(group.id, column.key) === 'asc' ? 'ascending' : getStandingSortDirection(group.id, column.key) === 'desc' ? 'descending' : 'none'"
                     class="py-2 px-3 text-right"
                   >
-                    {{ column.label }}
+                    <button
+                      type="button"
+                      class="inline-flex w-full items-center justify-end gap-1 hover:text-zinc-200"
+                      @click="toggleStandingsSort(group.id, column.key)"
+                    >
+                      {{ column.label }}
+                      <span aria-hidden="true" class="text-zinc-500">
+                        {{ getStandingSortDirection(group.id, column.key) === 'asc' ? '↑' : getStandingSortDirection(group.id, column.key) === 'desc' ? '↓' : '↕' }}
+                      </span>
+                    </button>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="team in group.teams"
+                  v-for="team in getSortedStandingTeams(group)"
                   :key="team.id"
                   class="border-b border-zinc-800/60 last:border-0"
                 >
@@ -270,7 +280,11 @@
                         class="w-6 h-6 object-contain"
                         loading="lazy"
                       />
-                      <span class="font-bold text-white">{{ team.name }}</span>
+                      <button
+                        type="button"
+                        class="font-bold text-white hover:text-blue-400"
+                        @click="openTeamDetails(team)"
+                      >{{ team.name }}</button>
                       <span
                         v-if="team.note"
                         class="text-[10px] text-emerald-400"
@@ -459,7 +473,7 @@
           </div>
 
           <div
-            v-else-if="!modalData"
+            v-else-if="!modalData && modalView !== 'team'"
             class="p-8 text-center text-zinc-400 relative"
           >
             <button
@@ -472,7 +486,7 @@
           </div>
 
           <!-- RE-IMPLEMENTED SAFETY WRAPPER: Completely gates property lookups until modalData populates -->
-          <div v-if="modalData" class="flex flex-col w-full">
+          <div v-if="modalData || modalView === 'team'" class="flex flex-col w-full">
             <div
               class="flex justify-end p-2 border-b border-zinc-800/40 bg-zinc-950/20"
             >
@@ -484,7 +498,10 @@
               </button>
             </div>
 
-            <div class="p-6 border-b border-zinc-800 bg-zinc-950/40">
+            <div
+              v-if="modalView === 'game'"
+              class="p-6 border-b border-zinc-800 bg-zinc-950/40"
+            >
               <div
                 class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40"
               >
@@ -896,7 +913,7 @@
                   @click="returnToGame"
                   class="text-zinc-400 hover:text-white text-xs font-bold"
                 >
-                  ← BACK TO GAME
+                  ← BACK
                 </button>
                 <span
                   class="text-[10px] text-zinc-500 uppercase tracking-widest"
@@ -930,7 +947,7 @@
                       {{ teamData.team?.displayName || selectedTeam.name }}
                     </h3>
                     <p class="text-xs text-zinc-400 mt-1">
-                      {{ teamData.team?.abbreviation || selectedTeam.abbrev
+                      {{ teamData.team?.abbreviation || selectedTeam.abbrev || selectedTeam.abbreviation
                       }}<span v-if="teamData.team?.location">
                         · {{ teamData.team.location }}</span
                       >
@@ -1120,7 +1137,10 @@
       } from "./src/app/scoreboard.js";
       import { buildGameDetail } from "./src/domain/game.js";
       import { normalizeSchedule } from "./src/domain/schedule.js";
-      import { normalizeStandings } from "./src/domain/standings.js";
+      import {
+        normalizeStandings,
+        sortStandingTeams as sortStandingTeamsUtil,
+      } from "./src/domain/standings.js";
       import { getTeamRecords, getTeamRecordStats } from "./src/domain/team.js";
 
       const { createApp, ref, computed, onMounted } = Vue;
@@ -1142,6 +1162,7 @@
           const standings = ref([]);
           const standingsLoading = ref(false);
           const standingsError = ref("");
+          const standingsSort = ref({});
           let standingsRequestId = 0;
 
           const showModal = ref(false);
@@ -1151,6 +1172,7 @@
           const modalTab = ref("stats");
           const modalView = ref("game");
           const selectedTeamSide = ref(null);
+          const selectedTeamOverride = ref(null);
           const teamData = ref(null);
           const teamScheduleData = ref(null);
           const teamLoading = ref(false);
@@ -1243,6 +1265,34 @@
           };
           const getStandingStat = (team, key) =>
             team.stats.find((stat) => stat.key === key)?.value ?? "--";
+          const getStandingSortDirection = (groupId, key) =>
+            standingsSort.value[groupId]?.key === key
+              ? standingsSort.value[groupId].direction
+              : null;
+          const toggleStandingsSort = (groupId, key) => {
+            const current = standingsSort.value[groupId];
+            if (current?.key !== key) {
+              standingsSort.value = {
+                ...standingsSort.value,
+                [groupId]: { key, direction: "asc" },
+              };
+            } else if (current.direction === "asc") {
+              standingsSort.value = {
+                ...standingsSort.value,
+                [groupId]: { key, direction: "desc" },
+              };
+            } else {
+              const nextSort = { ...standingsSort.value };
+              delete nextSort[groupId];
+              standingsSort.value = nextSort;
+            }
+          };
+          const getSortedStandingTeams = (group) => {
+            const sort = standingsSort.value[group.id];
+            return sort
+              ? sortStandingTeamsUtil(group.teams, sort.key, sort.direction)
+              : group.teams;
+          };
 
           const modalSeriesSummary = computed(() => {
             const summaryCompetition = modalData.value?.raw?.header?.competitions?.[0];
@@ -1252,7 +1302,10 @@
             );
           });
           const selectedTeam = computed(
-            () => modalData.value?.teams?.[selectedTeamSide.value] || {},
+            () =>
+              selectedTeamOverride.value ||
+              modalData.value?.teams?.[selectedTeamSide.value] ||
+              {},
           );
           const teamRecordStats = computed(() => getTeamRecordStats(teamData.value));
           const teamRecords = computed(() => getTeamRecords(teamData.value));
@@ -1265,6 +1318,7 @@
           const resetTeamView = () => {
             modalView.value = "game";
             selectedTeamSide.value = null;
+            selectedTeamOverride.value = null;
             teamData.value = null;
             teamScheduleData.value = null;
             teamLoading.value = false;
@@ -1274,11 +1328,24 @@
             teamRequestId++;
           };
 
-          const openTeamDetails = async (side) => {
-            const team = modalData.value?.teams?.[side];
+          const openTeamDetails = async (teamOrSide) => {
+            const team =
+              typeof teamOrSide === "string"
+                ? modalData.value?.teams?.[teamOrSide]
+                : teamOrSide;
             if (!team?.id) return;
             const requestId = ++teamRequestId;
-            selectedTeamSide.value = side;
+            if (typeof teamOrSide === "string") {
+              selectedTeamSide.value = teamOrSide;
+              selectedTeamOverride.value = null;
+            } else {
+              selectedTeamSide.value = null;
+              selectedTeamOverride.value = team;
+              selectedGame.value = null;
+              modalData.value = null;
+              modalLoading.value = false;
+              showModal.value = true;
+            }
             modalView.value = "team";
             teamData.value = null;
             teamScheduleData.value = null;
@@ -1305,7 +1372,11 @@
           };
 
           const returnToGame = () => {
-            modalView.value = "game";
+            if (modalData.value) {
+              modalView.value = "game";
+            } else {
+              closeModal();
+            }
           };
           const openModal = (game) => {
             showModal.value = true;
@@ -1476,6 +1547,9 @@
             standingsError,
             setDashboardView,
             getStandingStat,
+            getStandingSortDirection,
+            toggleStandingsSort,
+            getSortedStandingTeams,
             showModal,
             modalLoading,
             modalData,

@@ -1,3 +1,36 @@
+const STANDINGS_STAT_ORDER = [
+  "playoffseed",
+  "rank",
+  "position",
+  "wins",
+  "losses",
+  "ties",
+  "winpercent",
+  "winpercentage",
+  "gamesbehind",
+  "pointsfor",
+  "runsfor",
+  "pointsagainst",
+  "runsagainst",
+  "pointdifferential",
+  "rundifferential",
+  "homerecord",
+  "home",
+  "awayrecord",
+  "away",
+  "divisionrecord",
+  "vsdivision",
+  "conferencerecord",
+  "vsconfrecord",
+  "vsconference",
+  "lasttenrecord",
+  "lastten",
+  "streak",
+];
+const STANDINGS_STAT_ORDER_INDEX = new Map(
+  STANDINGS_STAT_ORDER.map((key, index) => [key, index]),
+);
+
 function getStatValue(stat) {
   if (stat.displayValue !== undefined && stat.displayValue !== null) {
     return stat.displayValue;
@@ -41,6 +74,11 @@ function collectGroups(node, path, groups) {
         }
       }
     }
+    columns.sort((first, second) => {
+      const firstOrder = STANDINGS_STAT_ORDER_INDEX.get(first.key.toLowerCase());
+      const secondOrder = STANDINGS_STAT_ORDER_INDEX.get(second.key.toLowerCase());
+      return (firstOrder ?? Infinity) - (secondOrder ?? Infinity);
+    });
     groups.push({
       id: [...path, id].join("-"),
       name,
@@ -66,4 +104,44 @@ export function normalizeStandings(payload) {
     collectGroups(payload, [], groups);
   }
   return groups;
+}
+
+function getStandingSortValue(team, key) {
+  const value = team.stats.find((stat) => stat.key === key)?.value;
+  if (value === undefined || value === null || value === "--") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const text = String(value).trim();
+  if (!text) return null;
+  const splitRecord = text.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
+  if (splitRecord) return Number(splitRecord[1]);
+
+  const numericValue = Number(text.replaceAll(",", ""));
+  return Number.isFinite(numericValue) ? numericValue : text.toLocaleLowerCase();
+}
+
+export function sortStandingTeams(teams, key, direction) {
+  if (!key || !["asc", "desc"].includes(direction)) return teams;
+  const multiplier = direction === "desc" ? -1 : 1;
+
+  return teams
+    .map((team, index) => ({
+      team,
+      index,
+      value: getStandingSortValue(team, key),
+    }))
+    .sort((first, second) => {
+      if (first.value === null) return second.value === null ? first.index - second.index : 1;
+      if (second.value === null) return -1;
+
+      const comparison =
+        typeof first.value === "number" && typeof second.value === "number"
+          ? first.value - second.value
+          : String(first.value).localeCompare(String(second.value), undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+      return comparison * multiplier || first.index - second.index;
+    })
+    .map(({ team }) => team);
 }

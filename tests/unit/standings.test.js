@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/espn/standings.json";
-import { normalizeStandings } from "../../src/domain/standings.js";
+import {
+  normalizeStandings,
+  sortStandingTeams,
+} from "../../src/domain/standings.js";
 
 describe("standings normalization", () => {
   it("normalizes conference and nested division standings with available stat labels", () => {
@@ -91,5 +94,67 @@ describe("standings normalization", () => {
         }],
       },
     ]);
+  });
+
+  it("orders known stats consistently and keeps unknown stats at the end", () => {
+    const result = normalizeStandings({
+      standings: {
+        entries: [{
+          team: { displayName: "Team" },
+          stats: [
+            { name: "streak", value: "W3" },
+            { name: "conferenceRecord", value: "8-2" },
+            { name: "pointsAgainst", value: 90 },
+            { name: "winPercent", value: 0.8 },
+            { name: "losses", value: 2 },
+            { name: "playoffSeed", value: 1 },
+            { name: "customSecond", value: 2 },
+            { name: "wins", value: 8 },
+            { name: "pointsFor", value: 100 },
+            { name: "gamesBehind", value: 0 },
+            { name: "pointDifferential", value: 10 },
+            { name: "homeRecord", value: "4-1" },
+            { name: "customFirst", value: 1 },
+          ],
+        }],
+      },
+    });
+
+    expect(result[0].columns.map((column) => column.key)).toEqual([
+      "playoffSeed",
+      "wins",
+      "losses",
+      "winPercent",
+      "gamesBehind",
+      "pointsFor",
+      "pointsAgainst",
+      "pointDifferential",
+      "homeRecord",
+      "conferenceRecord",
+      "streak",
+      "customSecond",
+      "customFirst",
+    ]);
+  });
+
+  it("sorts numeric stats and split records without mutating the original teams", () => {
+    const teams = [
+      { name: "Seven wins", stats: [{ key: "record", value: "7-5" }] },
+      { name: "Ten wins", stats: [{ key: "record", value: "10-2" }] },
+      { name: "No record", stats: [{ key: "record", value: "--" }] },
+    ];
+
+    expect(sortStandingTeams(teams, "record", "asc").map((team) => team.name)).toEqual([
+      "Seven wins",
+      "Ten wins",
+      "No record",
+    ]);
+    expect(sortStandingTeams(teams, "record", "desc").map((team) => team.name)).toEqual([
+      "Ten wins",
+      "Seven wins",
+      "No record",
+    ]);
+    expect(sortStandingTeams(teams, null, null)).toBe(teams);
+    expect(teams.map((team) => team.name)).toEqual(["Seven wins", "Ten wins", "No record"]);
   });
 });
