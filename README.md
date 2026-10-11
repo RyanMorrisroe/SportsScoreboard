@@ -23,38 +23,38 @@ Desktop images are full-page browser captures. Mobile images are captured at Pix
 
 ### Scoreboard
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                        | Pixel 9a                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | ![Desktop scoreboard](docs/screenshots/Desktop_Scoreboard.png) | ![Scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard.png) |
 
 ### TV Lineup
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                        | Pixel 9a                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | ![Desktop TV Lineup](docs/screenshots/Desktop_TV_Schedule.png) | ![TV Lineup on Pixel 9a](docs/screenshots/Mobile_TV_Schedule.png) |
 
 ### Standings
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                      | Pixel 9a                                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
 | ![Desktop standings](docs/screenshots/Desktop_Standings.png) | ![Standings on Pixel 9a](docs/screenshots/Mobile_Standings.png) |
 
 ### Hockey Scoreboard
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                                      | Pixel 9a                                                                        |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | ![Desktop hockey scoreboard](docs/screenshots/Desktop_Scoreboard_Hockey.png) | ![Hockey scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard_Hockey.png) |
 
 ### Game Details
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                                | Pixel 9a                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | ![Desktop game details modal](docs/screenshots/Dekstop_Game_Modal.png) | ![Game details modal on Pixel 9a](docs/screenshots/Mobile_Game_Modal.png) |
 
 ### Team Details
 
-| Desktop | Pixel 9a |
-| --- | --- |
+| Desktop                                                                | Pixel 9a                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | ![Desktop team details modal](docs/screenshots/Desktop_Team_Modal.png) | ![Team details modal on Pixel 9a](docs/screenshots/Mobile_Team_Modal.png) |
 
 ## How It Works
