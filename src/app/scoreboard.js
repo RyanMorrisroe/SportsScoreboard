@@ -307,6 +307,228 @@ export function getNetwork(game) {
   return "";
 }
 
+const TV_LINEUP_HALF_HOUR_MS = 30 * 60 * 1000;
+const TV_LINEUP_HALF_HOUR_WIDTH = 44;
+const TV_LINEUP_LANE_HEIGHT = 92;
+
+export function getTvLineupDurationMinutes(game, selectedLeague, seasonType = 2) {
+  if (selectedLeague === "college-football") return 210;
+  if (selectedLeague === "nfl") {
+    if (seasonType === 3) return 210;
+    if (typeof game?.date !== "string" || game.date.trim() === "") return 180;
+
+    const gameDate = new Date(game?.date);
+    if (Number.isNaN(gameDate.getTime())) return 180;
+    const easternHour = Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "2-digit",
+        hourCycle: "h23",
+      })
+        .formatToParts(gameDate)
+        .find((part) => part.type === "hour")?.value,
+    );
+    return easternHour >= 19 ? 210 : 180;
+  }
+  if (selectedLeague === "nba") return 150;
+  return 180;
+}
+
+export function getTvLineupStatus(game, selectedLeague) {
+  const state = getGameState(game);
+  const status = game?.status || {};
+  const type = status.type || {};
+
+  if (state === "pre") return formatGameTime(game) || "TBD";
+  if (state !== "in") return "FINAL";
+
+  const competition = game?.competitions?.[0] || {};
+  const detail = String(type.detail || "").trim();
+  const shortDetail = String(type.shortDetail || "").trim();
+  if (selectedLeague === "mlb") {
+    const inning = detail || shortDetail;
+    return inning ? `LIVE · ${inning}` : "LIVE";
+  }
+  if (/\b\d{1,2}:\d{2}\b/.test(detail)) return `LIVE · ${detail}`;
+
+  const clock =
+    status.displayClock ||
+    competition.status?.displayClock ||
+    competition.situation?.clock?.displayValue ||
+    "";
+  const period =
+    status.period ||
+    competition.status?.period ||
+    competition.situation?.period ||
+    "";
+  const periodLabel = shortDetail || (period ? `Period ${period}` : "");
+  if (periodLabel && clock) return `LIVE · ${periodLabel} ${clock}`;
+  const liveDetail = periodLabel || detail || shortDetail;
+  return liveDetail ? `LIVE · ${liveDetail}` : "LIVE";
+}
+
+export function getTvLineupTeamStyle(game, homeAway) {
+  const team = getCompetitor(game, homeAway)?.team;
+  const fallback = homeAway === "away" ? "#2563eb" : "#059669";
+  const backgroundColor =
+    normalizeHexColor(team?.color) ||
+    normalizeHexColor(team?.alternateColor) ||
+    fallback;
+  const luminance = relativeLuminance(backgroundColor);
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  const blackContrast = (luminance + 0.05) / 0.05;
+
+  return {
+    backgroundColor,
+    color: whiteContrast >= blackContrast ? "#ffffff" : "#09090b",
+  };
+}
+
+function getLocalDateKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function roundToHalfHour(timestamp, roundUp = false) {
+  const date = new Date(timestamp);
+  const minuteOffset =
+    (date.getMinutes() % 30) + date.getSeconds() / 60 + date.getMilliseconds() / 60000;
+  const adjustment = roundUp
+    ? minuteOffset === 0 ? 0 : 30 - minuteOffset
+    : -minuteOffset;
+  return timestamp + adjustment * 60 * 1000;
+}
+
+export function getTvLineupLayout(
+  games,
+  selectedLeague,
+  seasonType = 2,
+  selectedDay = getLocalDateKey(new Date()),
+) {
+  const channelMap = new Map();
+  const scheduledGames = [];
+  const unscheduled = [];
+
+  for (const game of Array.isArray(games) ? games : []) {
+    const channel = getNetwork(game) || "Other";
+    const date = new Date(game?.date);
+    const hasCalendarDate =
+      typeof game?.date === "string" &&
+      game.date.trim() !== "" &&
+      !Number.isNaN(date.getTime());
+    if (!hasCalendarDate || getLocalDateKey(date) !== selectedDay) continue;
+
+    const statusText = `${game?.status?.type?.detail || ""} ${game?.status?.type?.shortDetail || ""}`;
+    const hasValidTime =
+      game?.timeValid !== false &&
+      game?.competitions?.[0]?.timeValid !== false &&
+      !/\bTBD\b/i.test(statusText);
+
+    if (!hasValidTime) {
+      unscheduled.push({
+        game,
+        channel,
+        status: getTvLineupStatus(game, selectedLeague),
+      });
+      continue;
+    }
+
+    const start = date.getTime();
+    const durationMinutes = getTvLineupDurationMinutes(game, selectedLeague, seasonType);
+    const channelGames = channelMap.get(channel) || [];
+    channelGames.push({
+      game,
+      start,
+      end: start + durationMinutes * 60 * 1000,
+      durationMinutes,
+      status: getTvLineupStatus(game, selectedLeague),
+    });
+    channelMap.set(channel, channelGames);
+    scheduledGames.push({ start, end: start + durationMinutes * 60 * 1000 });
+  }
+
+  if (scheduledGames.length === 0) {
+    return {
+      channels: [],
+      ticks: [],
+      gridlines: [],
+      timelineWidth: 0,
+      laneHeight: TV_LINEUP_LANE_HEIGHT,
+      scale: TV_LINEUP_HALF_HOUR_WIDTH,
+      unscheduled,
+    };
+  }
+
+  const rangeStart = roundToHalfHour(Math.min(...scheduledGames.map((game) => game.start)));
+  const rangeEnd = roundToHalfHour(
+    Math.max(...scheduledGames.map((game) => game.end)),
+    true,
+  );
+  const tickCount =
+    (rangeEnd - rangeStart) / TV_LINEUP_HALF_HOUR_MS + 1;
+  const timelineWidth = tickCount * TV_LINEUP_HALF_HOUR_WIDTH;
+  const ticks = [];
+
+  for (let timestamp = rangeStart; timestamp <= rangeEnd; timestamp += TV_LINEUP_HALF_HOUR_MS) {
+    ticks.push({
+      timestamp,
+      label: new Date(timestamp).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    });
+  }
+  const gridlines = Array.from({ length: ticks.length + 1 }, (_, index) => ({
+    index,
+    left: Math.min(
+      index * TV_LINEUP_HALF_HOUR_WIDTH,
+      timelineWidth - 1,
+    ),
+  }));
+
+  const channels = [...channelMap.entries()]
+    .map(([name, entries]) => {
+      const laneEnds = [];
+      const gamesInChannel = entries
+        .sort((gameA, gameB) => gameA.start - gameB.start)
+        .map((entry) => {
+          let lane = laneEnds.findIndex((laneEnd) => laneEnd <= entry.start);
+          if (lane === -1) lane = laneEnds.length;
+          laneEnds[lane] = entry.end;
+          return {
+            ...entry,
+            lane,
+            left: ((entry.start - rangeStart) / TV_LINEUP_HALF_HOUR_MS) * TV_LINEUP_HALF_HOUR_WIDTH,
+            width:
+              (entry.durationMinutes / 30) * TV_LINEUP_HALF_HOUR_WIDTH,
+          };
+        });
+
+      return {
+        name,
+        games: gamesInChannel,
+        laneCount: Math.max(laneEnds.length, 1),
+        firstStart: Math.min(...entries.map((entry) => entry.start)),
+      };
+    })
+    .sort((channelA, channelB) =>
+      channelA.firstStart - channelB.firstStart || channelA.name.localeCompare(channelB.name),
+    );
+
+  return {
+    channels,
+    ticks,
+    gridlines,
+    timelineWidth,
+    laneHeight: TV_LINEUP_LANE_HEIGHT,
+    scale: TV_LINEUP_HALF_HOUR_WIDTH,
+    unscheduled,
+  };
+}
+
 export function formatGameTime(game) {
   const state = getGameState(game);
   const detail = game?.status?.type?.shortDetail || "";

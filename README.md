@@ -5,6 +5,7 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 ## Features
 
 - College Football, NFL, MLB, NBA, and NHL scoreboard tabs
+- TV Lineup view with network rows, estimated game windows, and live scores/status
 - Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
 - Calendar date selection for MLB, NBA, and NHL
@@ -15,6 +16,46 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 - Favorite-team highlighting and game sorting
 - Defensive handling for missing logos, scores, dates, records, and partial ESPN responses
 - Static deployment with relative JavaScript module paths
+
+## Screenshots
+
+Desktop images are full-page browser captures. Mobile images are captured at Pixel 9a resolution (1081 x 2404 pixels, approximately 412 x 916 CSS pixels).
+
+### Scoreboard
+
+| Desktop                                                        | Pixel 9a                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ![Desktop scoreboard](docs/screenshots/Desktop_Scoreboard.png) | ![Scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard.png) |
+
+### TV Lineup
+
+| Desktop                                                        | Pixel 9a                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ![Desktop TV Lineup](docs/screenshots/Desktop_TV_Schedule.png) | ![TV Lineup on Pixel 9a](docs/screenshots/Mobile_TV_Schedule.png) |
+
+### Standings
+
+| Desktop                                                      | Pixel 9a                                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
+| ![Desktop standings](docs/screenshots/Desktop_Standings.png) | ![Standings on Pixel 9a](docs/screenshots/Mobile_Standings.png) |
+
+### Hockey Scoreboard
+
+| Desktop                                                                      | Pixel 9a                                                                        |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| ![Desktop hockey scoreboard](docs/screenshots/Desktop_Scoreboard_Hockey.png) | ![Hockey scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard_Hockey.png) |
+
+### Game Details
+
+| Desktop                                                                | Pixel 9a                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| ![Desktop game details modal](docs/screenshots/Dekstop_Game_Modal.png) | ![Game details modal on Pixel 9a](docs/screenshots/Mobile_Game_Modal.png) |
+
+### Team Details
+
+| Desktop                                                                | Pixel 9a                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| ![Desktop team details modal](docs/screenshots/Desktop_Team_Modal.png) | ![Team details modal on Pixel 9a](docs/screenshots/Mobile_Team_Modal.png) |
 
 ## How It Works
 

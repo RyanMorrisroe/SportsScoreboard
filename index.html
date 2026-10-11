@@ -204,6 +204,14 @@
           >
             Standings
           </button>
+          <button
+            @click="setDashboardView('tv-lineup')"
+            :aria-pressed="viewMode === 'tv-lineup'"
+            :class="viewMode === 'tv-lineup' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+            class="whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition-all"
+          >
+            TV Lineup
+          </button>
         </div>
       </div>
 
@@ -323,6 +331,179 @@
           No active games scheduled for this frame.
         </p>
       </div>
+
+      <section v-else-if="viewMode === 'tv-lineup'" class="space-y-5">
+        <div
+          v-if="!tvLineup.channels.length && !tvLineup.unscheduled.length"
+          class="rounded-xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-400"
+        >
+          No games scheduled for this day.
+        </div>
+        <div
+          v-if="tvLineup.channels.length"
+          class="rounded-xl border border-zinc-800 bg-zinc-950/50"
+        >
+          <div class="sticky top-0 z-40 flex overflow-hidden border-b border-zinc-700 bg-zinc-950">
+            <div
+              class="flex w-28 shrink-0 items-center border-r border-zinc-700 px-3 py-2 text-[10px] font-bold uppercase text-zinc-500"
+            >
+              Network
+            </div>
+            <div class="min-w-0 flex-1 overflow-hidden">
+              <div
+                class="flex"
+                :style="{
+                  width: `${tvLineup.ticks.length * tvLineup.scale}px`,
+                  transform: `translateX(-${tvLineupScrollLeft}px)`,
+                }"
+              >
+                <div
+                  v-for="tick in tvLineup.ticks"
+                  :key="tick.timestamp"
+                  class="h-9 shrink-0 border-r border-zinc-800 px-1 py-2 text-center font-mono text-[10px] text-zinc-400"
+                  :style="{ width: `${tvLineup.scale}px` }"
+                >{{ tick.label }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto" @scroll="handleTvLineupScroll">
+            <div class="min-w-max">
+            <div
+              v-for="channel in tvLineup.channels"
+              :key="channel.name"
+              class="flex border-b-2 border-zinc-700 last:border-0"
+            >
+              <div
+                class="sticky left-0 z-30 flex w-28 shrink-0 items-center border-r border-zinc-800 bg-zinc-950 px-3 text-xs font-bold text-zinc-300"
+              >
+                <span class="truncate" :title="channel.name">{{ channel.name }}</span>
+              </div>
+              <div
+                class="relative shrink-0"
+                :style="{
+                  width: `${tvLineup.timelineWidth}px`,
+                  height: `${channel.laneCount * tvLineup.laneHeight}px`,
+                }"
+              >
+                <div
+                  v-for="line in tvLineup.gridlines"
+                  :key="line.index"
+                  aria-hidden="true"
+                  class="absolute inset-y-0 z-0 border-l border-zinc-800/70"
+                  :style="{ left: `${line.left}px` }"
+                ></div>
+                <button
+                  v-for="entry in channel.games"
+                  :key="entry.game.id"
+                  type="button"
+                  :disabled="getGameState(entry.game) === 'pre'"
+                  :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
+                  :title="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')} · ${entry.status}`"
+                  @click.stop="handleGameClick(entry.game)"
+                  class="absolute z-10 grid grid-cols-[26px_minmax(0,1fr)_26px] grid-rows-3 items-center gap-1 overflow-hidden rounded border bg-zinc-900 text-left shadow-sm transition-colors"
+                  :class="[
+                    isGameHighlighted(entry.game) ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-zinc-700',
+                    getGameState(entry.game) === 'pre' ? 'cursor-default opacity-90' : 'cursor-pointer hover:bg-zinc-800 active:bg-zinc-700'
+                  ]"
+                  :style="{
+                    left: `${entry.left}px`,
+                    top: `${entry.lane * tvLineup.laneHeight + 4}px`,
+                    width: `${entry.width}px`,
+                    height: `${tvLineup.laneHeight - 8}px`,
+                  }"
+                >
+                  <img
+                    :src="getTeamLogo(entry.game, 'away')"
+                    :alt="`${getTeamName(entry.game, 'away')} logo`"
+                    class="col-start-1 row-start-1 h-6 w-6 translate-y-2 self-center object-contain"
+                    loading="lazy"
+                  />
+                  <div class="col-start-2 row-span-3 min-w-0 space-y-1 px-0.5">
+                    <div
+                      class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
+                      :style="getTvLineupTeamStyle(entry.game, 'away')"
+                    >
+                      <span class="truncate text-[11px] font-semibold">{{ getTeamName(entry.game, 'away') }}</span>
+                      <span
+                        v-if="getGameState(entry.game) !== 'pre'"
+                        class="shrink-0 font-mono text-xs font-black"
+                      >{{ getTeamScore(entry.game, 'away') }}</span>
+                    </div>
+                    <div
+                      class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
+                      :style="getTvLineupTeamStyle(entry.game, 'home')"
+                    >
+                      <span class="truncate text-[11px] font-semibold">{{ getTeamName(entry.game, 'home') }}</span>
+                      <span
+                        v-if="getGameState(entry.game) !== 'pre'"
+                        class="shrink-0 font-mono text-xs font-black"
+                      >{{ getTeamScore(entry.game, 'home') }}</span>
+                    </div>
+                    <div
+                      class="truncate text-[10px] font-bold uppercase text-zinc-400"
+                      :class="{ 'text-red-400': getGameState(entry.game) === 'in' }"
+                    >{{ entry.status }}</div>
+                  </div>
+                  <img
+                    :src="getTeamLogo(entry.game, 'home')"
+                    :alt="`${getTeamName(entry.game, 'home')} logo`"
+                    class="col-start-3 row-span-3 h-6 w-6 self-center object-contain"
+                    loading="lazy"
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        <section v-if="tvLineup.unscheduled.length" class="space-y-2">
+          <h2 class="text-xs font-bold uppercase text-zinc-500">Time TBD</h2>
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <button
+              v-for="entry in tvLineup.unscheduled"
+              :key="entry.game.id"
+              type="button"
+              :disabled="getGameState(entry.game) === 'pre'"
+              :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
+              @click.stop="handleGameClick(entry.game)"
+              class="grid min-h-[84px] grid-cols-[30px_minmax(0,1fr)_30px] grid-rows-3 items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 p-2 text-left"
+              :class="getGameState(entry.game) === 'pre' ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-800'"
+            >
+              <img
+                :src="getTeamLogo(entry.game, 'away')"
+                :alt="`${getTeamName(entry.game, 'away')} logo`"
+                class="col-start-1 row-start-1 h-6 w-6 translate-y-2 self-center object-contain"
+                loading="lazy"
+              />
+              <div class="col-start-2 row-span-3 min-w-0 space-y-1">
+                <div
+                  class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
+                  :style="getTvLineupTeamStyle(entry.game, 'away')"
+                >
+                  <span class="truncate text-xs font-semibold">{{ getTeamName(entry.game, 'away') }}</span>
+                  <span v-if="getGameState(entry.game) !== 'pre'" class="font-mono text-xs font-black">{{ getTeamScore(entry.game, 'away') }}</span>
+                </div>
+                <div
+                  class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
+                  :style="getTvLineupTeamStyle(entry.game, 'home')"
+                >
+                  <span class="truncate text-xs font-semibold">{{ getTeamName(entry.game, 'home') }}</span>
+                  <span v-if="getGameState(entry.game) !== 'pre'" class="font-mono text-xs font-black">{{ getTeamScore(entry.game, 'home') }}</span>
+                </div>
+                <div class="truncate text-[10px] font-bold uppercase text-zinc-400">{{ entry.channel }} · {{ entry.status }}</div>
+              </div>
+              <img
+                :src="getTeamLogo(entry.game, 'home')"
+                :alt="`${getTeamName(entry.game, 'home')} logo`"
+                class="col-start-3 row-span-3 h-7 w-7 self-center object-contain"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        </section>
+      </section>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <div
@@ -1129,6 +1310,8 @@
         getTeamScore as getTeamScoreUtil,
         getTeamStatComparisons as getTeamStatComparisonsUtil,
         getTeamStatBarColors as getTeamStatBarColorsUtil,
+        getTvLineupLayout as getTvLineupLayoutUtil,
+        getTvLineupTeamStyle as getTvLineupTeamStyleUtil,
         hasPossession as hasPossessionUtil,
         isGameHighlighted as isGameHighlightedUtil,
         isTeamStringHighlighted as isTeamStringHighlightedUtil,
@@ -1680,6 +1863,20 @@
           const sortedGames = computed(() =>
             sortGamesUtil(games.value, selectedLeague.value),
           );
+          const tvLineup = computed(() =>
+            getTvLineupLayoutUtil(
+              sortedGames.value,
+              selectedLeague.value,
+              seasonType.value,
+              isDateLeague.value
+                ? selectedDate.value
+                : new Date().toLocaleDateString("en-CA"),
+            ),
+          );
+          const tvLineupScrollLeft = ref(0);
+          const handleTvLineupScroll = (event) => {
+            tvLineupScrollLeft.value = event.currentTarget.scrollLeft;
+          };
 
           const isTeamStringHighlighted = (name) =>
             isTeamStringHighlightedUtil(name, getFavoriteFilterText());
@@ -1701,6 +1898,8 @@
           const getTeamLogo = (game, type) => getTeamLogoUtil(game, type);
           const getTeamScore = (game, type) => getTeamScoreUtil(game, type);
           const getTeamRank = (game, type) => getTeamRankUtil(game, type);
+          const getTvLineupTeamStyle = (game, type) =>
+            getTvLineupTeamStyleUtil(game, type);
 
           onMounted(async () => {
             window.addEventListener("popstate", handlePopState);
@@ -1746,6 +1945,9 @@
             teamRecordStats,
             teamSchedule,
             sortedGames,
+            tvLineup,
+            tvLineupScrollLeft,
+            handleTvLineupScroll,
             linescoreHeaders,
             linescores,
             currentDrive,
@@ -1774,6 +1976,7 @@
             getTeamLogo,
             getTeamScore,
             getTeamRank,
+            getTvLineupTeamStyle,
             isWinner,
             isTeamStringHighlighted,
             isGameHighlighted,
