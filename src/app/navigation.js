@@ -24,7 +24,7 @@ function isValidSnapshot(snapshot) {
   return (
     isObject(snapshot) &&
     SUPPORTED_LEAGUES.has(snapshot.league) &&
-    ["scoreboard", "standings"].includes(snapshot.view) &&
+    ["scoreboard", "standings", "tv-lineup"].includes(snapshot.view) &&
     Number.isInteger(snapshot.week) &&
     snapshot.week >= 1 &&
     Number.isInteger(snapshot.seasonType) &&

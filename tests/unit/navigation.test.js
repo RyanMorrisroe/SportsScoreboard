@@ -31,6 +31,17 @@ function makeHistory(state = { host: "preserved" }) {
 }
 
 describe("navigation history helpers", () => {
+  it("restores the TV lineup view from a valid snapshot", () => {
+    const history = makeHistory();
+    const entry = initializeAppHistory(
+      history,
+      makeSnapshot({ view: "tv-lineup" }),
+    );
+
+    expect(readAppHistoryEntry(history.state)).toEqual(entry);
+    expect(entry.snapshot.view).toBe("tv-lineup");
+  });
+
   it("initializes a root entry while preserving host state and the URL", () => {
     const history = makeHistory({ host: "preserved" });
     const entry = initializeAppHistory(history, makeSnapshot());

@@ -4,6 +4,10 @@ import {
   getCompetitor,
   getFavoriteFilterText,
   getGameState,
+  getTvLineupDurationMinutes,
+  getTvLineupLayout,
+  getTvLineupStatus,
+  getTvLineupTeamStyle,
   getSeriesSummary,
   getLinescoreHeaders,
   getLinescoreValues,
@@ -432,6 +436,140 @@ describe("scoreboard helpers", () => {
       status: { type: { state: "pre", shortDetail: "Time unknown" } },
     }))).toBe("Time unknown");
     timeFormatter.mockRestore();
+  });
+
+  it("estimates TV lineup durations using the NFL Eastern-time boundary", () => {
+    expect(getTvLineupDurationMinutes(makeGame(), "college-football")).toBe(210);
+    expect(getTvLineupDurationMinutes(makeGame(), "nba")).toBe(150);
+    expect(getTvLineupDurationMinutes(makeGame(), "nhl")).toBe(180);
+    expect(getTvLineupDurationMinutes(makeGame(), "mlb")).toBe(180);
+    expect(getTvLineupDurationMinutes({ date: "2026-10-10T22:59:00Z" }, "nfl")).toBe(180);
+    expect(getTvLineupDurationMinutes({ date: "2026-10-10T23:00:00Z" }, "nfl")).toBe(210);
+    expect(getTvLineupDurationMinutes({ date: "2026-01-10T23:59:00Z" }, "nfl")).toBe(180);
+    expect(getTvLineupDurationMinutes({ date: "2026-01-10T12:00:00Z" }, "nfl", 3)).toBe(210);
+    expect(getTvLineupDurationMinutes({ date: "bad-date" }, "nfl")).toBe(180);
+    expect(getTvLineupDurationMinutes({ date: null }, "nfl")).toBe(180);
+  });
+
+  it("formats TV lineup status for upcoming, live, and completed games", () => {
+    expect(getTvLineupStatus(makeGame({
+      date: "bad-date",
+      status: { type: { state: "pre", shortDetail: "TBD" } },
+    }), "nba")).toBe("TBD");
+    expect(getTvLineupStatus(makeGame({
+      status: { type: { state: "in", detail: "", shortDetail: "Q2" } },
+      competitions: [makeCompetition({ status: { displayClock: "08:10", period: 2 } })],
+    }), "nba")).toBe("LIVE · Q2 08:10");
+    expect(getTvLineupStatus(makeGame({
+      status: { type: { state: "in", detail: "Top 4th", shortDetail: "Top 4th" } },
+    }), "mlb")).toBe("LIVE · Top 4th");
+    expect(getTvLineupStatus(makeGame({
+      status: { type: { state: "in" } },
+    }), "nhl")).toBe("LIVE");
+    expect(getTvLineupStatus(makeGame({
+      status: { type: { state: "post", detail: "Final/OT", shortDetail: "Final/OT" } },
+    }), "nhl")).toBe("FINAL");
+  });
+
+  it("positions TV lineup games by channel and separates overlapping games", () => {
+    const first = makeGame({
+      id: "first",
+      date: "2026-10-10T16:05:00Z",
+      status: { type: { state: "pre", shortDetail: "Sat" } },
+    });
+    const overlapping = makeGame({
+      id: "overlap",
+      date: "2026-10-10T16:45:00Z",
+      status: { type: { state: "pre", shortDetail: "Sat" } },
+    });
+    const otherChannel = makeGame({
+      id: "other",
+      date: "2026-10-10T16:05:00Z",
+      status: { type: { state: "pre", shortDetail: "Sat" } },
+      competitions: [makeCompetition({ broadcasts: [{ names: ["FOX"] }] })],
+    });
+    const layout = getTvLineupLayout(
+      [first, overlapping, otherChannel],
+      "nba",
+      2,
+      "2026-10-10",
+    );
+    const espn = layout.channels.find((channel) => channel.name === "ESPN");
+
+    expect(layout.ticks.length).toBeGreaterThan(1);
+    expect(layout.timelineWidth).toBe(layout.ticks.length * layout.scale);
+    expect(layout.gridlines).toHaveLength(layout.ticks.length + 1);
+    expect(layout.gridlines.at(-1).left).toBe(layout.timelineWidth - 1);
+    expect(espn.games.map((entry) => entry.game.id)).toEqual(["first", "overlap"]);
+    expect(espn.games.map((entry) => entry.lane)).toEqual([0, 1]);
+    expect(espn.games[0].left).toBeGreaterThan(0);
+    expect(layout.channels.find((channel) => channel.name === "FOX").games[0].lane).toBe(0);
+  });
+
+  it("keeps same-day untimed games visible and chooses contrasting team colors", () => {
+    const untimedGame = makeGame({
+      date: "2026-10-10T16:00:00Z",
+      timeValid: false,
+      status: { type: { state: "pre", shortDetail: "TBD" } },
+    });
+    const nextDayUntimedGame = makeGame({
+      date: new Date(2026, 9, 11, 1).toISOString(),
+      timeValid: false,
+      status: { type: { state: "pre", shortDetail: "TBD" } },
+    });
+    const layout = getTvLineupLayout(
+      [untimedGame, nextDayUntimedGame],
+      "nba",
+      2,
+      "2026-10-10",
+    );
+    const teams = makeGame({
+      competitions: [makeCompetition({
+        competitors: [
+          makeCompetitor("away", { team: { color: "231f20" } }),
+          makeCompetitor("home", { team: { color: "ffb81c" } }),
+        ],
+      })],
+    });
+
+    expect(layout.channels).toEqual([]);
+    expect(layout.unscheduled.map((entry) => entry.game)).toEqual([untimedGame]);
+    expect(getTvLineupTeamStyle(teams, "away")).toEqual({
+      backgroundColor: "#231f20",
+      color: "#ffffff",
+    });
+    expect(getTvLineupTeamStyle(teams, "home")).toEqual({
+      backgroundColor: "#ffb81c",
+      color: "#09090b",
+    });
+  });
+
+  it("limits the lineup to games starting on the selected local day", () => {
+    const todayLate = new Date(2026, 9, 10, 23, 45);
+    const tomorrowEarly = new Date(2026, 9, 11, 0, 15);
+    const yesterdayLate = new Date(2026, 9, 9, 23, 45);
+    const layout = getTvLineupLayout([
+      makeGame({ id: "today", date: todayLate.toISOString() }),
+      makeGame({ id: "tomorrow", date: tomorrowEarly.toISOString() }),
+      makeGame({ id: "yesterday", date: yesterdayLate.toISOString() }),
+    ], "nba", 2, "2026-10-10");
+    const displayedGames = layout.channels.flatMap((channel) => channel.games);
+
+    expect(displayedGames.map((entry) => entry.game.id)).toEqual(["today"]);
+    expect(new Date(layout.ticks.at(-1).timestamp).getDate()).toBe(11);
+  });
+
+  it("keeps games that start on the selected day visible after midnight", () => {
+    const lateGameDate = new Date(2026, 9, 10, 23, 45);
+    const layout = getTvLineupLayout([
+      makeGame({ id: "late", date: lateGameDate.toISOString() }),
+    ], "nba", 2, "2026-10-10");
+    const lateGame = layout.channels[0].games[0];
+    const endTimestamp = layout.ticks.at(-1).timestamp;
+
+    expect(lateGame.game.id).toBe("late");
+    expect(endTimestamp).toBeGreaterThan(lateGameDate.getTime() + 150 * 60000);
+    expect(new Date(endTimestamp).getDate()).toBe(11);
   });
 
   it("handles competitor lookups and fallback values", () => {
