@@ -54,12 +54,50 @@ jobs:
         run: zip -r "sports-scoreboard-${RELEASE_TAG}.zip" dist/
 
       - name: Create GitHub release
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release create "$RELEASE_TAG" \
-            "sports-scoreboard-${RELEASE_TAG}.zip" \
-            --target "$GITHUB_SHA" \
-            --generate-notes \
-            --title "Sports Scoreboard ${RELEASE_TAG}"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; continuing with wrapper dispatch."
+          else
+            gh release create "$RELEASE_TAG" \
+              "sports-scoreboard-${RELEASE_TAG}.zip" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --title "Sports Scoreboard ${RELEASE_TAG}"
+          fi
+              release_metadata=$(gh release view "$RELEASE_TAG" --json databaseId,url)
+              echo "release_id=$(jq -r '.databaseId' <<< "$release_metadata")" >> "$GITHUB_OUTPUT"
+              echo "release_url=$(jq -r '.url' <<< "$release_metadata")" >> "$GITHUB_OUTPUT"
+
+      - name: Create wrapper dispatch token
+        id: wrapper-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.NATIVE_WRAPPER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.NATIVE_WRAPPER_APP_PRIVATE_KEY }}
+          owner: RyanMorrisroe
+          repositories: SportsScoreboard-Native
+          permission-contents: write
+
+      - name: Dispatch published SPA release to wrapper
+        env:
+          GH_TOKEN: ${{ steps.wrapper-token.outputs.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+          RELEASE_URL: ${{ steps.release.outputs.release_url }}
+        run: |
+          payload=$(jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg version "${RELEASE_TAG#v}" \
+            --arg sha "$RELEASE_SHA" \
+            --arg release_id "$RELEASE_ID" \
+            --arg release_url "$RELEASE_URL" \
+            '{event_type:"sports-scoreboard-release",client_payload:{tag:$tag,version:$version,sha:$sha,release_id:$release_id,release_url:$release_url}}')
+          printf '%s' "$payload" | gh api \
+            --method POST \
+            /repos/RyanMorrisroe/SportsScoreboard-Native/dispatches \
+            --input -
