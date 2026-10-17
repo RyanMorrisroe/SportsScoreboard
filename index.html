@@ -1328,6 +1328,7 @@
         replaceAppHistoryEntry,
       } from "./src/app/navigation.js";
       import {
+        getStandingPositionKey,
         normalizeStandings,
         sortStandingTeams as sortStandingTeamsUtil,
       } from "./src/domain/standings.js";
@@ -1496,7 +1497,15 @@
             try {
               const response = await fetchStandingsApi(selectedLeague.value, fetch);
               if (requestId !== standingsRequestId) return;
-              standings.value = normalizeStandings(response);
+              standings.value = normalizeStandings(response, {
+                league: selectedLeague.value,
+              });
+              standingsSort.value = Object.fromEntries(
+                standings.value.flatMap((group) => {
+                  const key = getStandingPositionKey(group);
+                  return key ? [[group.id, { key, direction: "asc" }]] : [];
+                }),
+              );
             } catch (err) {
               if (requestId === standingsRequestId) {
                 standingsError.value = err.message || "Unable to load standings.";
