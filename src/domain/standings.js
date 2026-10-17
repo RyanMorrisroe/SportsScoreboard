@@ -5,8 +5,10 @@ const STANDINGS_STAT_ORDER = [
   "wins",
   "losses",
   "ties",
+  "overall",
   "winpercent",
   "winpercentage",
+  "leaguewinpercent",
   "gamesbehind",
   "pointsfor",
   "runsfor",
@@ -18,11 +20,18 @@ const STANDINGS_STAT_ORDER = [
   "home",
   "awayrecord",
   "away",
+  "divisionwins",
+  "divisionlosses",
+  "divisionties",
   "divisionrecord",
+  "vs division",
   "vsdivision",
   "conferencerecord",
   "vsconfrecord",
   "vsconference",
+  "vs. conf.",
+  "vs ap top 25",
+  "vs usa ranked teams",
   "lasttenrecord",
   "lastten",
   "streak",
@@ -30,8 +39,23 @@ const STANDINGS_STAT_ORDER = [
 const STANDINGS_STAT_ORDER_INDEX = new Map(
   STANDINGS_STAT_ORDER.map((key, index) => [key, index]),
 );
+const HIDDEN_STANDING_STATS = new Set(["lockeddivrank"]);
+const HIDDEN_COLLEGE_FOOTBALL_STATS = new Set([
+  "divisionwins",
+  "divisionlosses",
+  "divisionties",
+  "vs division",
+]);
 
-function getStatValue(stat) {
+function getStatValue(stat, key) {
+  if (
+    ["divisionwins", "divisionties"].includes(String(key).toLowerCase()) &&
+    stat.value !== undefined &&
+    stat.value !== null
+  ) {
+    const numericValue = Number(stat.value);
+    if (Number.isInteger(numericValue)) return String(numericValue);
+  }
   if (stat.displayValue !== undefined && stat.displayValue !== null) {
     return stat.displayValue;
   }
@@ -40,14 +64,18 @@ function getStatValue(stat) {
   return "--";
 }
 
-function normalizeEntry(entry, index) {
+function normalizeEntry(entry, index, hiddenStats) {
   const stats = (Array.isArray(entry.stats) ? entry.stats : [])
     .filter((stat) => stat && (stat.name || stat.abbreviation || stat.displayName))
-    .map((stat) => ({
-      key: stat.name || stat.abbreviation || stat.displayName,
-      label: stat.shortDisplayName || stat.abbreviation || stat.displayName || stat.name,
-      value: getStatValue(stat),
-    }));
+    .map((stat) => {
+      const key = stat.name || stat.abbreviation || stat.displayName;
+      return {
+        key,
+        label: stat.shortDisplayName || stat.abbreviation || stat.displayName || stat.name,
+        value: getStatValue(stat, key),
+      };
+    })
+    .filter((stat) => !hiddenStats.has(String(stat.key).toLowerCase()));
 
   return {
     id: entry.team?.id || `${entry.team?.abbreviation || entry.team?.displayName || "team"}-${index}`,
@@ -59,13 +87,15 @@ function normalizeEntry(entry, index) {
   };
 }
 
-function collectGroups(node, path, groups) {
+function collectGroups(node, path, groups, hiddenStats) {
   if (!node || typeof node !== "object") return;
   const name = node.name || node.displayName || "Standings";
   const id = node.id || node.abbreviation || name;
   const entries = node.standings?.entries || node.entries || [];
   if (Array.isArray(entries) && entries.some((entry) => entry?.team)) {
-    const teams = entries.filter((entry) => entry?.team).map(normalizeEntry);
+    const teams = entries
+      .filter((entry) => entry?.team)
+      .map((entry, index) => normalizeEntry(entry, index, hiddenStats));
     const columns = [];
     for (const team of teams) {
       for (const stat of team.stats) {
@@ -89,21 +119,32 @@ function collectGroups(node, path, groups) {
   }
 
   for (const child of Array.isArray(node.children) ? node.children : []) {
-    collectGroups(child, [...path, id], groups);
+    collectGroups(child, [...path, id], groups, hiddenStats);
   }
 }
 
-export function normalizeStandings(payload) {
+export function normalizeStandings(payload, { league } = {}) {
   if (!payload || typeof payload !== "object") return [];
+  const hiddenStats = new Set(HIDDEN_STANDING_STATS);
+  if (league === "college-football") {
+    for (const key of HIDDEN_COLLEGE_FOOTBALL_STATS) hiddenStats.add(key);
+  }
   const groups = [];
   if (Array.isArray(payload.children) && payload.children.length > 0) {
     for (const child of payload.children) {
-      collectGroups(child, [], groups);
+      collectGroups(child, [], groups, hiddenStats);
     }
   } else {
-    collectGroups(payload, [], groups);
+    collectGroups(payload, [], groups, hiddenStats);
   }
   return groups;
+}
+
+export function getStandingPositionKey(group) {
+  const positionKeys = ["playoffseed", "rank", "position"];
+  return group?.columns?.find((column) =>
+    positionKeys.includes(String(column.key).toLowerCase()),
+  )?.key ?? null;
 }
 
 function getStandingSortValue(team, key) {

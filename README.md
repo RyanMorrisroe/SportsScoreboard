@@ -186,13 +186,13 @@ The build first runs `npm test`, then recreates `dist/` and copies:
 
 To test the generated package locally, serve it over HTTP. Browser module imports should not be tested by opening `index.html` directly with a `file:` URL.
 
-For example, with Python installed:
+With Python installed, start the local server:
 
 ```bash
-python -m http.server 8080 --directory dist
+npm run serve
 ```
 
-Then open `http://localhost:8080`.
+Then open `http://localhost:8000`. Pass a different port after `--` if needed, for example `npm run serve -- 8081`.
 
 ## GitHub Actions
 

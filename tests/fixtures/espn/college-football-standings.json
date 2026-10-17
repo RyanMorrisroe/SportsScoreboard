@@ -1,0 +1,61 @@
+{
+  "name": "FBS",
+  "children": [
+    {
+      "id": "american",
+      "name": "American Conference",
+      "standings": {
+        "entries": [
+          {
+            "team": { "id": "2", "displayName": "Team Two" },
+            "stats": [
+              { "name": "gamesBehind", "shortDisplayName": "GB", "displayValue": "-" },
+              { "name": "leagueWinPercent", "shortDisplayName": "LPCT", "displayValue": "1.000" },
+              { "name": "playoffSeed", "shortDisplayName": "POS", "displayValue": "2" },
+              { "name": "pointDifferential", "shortDisplayName": "DIFF", "displayValue": "+10" },
+              { "name": "pointsAgainst", "shortDisplayName": "PA", "displayValue": "20" },
+              { "name": "pointsFor", "shortDisplayName": "PF", "displayValue": "30" },
+              { "name": "streak", "shortDisplayName": "STRK", "displayValue": "W2" },
+              { "name": "wins", "shortDisplayName": "W", "displayValue": "4" },
+              { "name": "divisionLosses", "shortDisplayName": "DL", "displayValue": "0" },
+              { "name": "divisionTies", "shortDisplayName": "DT", "value": 0, "displayValue": "0.000" },
+              { "name": "divisionWins", "shortDisplayName": "DW", "value": 2, "displayValue": "2.000" },
+              { "name": "lockedDivRank", "shortDisplayName": "LDR", "displayValue": "0" },
+              { "name": "overall", "shortDisplayName": "OVER", "summary": "4-1", "displayValue": "4-1" },
+              { "name": "Home", "shortDisplayName": "HOME", "displayValue": "2-0" },
+              { "name": "Away", "shortDisplayName": "AWAY", "displayValue": "2-1" },
+              { "name": "vs Division", "shortDisplayName": "VS Div", "displayValue": "2-0" },
+              { "name": "vs. Conf.", "shortDisplayName": "CONF", "displayValue": "3-1" },
+              { "name": "vs AP Top 25", "shortDisplayName": "AP", "displayValue": "0-0" },
+              { "name": "vs USA ranked teams", "shortDisplayName": "USA", "displayValue": "0-0" }
+            ]
+          },
+          {
+            "team": { "id": "1", "displayName": "Team One" },
+            "stats": [
+              { "name": "gamesBehind", "shortDisplayName": "GB", "displayValue": "-" },
+              { "name": "leagueWinPercent", "shortDisplayName": "LPCT", "displayValue": "1.000" },
+              { "name": "playoffSeed", "shortDisplayName": "POS", "displayValue": "1" },
+              { "name": "pointDifferential", "shortDisplayName": "DIFF", "displayValue": "+20" },
+              { "name": "pointsAgainst", "shortDisplayName": "PA", "displayValue": "10" },
+              { "name": "pointsFor", "shortDisplayName": "PF", "displayValue": "30" },
+              { "name": "streak", "shortDisplayName": "STRK", "displayValue": "W3" },
+              { "name": "wins", "shortDisplayName": "W", "displayValue": "5" },
+              { "name": "divisionLosses", "shortDisplayName": "DL", "displayValue": "0" },
+              { "name": "divisionTies", "shortDisplayName": "DT", "value": 0, "displayValue": "0.000" },
+              { "name": "divisionWins", "shortDisplayName": "DW", "value": 3, "displayValue": "3.000" },
+              { "name": "lockedDivRank", "shortDisplayName": "LDR", "displayValue": "0" },
+              { "name": "overall", "shortDisplayName": "OVER", "summary": "5-0", "displayValue": "5-0" },
+              { "name": "Home", "shortDisplayName": "HOME", "displayValue": "3-0" },
+              { "name": "Away", "shortDisplayName": "AWAY", "displayValue": "2-0" },
+              { "name": "vs Division", "shortDisplayName": "VS Div", "displayValue": "3-0" },
+              { "name": "vs. Conf.", "shortDisplayName": "CONF", "displayValue": "4-0" },
+              { "name": "vs AP Top 25", "shortDisplayName": "AP", "displayValue": "0-0" },
+              { "name": "vs USA ranked teams", "shortDisplayName": "USA", "displayValue": "0-0" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

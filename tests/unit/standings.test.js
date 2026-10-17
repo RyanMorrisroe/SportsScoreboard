@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/espn/standings.json";
 import {
+  getStandingPositionKey,
   normalizeStandings,
   sortStandingTeams,
 } from "../../src/domain/standings.js";
+import collegeFootballFixture from "../fixtures/espn/college-football-standings.json";
 
 describe("standings normalization", () => {
   it("normalizes conference and nested division standings with available stat labels", () => {
@@ -135,6 +137,63 @@ describe("standings normalization", () => {
       "customSecond",
       "customFirst",
     ]);
+  });
+
+  it("orders college-football columns and identifies the position stat", () => {
+    const [group] = normalizeStandings(collegeFootballFixture, {
+      league: "college-football",
+    });
+
+    expect(group.columns.map((column) => column.key)).toEqual([
+      "playoffSeed",
+      "wins",
+      "overall",
+      "leagueWinPercent",
+      "gamesBehind",
+      "pointsFor",
+      "pointsAgainst",
+      "pointDifferential",
+      "Home",
+      "Away",
+      "vs. Conf.",
+      "vs AP Top 25",
+      "vs USA ranked teams",
+      "streak",
+    ]);
+    expect(getStandingPositionKey(group)).toBe("playoffSeed");
+    expect(sortStandingTeams(group.teams, getStandingPositionKey(group), "asc")
+      .map((team) => team.name)).toEqual(["Team One", "Team Two"]);
+  });
+
+  it("hides locked division rank globally and CFB-only stats only for college football", () => {
+    const [collegeFootball] = normalizeStandings(collegeFootballFixture, {
+      league: "college-football",
+    });
+    const [otherLeague] = normalizeStandings(collegeFootballFixture, {
+      league: "nfl",
+    });
+
+    expect(collegeFootball.columns.map((column) => column.key)).not.toContain("lockedDivRank");
+    expect(collegeFootball.columns.map((column) => column.key)).not.toContain("divisionWins");
+    expect(collegeFootball.columns.map((column) => column.key)).not.toContain("vs Division");
+    expect(otherLeague.columns.map((column) => column.key)).not.toContain("lockedDivRank");
+    expect(otherLeague.columns.map((column) => column.key)).toContain("divisionWins");
+    expect(otherLeague.columns.map((column) => column.key)).toContain("vs Division");
+    expect(otherLeague.teams[0].stats).toContainEqual({
+      key: "divisionTies",
+      label: "DT",
+      value: "0",
+    });
+    expect(otherLeague.teams[0].stats).toContainEqual({
+      key: "divisionWins",
+      label: "DW",
+      value: "2",
+    });
+  });
+
+  it("finds position keys case-insensitively and leaves groups without one unsorted", () => {
+    expect(getStandingPositionKey({ columns: [{ key: "Rank" }] })).toBe("Rank");
+    expect(getStandingPositionKey({ columns: [{ key: "wins" }] })).toBeNull();
   });
 
   it("sorts numeric stats and split records without mutating the original teams", () => {
