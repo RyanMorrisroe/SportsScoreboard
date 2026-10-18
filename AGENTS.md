@@ -4,8 +4,8 @@ This file records repository-specific context and working guidance. Follow highe
 
 ## Project
 
-- Sports Scoreboard is a static, browser-only Vue 3 app with Tailwind loaded from CDNs. ESPN requests are made directly from the browser; there is no backend or runtime Node.js service.
-- `index.html` owns the UI and Vue setup. Keep domain logic and testable decisions in `src/` instead of growing inline calculations in the page.
+- Sports Scoreboard is a static, browser-only Vue 3 app. Vite compiles Vue templates and bundles Vue, Tailwind CSS, and application modules locally; ESPN requests are made directly from the browser, with no backend or production Node.js runtime.
+- `src/App.vue` owns the UI and Vue setup. Keep domain logic and testable decisions in `src/` instead of growing inline calculations in the component.
 - `src/api/espn.js` builds ESPN Site API URLs and fetches team details/schedules.
 - `src/app/scoreboard.js` contains display, sorting, sport-specific helpers, and stat comparisons.
 - `src/domain/` normalizes game summaries, team schedules, and team records.
@@ -33,8 +33,8 @@ This file records repository-specific context and working guidance. Follow highe
 - Install locked dependencies with `npm ci`.
 - Run deterministic unit and fixture integration tests with `npm test`.
 - Inspect statement/branch/function coverage with `npm run test:coverage`. Treat changes as production work: add focused tests for new branches, fallbacks, and payload variants; aim for complete coverage of newly added behavior.
-- Run `npm run build` before considering source changes complete. The build runs tests, removes/recreates `dist/`, then copies `index.html`, `LICENSE`, and `src/`.
-- Do not edit `dist/` directly; it is generated and ignored. Serve it over HTTP for browser testing, for example `python -m http.server 8080 --directory dist`.
+- Run `npm run build` before considering source changes complete. The build runs tests, creates the Vite production bundle in `dist/`, and copies `LICENSE`.
+- Do not edit `dist/` directly; it is generated and ignored. Use `npm run serve` for development and `npm run preview` to serve the production bundle over HTTP.
 - `npm run test:live` calls ESPN and is network-dependent. Keep deterministic CI coverage fixture-backed; use live checks as supplementary validation.
 
 ## Contribution Guidance

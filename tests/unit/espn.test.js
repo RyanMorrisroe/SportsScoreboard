@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   fetchJson,
   fetchStandings,
@@ -11,6 +12,16 @@ import {
   getStandingsUrl,
   getSportPath,
 } from "../../src/api/espn.js";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+  isTauri: vi.fn(() => false),
+}));
+
+afterEach(() => {
+  invoke.mockReset();
+  isTauri.mockReturnValue(false);
+});
 
 const jsonResponse = (body, ok = true, status = 200) => ({
   ok,
@@ -123,6 +134,41 @@ describe("ESPN API helpers", () => {
     expect(fetchImpl).toHaveBeenNthCalledWith(2, expect.stringContaining("/teams/12/schedule"));
   });
 
+  it("uses direct fetches outside Tauri", async () => {
+    const payload = { events: [] };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(payload));
+    const url = getScoreboardUrl("nfl");
+
+    await expect(fetchJson(url, fetchImpl)).resolves.toEqual(payload);
+
+    expect(fetchImpl).toHaveBeenCalledWith(url);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("uses the native ESPN command inside Tauri", async () => {
+    const payload = { team: { id: "12" } };
+    const fetchImpl = vi.fn();
+    const url = getTeamUrls("nfl", "12").details;
+    isTauri.mockReturnValue(true);
+    invoke.mockResolvedValue(payload);
+
+    await expect(fetchJson(url, fetchImpl)).resolves.toEqual(payload);
+
+    expect(invoke).toHaveBeenCalledWith("fetch_espn", { url });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a string rejection", "ESPN unavailable", "ESPN unavailable"],
+    ["an error rejection", new Error("ESPN unavailable"), "ESPN unavailable"],
+    ["an unstructured rejection", {}, "ESPN request failed"],
+  ])("normalizes %s from the native command", async (_label, error, message) => {
+    isTauri.mockReturnValue(true);
+    invoke.mockRejectedValue(error);
+
+    await expect(fetchJson(getScoreboardUrl("nfl"))).rejects.toThrow(message);
+  });
+
   it("fetches standings from the v2 Site API", async () => {
     const body = {
       children: [{
@@ -152,6 +198,40 @@ describe("ESPN API helpers", () => {
       2,
       "https://site.api.espn.com/apis/v2/sports/football/nfl/standings?group=8",
     );
+  });
+
+  it.each([
+    ["missing children", {}],
+    ["empty children", { children: [] }],
+  ])("returns standings unchanged when %s", async (_label, standings) => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(standings));
+
+    await expect(fetchStandings("nfl", fetchImpl)).resolves.toEqual(standings);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps standings groups without IDs or with existing children", async () => {
+    const standings = {
+      children: [
+        { name: "No ID" },
+        { id: "8", children: [{ id: "4" }] },
+      ],
+    };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(standings));
+
+    await expect(fetchStandings("nfl", fetchImpl)).resolves.toEqual(standings);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a standings group when its subgroup response is empty", async () => {
+    const group = { id: "8", name: "AFC" };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ children: [group] }))
+      .mockResolvedValueOnce(jsonResponse({ children: [] }));
+
+    await expect(fetchStandings("nfl", fetchImpl)).resolves.toEqual({
+      children: [group],
+    });
   });
 
   it("rejects non-OK responses", async () => {
