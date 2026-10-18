@@ -1385,6 +1385,7 @@
 <script>
 import { computed, onMounted, ref } from "vue";
 import {
+  fetchJson,
   fetchStandings as fetchStandingsApi,
   fetchTeamDetails,
   getGameSummaryUrl,
@@ -1533,8 +1534,7 @@ export default {
         });
         const endpoint = getScoreboardUrl(selectedLeague.value, params);
 
-        const res = await fetch(endpoint);
-        const data = await res.json();
+        const data = await fetchJson(endpoint);
         if (requestId !== scoreboardRequestId) return;
         games.value = data.events || [];
 
@@ -1566,8 +1566,7 @@ export default {
       modalLoading.value = true;
       try {
         const endpoint = getGameSummaryUrl(selectedLeague.value, eventId);
-        const res = await fetch(endpoint);
-        const data = await res.json();
+        const data = await fetchJson(endpoint);
         if (
           requestId !== gameRequestId ||
           !showModal.value ||

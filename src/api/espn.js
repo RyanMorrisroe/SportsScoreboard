@@ -1,3 +1,5 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+
 const ESPN_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports";
 const ESPN_STANDINGS_BASE_URL = "https://site.api.espn.com/apis/v2/sports";
 const SPORT_BY_LEAGUE = {
@@ -64,6 +66,16 @@ export function getGameSummaryUrl(league, eventId) {
 }
 
 export async function fetchJson(url, fetchImpl = fetch) {
+  if (isTauri()) {
+    try {
+      return await invoke("fetch_espn", { url });
+    } catch (error) {
+      throw new Error(
+        typeof error === "string" ? error : error?.message || "ESPN request failed",
+      );
+    }
+  }
+
   const response = await fetchImpl(url);
   if (!response.ok) {
     throw new Error(`ESPN request failed (${response.status})`);
