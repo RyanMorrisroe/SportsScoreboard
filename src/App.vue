@@ -1396,6 +1396,7 @@ import {
   formatGameTime as formatGameTimeUtil,
   getFavoriteFilterText as getFavoriteFilterTextUtil,
   getGameState as getGameStateUtil,
+  isBeforeFootballWeekStart,
   getSeriesSummary as getSeriesSummaryUtil,
   getLinescoreHeaders as getLinescoreHeadersUtil,
   getLinescoreValues as getLinescoreValuesUtil,
@@ -1534,8 +1535,31 @@ export default {
         });
         const endpoint = getScoreboardUrl(selectedLeague.value, params);
 
-        const data = await fetchJson(endpoint);
+        let data = await fetchJson(endpoint);
         if (requestId !== scoreboardRequestId) return;
+
+        let initialWeek = data.week?.number;
+        if (
+          isInitialBoot &&
+          ["college-football", "nfl"].includes(selectedLeague.value) &&
+          isBeforeFootballWeekStart() &&
+          Number(initialWeek) > 1
+        ) {
+          initialWeek = Number(initialWeek) - 1;
+          const previousWeekParams = getScoreboardRequestParams(
+            selectedLeague.value,
+            {
+              week: initialWeek,
+              seasonType: data.season?.type ?? seasonType.value,
+              group: selectedGroup.value,
+            },
+          );
+          data = await fetchJson(
+            getScoreboardUrl(selectedLeague.value, previousWeekParams),
+          );
+          if (requestId !== scoreboardRequestId) return;
+        }
+
         games.value = data.events || [];
 
         if (
@@ -1544,7 +1568,7 @@ export default {
           data.week &&
           data.week.number
         ) {
-          week.value = data.week.number;
+          week.value = initialWeek ?? data.week.number;
           if (data.season && data.season.type) {
             seasonType.value = data.season.type;
           }

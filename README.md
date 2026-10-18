@@ -17,6 +17,8 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 - Defensive handling for missing logos, scores, dates, records, and partial ESPN responses
 - Static deployment with relative JavaScript module paths
 
+NOTE: As of October 17, 2026 ESPN has begun messing with its CORS headers for at least some of its APIs (most notably the teams call). It is unclear if this is a temporary glitch, deliberate, or a sign of things to come with wider restrictions. This will result in CORS exceptions for any browser-based implementation of this SPA which cannot be safely worked around within the browser. Therefore have built https://github.com/RyanMorrisroe/SportsScoreboard-Native which contains native wrappers that use a local proxy to bypass the CORS restrictions (but will not work in home assistant). To date, the only issue is on the team detail page, but that may change in the future. If ESPN fully removes its CORS headers I will likely retire this package and move this code inside the native package directly.
+
 ## Screenshots
 
 Desktop images are full-page browser captures. Mobile images are captured at Pixel 9a resolution (1081 x 2404 pixels, approximately 412 x 916 CSS pixels).
