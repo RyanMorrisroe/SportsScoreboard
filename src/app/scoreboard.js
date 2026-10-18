@@ -3,6 +3,21 @@ export function getFavoriteFilterText(selectedLeague) {
   return "Chicago";
 }
 
+export function isBeforeFootballWeekStart(
+  date = new Date(),
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  return weekday === "Sun" && hour < 3;
+}
+
 export function getGameState(game) {
   return String(game?.status?.type?.state || "").toLowerCase();
 }

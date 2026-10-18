@@ -4,6 +4,7 @@ import {
   getCompetitor,
   getFavoriteFilterText,
   getGameState,
+  isBeforeFootballWeekStart,
   getTvLineupDurationMinutes,
   getTvLineupLayout,
   getTvLineupStatus,
@@ -64,6 +65,37 @@ describe("scoreboard helpers", () => {
   it("uses the expected favorite-team fallback for each league", () => {
     expect(getFavoriteFilterText("college-football")).toBe("Northwestern");
     expect(getFavoriteFilterText("nfl")).toBe("Chicago");
+  });
+
+  it("starts football weeks at 3 a.m. in the viewer's local timezone", () => {
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-10-18T08:00:00Z"),
+      "America/Los_Angeles",
+    )).toBe(true);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-10-18T08:00:00Z"),
+      "America/New_York",
+    )).toBe(false);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-10-18T09:59:00Z"),
+      "America/Los_Angeles",
+    )).toBe(true);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-10-18T10:00:00Z"),
+      "America/Los_Angeles",
+    )).toBe(false);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-11-01T10:59:00Z"),
+      "America/Los_Angeles",
+    )).toBe(true);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-11-01T11:00:00Z"),
+      "America/Los_Angeles",
+    )).toBe(false);
+    expect(isBeforeFootballWeekStart(
+      new Date("2026-10-17T06:00:00Z"),
+      "America/Los_Angeles",
+    )).toBe(false);
   });
 
   it("reads game state and football situation data", () => {
