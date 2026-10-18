@@ -59,13 +59,12 @@ Desktop images are full-page browser captures. Mobile images are captured at Pix
 
 ## How It Works
 
-The application is a single-page browser app defined in `index.html`.
+The application is a Vue 3 single-page app. Vite compiles its component templates and bundles the frontend into static files.
 
-- Vue 3 is loaded from the unpkg CDN.
-- Tailwind CSS is loaded from its browser CDN.
+- Vue 3 and Tailwind CSS are installed locally and included in the production bundle.
 - The browser calls ESPN directly using `fetch`.
 - Shared API and data-normalization logic lives under `src/`.
-- There is no backend, database, build server, or runtime configuration service.
+- There is no backend, database, production Node.js runtime, or runtime configuration service.
 
 The application currently builds ESPN endpoints using these patterns:
 
@@ -92,13 +91,17 @@ Standings use ESPN's v2 Site API endpoint, whose response contains league-specif
 ## Project Structure
 
 ```text
-index.html                         Browser application and Vue UI
+index.html                         Vite HTML entry point
+src/App.vue                        Vue UI and component setup
+src/main.js                        Vue mount entry point
+src/styles.css                     Tailwind import and global styles
 src/api/espn.js                    ESPN URLs and fetch wrappers
 src/domain/game.js                 Game summary normalization
 src/domain/schedule.js             Team schedule normalization
 src/domain/team.js                 Team record and stat normalization
 src/app/scoreboard.js              Shared scoreboard helpers
-scripts/build.mjs                  Static dist packaging script
+scripts/build.mjs                  Vite production build and license packaging
+vite.config.js                     Vite, Vue, and Tailwind build configuration
 tests/unit/                        Pure unit tests
 tests/integration/                 Fixture-backed integration tests
 tests/fixtures/espn/               Trimmed ESPN response fixtures
@@ -176,23 +179,21 @@ Create the deployable static package:
 npm run build
 ```
 
-The build first runs `npm test`, then recreates `dist/` and copies:
+The build first runs `npm test`, then creates `dist/` with:
 
 - `index.html`
+- `assets/` containing bundled JavaScript and CSS
 - `LICENSE`
-- `src/`
 
-`dist/` is ignored by Git because it is generated output.
+The browser loads no Vue, Tailwind, or application modules from a CDN or from `src/` at runtime. `dist/` is ignored by Git because it is generated output.
 
-To test the generated package locally, serve it over HTTP. Browser module imports should not be tested by opening `index.html` directly with a `file:` URL.
-
-With Python installed, start the local server:
+To develop locally, start the Vite server over HTTP:
 
 ```bash
 npm run serve
 ```
 
-Then open `http://localhost:8000`. Pass a different port after `--` if needed, for example `npm run serve -- 8081`.
+Then open `http://localhost:8000`. To test the production output, run `npm run preview` after the build and open `http://localhost:4173`. Do not test by opening `index.html` with a `file:` URL.
 
 ## GitHub Actions
 
@@ -301,8 +302,8 @@ Copy the contents of `dist/` rather than the `dist/` directory itself if you wan
 ### Home Assistant Notes
 
 - Home Assistant does not need Node.js after the files are deployed.
-- Keep the entire `src/` directory beside `index.html`; the browser imports those modules at runtime.
-- If the browser shows module or CORS errors, verify that the files are being served over HTTP and that the `src/` directory was copied.
+- Copy the complete contents of `dist/`, including the `assets/` directory, into the deployment directory. The generated asset URLs are relative so the SPA works beneath `/local/`.
+- When updating, replace the deployed files together so `index.html` does not refer to missing hashed assets; remove stale assets if needed and hard refresh the browser.
 - The browser must be able to make requests to ESPN. Network restrictions, content blockers, DNS filtering, or a restrictive proxy can prevent scoreboard data from loading.
 - After updating files, perform a hard refresh if the browser appears to show an older version.
 
@@ -311,7 +312,7 @@ Copy the contents of `dist/` rather than the `dist/` directory itself if you wan
 To add another ESPN league:
 
 1. Confirm the ESPN sport and league identifiers used by the site API.
-2. Add the tab and league-specific controls in `index.html`.
+2. Add the tab and league-specific controls in `src/App.vue`.
 3. Update sport-path and URL handling in `src/api/espn.js`.
 4. Check scoreboard, summary, team, schedule, and standings response shapes, including optional and missing fields.
 5. Add representative fixtures and unit/integration coverage for league routing, presentation, and normalization before enabling the league in the UI.

@@ -1,0 +1,2093 @@
+<template>
+  <div class="p-4 md:p-6">
+    <!-- TOP TOUCH-FRIENDLY SPORT TABS NAVIGATION -->
+    <div
+      class="flex border-b border-zinc-800 mb-6 bg-zinc-900/50 p-1 rounded-xl max-w-md mx-auto md:mx-0"
+    >
+      <button
+        @click="switchTab('college-football')"
+        :class="
+          selectedLeague === 'college-football'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        🏈 CFB
+      </button>
+      <button
+        @click="switchTab('nfl')"
+        :class="
+          selectedLeague === 'nfl'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        🏈 NFL
+      </button>
+      <button
+        @click="switchTab('mlb')"
+        :class="
+          selectedLeague === 'mlb'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        ⚾ MLB
+      </button>
+      <button
+        @click="switchTab('nba')"
+        :class="
+          selectedLeague === 'nba'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        🏀 NBA
+      </button>
+      <button
+        @click="switchTab('nhl')"
+        :class="
+          selectedLeague === 'nhl'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        🏒 NHL
+      </button>
+    </div>
+
+    <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
+    <div
+      class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-6"
+    >
+      <div class="flex flex-wrap items-center gap-3 justify-start w-full">
+        <!-- CFB CONFERENCE DROPDOWN -->
+        <select
+          v-if="selectedLeague === 'college-football'"
+          v-model="selectedGroup"
+          @change="handleGroupChange"
+          class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+        >
+          <option value="80">All</option>
+          <option value="">Top 25 Rankings</option>
+          <option value="1">ACC</option>
+          <option value="4">Big 12</option>
+          <option value="5">Big Ten (B1G)</option>
+          <option value="12">C-USA</option>
+          <option value="18">Independent</option>
+          <option value="15">MAC</option>
+          <option value="17">Mountain West</option>
+          <option value="9">PAC-12</option>
+          <option value="8">SEC</option>
+          <option value="37">Sun Belt</option>
+        </select>
+
+        <!-- FOOTBALL WEEK CHANGER CONTROLS -->
+        <div
+          v-if="
+            selectedLeague === 'college-football' || selectedLeague === 'nfl'
+          "
+          class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-1 h-[38px]"
+        >
+          <button
+            @click="adjustWeek(-1)"
+            class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full"
+          >
+            -
+          </button>
+          <span
+            class="text-sm px-2 text-white font-semibold min-w-[75px] text-center"
+            >Week {{ week }}</span
+          >
+          <button
+            @click="adjustWeek(1)"
+            class="text-zinc-400 hover:text-white px-3 font-bold text-lg h-full"
+          >
+            +
+          </button>
+        </div>
+
+        <!-- FOOTBALL SEASON TYPE SEGMENT CONTROLLER -->
+        <div
+          v-if="
+            selectedLeague === 'college-football' || selectedLeague === 'nfl'
+          "
+          class="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl h-[38px]"
+        >
+          <button
+            @click="setSeasonType(2)"
+            :class="
+              seasonType === 2 ? 'bg-zinc-800 text-white' : 'text-zinc-500'
+            "
+            class="px-3 rounded-lg text-xs font-bold transition-all"
+          >
+            REG
+          </button>
+          <button
+            @click="setSeasonType(3)"
+            :class="
+              seasonType === 3 ? 'bg-zinc-800 text-amber-500' : 'text-zinc-500'
+            "
+            class="px-3 rounded-lg text-xs font-bold transition-all"
+          >
+            POST
+          </button>
+        </div>
+
+        <!-- CALENDAR DATE PICKER WITH SHOWPICKER INTERCEPT -->
+        <div
+          v-if="isDateLeague"
+          class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 h-[38px] cursor-pointer"
+          onclick="this.querySelector('input').showPicker()"
+        >
+          <span
+            class="text-xs text-zinc-500 font-bold uppercase tracking-wider select-none"
+            >📅 Date:</span
+          >
+          <input
+            type="date"
+            v-model="selectedDate"
+            @change="handleDateChange"
+            class="bg-transparent text-white text-sm font-semibold focus:outline-none scheme-dark cursor-pointer border-none p-0 min-w-[110px]"
+          />
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-1 bg-zinc-950 border border-zinc-800 p-1 rounded-xl w-fit"
+        aria-label="Dashboard view"
+      >
+        <button
+          @click="setDashboardView('scoreboard')"
+          :aria-pressed="viewMode === 'scoreboard'"
+          :class="
+            viewMode === 'scoreboard'
+              ? 'bg-blue-600 text-white'
+              : 'text-zinc-400 hover:text-white'
+          "
+          class="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+        >
+          Scoreboard
+        </button>
+        <button
+          @click="setDashboardView('standings')"
+          :aria-pressed="viewMode === 'standings'"
+          :class="
+            viewMode === 'standings'
+              ? 'bg-blue-600 text-white'
+              : 'text-zinc-400 hover:text-white'
+          "
+          class="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+        >
+          Standings
+        </button>
+        <button
+          @click="setDashboardView('tv-lineup')"
+          :aria-pressed="viewMode === 'tv-lineup'"
+          :class="
+            viewMode === 'tv-lineup'
+              ? 'bg-blue-600 text-white'
+              : 'text-zinc-400 hover:text-white'
+          "
+          class="whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition-all"
+        >
+          TV Lineup
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN SCORE CARD GRID -->
+    <section v-if="viewMode === 'standings'" class="space-y-6">
+      <div
+        v-if="standingsLoading"
+        class="flex flex-col items-center justify-center py-24 text-zinc-500"
+      >
+        <div
+          class="w-9 h-9 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"
+        ></div>
+        <p class="text-sm tracking-wide">Loading standings...</p>
+      </div>
+      <div
+        v-else-if="standingsError"
+        class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+      >
+        {{ standingsError }}
+      </div>
+      <div
+        v-else-if="standings.length === 0"
+        class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10"
+      >
+        <p class="text-zinc-400 font-semibold text-base">
+          No standings are available for this league.
+        </p>
+      </div>
+      <section
+        v-for="group in standings"
+        :key="group.id"
+        class="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-4 sm:p-5"
+        :style="{ marginLeft: `${Math.min(group.depth, 3) * 1}rem` }"
+      >
+        <h2 class="text-sm sm:text-base font-black text-white mb-3">
+          {{ group.name }}
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-max text-left text-xs sm:text-sm">
+            <thead
+              class="text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800"
+            >
+              <tr>
+                <th class="sticky left-0 z-20 bg-zinc-900 py-2 pr-4">Team</th>
+                <th
+                  v-for="column in group.columns"
+                  :key="column.key"
+                  :aria-sort="
+                    getStandingSortDirection(group.id, column.key) === 'asc'
+                      ? 'ascending'
+                      : getStandingSortDirection(group.id, column.key) ===
+                          'desc'
+                        ? 'descending'
+                        : 'none'
+                  "
+                  class="py-2 px-3 text-right"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex w-full items-center justify-end gap-1 hover:text-zinc-200"
+                    @click="toggleStandingsSort(group.id, column.key)"
+                  >
+                    {{ column.label }}
+                    <span aria-hidden="true" class="text-zinc-500">
+                      {{
+                        getStandingSortDirection(group.id, column.key) === "asc"
+                          ? "↑"
+                          : getStandingSortDirection(group.id, column.key) ===
+                              "desc"
+                            ? "↓"
+                            : "↕"
+                      }}
+                    </span>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="team in getSortedStandingTeams(group)"
+                :key="team.id"
+                class="border-b border-zinc-800/60 last:border-0"
+              >
+                <td class="sticky left-0 z-10 bg-zinc-900 py-2.5 pr-4">
+                  <div class="flex items-center gap-2 min-w-[150px]">
+                    <img
+                      v-if="team.logo"
+                      :src="team.logo"
+                      :alt="`${team.name} logo`"
+                      class="w-6 h-6 object-contain"
+                      loading="lazy"
+                    />
+                    <button
+                      type="button"
+                      class="font-bold text-white hover:text-blue-400"
+                      @click="openTeamDetails(team)"
+                    >
+                      {{ team.name }}
+                    </button>
+                    <span
+                      v-if="team.note"
+                      class="text-[10px] text-emerald-400"
+                      :title="team.note"
+                      >*</span
+                    >
+                  </div>
+                </td>
+                <td
+                  v-for="column in group.columns"
+                  :key="column.key"
+                  class="py-2.5 px-3 text-right font-mono text-zinc-300"
+                >
+                  {{ getStandingStat(team, column.key) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+    <div
+      v-else-if="loading"
+      class="flex flex-col items-center justify-center py-24 text-zinc-500"
+    >
+      <div
+        class="w-9 h-9 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"
+      ></div>
+      <p class="text-sm tracking-wide">Syncing data streams...</p>
+    </div>
+
+    <div
+      v-else-if="games.length === 0"
+      class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10"
+    >
+      <p class="text-zinc-400 font-semibold text-base">
+        No active games scheduled for this frame.
+      </p>
+    </div>
+
+    <section v-else-if="viewMode === 'tv-lineup'" class="space-y-5">
+      <div
+        v-if="!tvLineup.channels.length && !tvLineup.unscheduled.length"
+        class="rounded-xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-400"
+      >
+        No games scheduled for this day.
+      </div>
+      <div
+        v-if="tvLineup.channels.length"
+        class="rounded-xl border border-zinc-800 bg-zinc-950/50"
+      >
+        <div
+          class="sticky top-0 z-40 flex overflow-hidden border-b border-zinc-700 bg-zinc-950"
+        >
+          <div
+            class="flex w-28 shrink-0 items-center border-r border-zinc-700 px-3 py-2 text-[10px] font-bold uppercase text-zinc-500"
+          >
+            Network
+          </div>
+          <div class="min-w-0 flex-1 overflow-hidden">
+            <div
+              class="flex"
+              :style="{
+                width: `${tvLineup.ticks.length * tvLineup.scale}px`,
+                transform: `translateX(-${tvLineupScrollLeft}px)`,
+              }"
+            >
+              <div
+                v-for="tick in tvLineup.ticks"
+                :key="tick.timestamp"
+                class="h-9 shrink-0 border-r border-zinc-800 px-1 py-2 text-center font-mono text-[10px] text-zinc-400"
+                :style="{ width: `${tvLineup.scale}px` }"
+              >
+                {{ tick.label }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto" @scroll="handleTvLineupScroll">
+          <div class="min-w-max">
+            <div
+              v-for="channel in tvLineup.channels"
+              :key="channel.name"
+              class="flex border-b-2 border-zinc-700 last:border-0"
+            >
+              <div
+                class="sticky left-0 z-30 flex w-28 shrink-0 items-center border-r border-zinc-800 bg-zinc-950 px-3 text-xs font-bold text-zinc-300"
+              >
+                <span class="truncate" :title="channel.name">{{
+                  channel.name
+                }}</span>
+              </div>
+              <div
+                class="relative shrink-0"
+                :style="{
+                  width: `${tvLineup.timelineWidth}px`,
+                  height: `${channel.laneCount * tvLineup.laneHeight}px`,
+                }"
+              >
+                <div
+                  v-for="line in tvLineup.gridlines"
+                  :key="line.index"
+                  aria-hidden="true"
+                  class="absolute inset-y-0 z-0 border-l border-zinc-800/70"
+                  :style="{ left: `${line.left}px` }"
+                ></div>
+                <button
+                  v-for="entry in channel.games"
+                  :key="entry.game.id"
+                  type="button"
+                  :disabled="getGameState(entry.game) === 'pre'"
+                  :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
+                  :title="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')} · ${entry.status}`"
+                  @click.stop="handleGameClick(entry.game)"
+                  class="absolute z-10 grid grid-cols-[26px_minmax(0,1fr)_26px] grid-rows-3 items-center gap-1 overflow-hidden rounded border bg-zinc-900 text-left shadow-sm transition-colors"
+                  :class="[
+                    isGameHighlighted(entry.game)
+                      ? 'border-amber-500 ring-1 ring-amber-500/30'
+                      : 'border-zinc-700',
+                    getGameState(entry.game) === 'pre'
+                      ? 'cursor-default opacity-90'
+                      : 'cursor-pointer hover:bg-zinc-800 active:bg-zinc-700',
+                  ]"
+                  :style="{
+                    left: `${entry.left}px`,
+                    top: `${entry.lane * tvLineup.laneHeight + 4}px`,
+                    width: `${entry.width}px`,
+                    height: `${tvLineup.laneHeight - 8}px`,
+                  }"
+                >
+                  <img
+                    :src="getTeamLogo(entry.game, 'away')"
+                    :alt="`${getTeamName(entry.game, 'away')} logo`"
+                    class="col-start-1 row-start-1 h-6 w-6 translate-y-2 self-center object-contain"
+                    loading="lazy"
+                  />
+                  <div class="col-start-2 row-span-3 min-w-0 space-y-1 px-0.5">
+                    <div
+                      class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
+                      :style="getTvLineupTeamStyle(entry.game, 'away')"
+                    >
+                      <span class="truncate text-[11px] font-semibold">{{
+                        getTeamName(entry.game, "away")
+                      }}</span>
+                      <span
+                        v-if="getGameState(entry.game) !== 'pre'"
+                        class="shrink-0 font-mono text-xs font-black"
+                        >{{ getTeamScore(entry.game, "away") }}</span
+                      >
+                    </div>
+                    <div
+                      class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
+                      :style="getTvLineupTeamStyle(entry.game, 'home')"
+                    >
+                      <span class="truncate text-[11px] font-semibold">{{
+                        getTeamName(entry.game, "home")
+                      }}</span>
+                      <span
+                        v-if="getGameState(entry.game) !== 'pre'"
+                        class="shrink-0 font-mono text-xs font-black"
+                        >{{ getTeamScore(entry.game, "home") }}</span
+                      >
+                    </div>
+                    <div
+                      class="truncate text-[10px] font-bold uppercase text-zinc-400"
+                      :class="{
+                        'text-red-400': getGameState(entry.game) === 'in',
+                      }"
+                    >
+                      {{ entry.status }}
+                    </div>
+                  </div>
+                  <img
+                    :src="getTeamLogo(entry.game, 'home')"
+                    :alt="`${getTeamName(entry.game, 'home')} logo`"
+                    class="col-start-3 row-span-3 h-6 w-6 self-center object-contain"
+                    loading="lazy"
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section v-if="tvLineup.unscheduled.length" class="space-y-2">
+        <h2 class="text-xs font-bold uppercase text-zinc-500">Time TBD</h2>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <button
+            v-for="entry in tvLineup.unscheduled"
+            :key="entry.game.id"
+            type="button"
+            :disabled="getGameState(entry.game) === 'pre'"
+            :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
+            @click.stop="handleGameClick(entry.game)"
+            class="grid min-h-[84px] grid-cols-[30px_minmax(0,1fr)_30px] grid-rows-3 items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 p-2 text-left"
+            :class="
+              getGameState(entry.game) === 'pre'
+                ? 'cursor-default'
+                : 'cursor-pointer hover:bg-zinc-800'
+            "
+          >
+            <img
+              :src="getTeamLogo(entry.game, 'away')"
+              :alt="`${getTeamName(entry.game, 'away')} logo`"
+              class="col-start-1 row-start-1 h-6 w-6 translate-y-2 self-center object-contain"
+              loading="lazy"
+            />
+            <div class="col-start-2 row-span-3 min-w-0 space-y-1">
+              <div
+                class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
+                :style="getTvLineupTeamStyle(entry.game, 'away')"
+              >
+                <span class="truncate text-xs font-semibold">{{
+                  getTeamName(entry.game, "away")
+                }}</span>
+                <span
+                  v-if="getGameState(entry.game) !== 'pre'"
+                  class="font-mono text-xs font-black"
+                  >{{ getTeamScore(entry.game, "away") }}</span
+                >
+              </div>
+              <div
+                class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
+                :style="getTvLineupTeamStyle(entry.game, 'home')"
+              >
+                <span class="truncate text-xs font-semibold">{{
+                  getTeamName(entry.game, "home")
+                }}</span>
+                <span
+                  v-if="getGameState(entry.game) !== 'pre'"
+                  class="font-mono text-xs font-black"
+                  >{{ getTeamScore(entry.game, "home") }}</span
+                >
+              </div>
+              <div
+                class="truncate text-[10px] font-bold uppercase text-zinc-400"
+              >
+                {{ entry.channel }} · {{ entry.status }}
+              </div>
+            </div>
+            <img
+              :src="getTeamLogo(entry.game, 'home')"
+              :alt="`${getTeamName(entry.game, 'home')} logo`"
+              class="col-start-3 row-span-3 h-7 w-7 self-center object-contain"
+              loading="lazy"
+            />
+          </button>
+        </div>
+      </section>
+    </section>
+
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div
+        v-for="game in sortedGames"
+        :key="game.id"
+        role="button"
+        @click.stop="handleGameClick(game)"
+        class="w-full text-left bg-zinc-900/90 border rounded-2xl p-4 transition-all duration-150 backdrop-blur-sm shadow-sm hover:bg-zinc-800/60 block select-none touch-manipulation appearance-none [webkit-tap-highlight-color:transparent]"
+        :disabled="getGameState(game) === 'pre'"
+        :class="[
+          isGameHighlighted(game)
+            ? 'border-amber-500 shadow-amber-500/10 shadow-lg ring-1 ring-amber-500/20'
+            : 'border-zinc-800/80',
+          getGameState(game) === 'pre'
+            ? 'cursor-default opacity-90'
+            : 'cursor-pointer active:scale-[0.99] active:bg-zinc-800/90',
+        ]"
+      >
+        <!-- TOP EVENT META BAR -->
+        <div
+          class="flex items-center justify-between border-b border-zinc-800/60 pb-3 mb-3.5 text-xs"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              v-if="getGameState(game) === 'in'"
+              class="bg-red-600 text-white px-1.5 py-0.5 rounded font-black text-[10px] tracking-widest live-pulse"
+              >LIVE</span
+            >
+            <span
+              v-else-if="getGameState(game) === 'pre'"
+              class="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider"
+              >UPCOMING</span
+            >
+            <span
+              v-else
+              class="bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider"
+              >FINAL</span
+            >
+
+            <span
+              v-if="getNetwork(game)"
+              class="text-zinc-400 font-bold px-1.5 bg-zinc-950 rounded border border-zinc-800 text-[10px]"
+              >{{ getNetwork(game) }}</span
+            >
+            <span class="text-zinc-400 font-medium">{{
+              formatGameTime(game)
+            }}</span>
+          </div>
+
+          <div
+            v-if="getSituation(game)"
+            class="text-amber-400 font-semibold tracking-tight bg-amber-500/10 px-2 py-0.5 rounded-full text-[11px]"
+          >
+            {{ getSituation(game) }}
+          </div>
+        </div>
+
+        <p
+          v-if="getSeriesSummary(game.competitions?.[0])"
+          class="-mt-2 mb-3 text-[11px] font-semibold text-zinc-400 truncate"
+        >
+          {{ getSeriesSummary(game.competitions?.[0]) }}
+        </p>
+
+        <!-- TEAM MATRIX VALUES ROW (RANK INLINE & STRIPPED) -->
+        <div class="space-y-3.5">
+          <!-- AWAY SLOT -->
+          <div
+            class="flex items-center justify-between"
+            :class="{
+              'opacity-40':
+                getGameState(game) === 'post' && !isWinner(game, 'away'),
+            }"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <img
+                :src="getTeamLogo(game, 'away')"
+                class="w-6 h-6 object-contain flex-shrink-0"
+                loading="lazy"
+              />
+              <span
+                class="font-bold text-white tracking-tight truncate text-sm"
+                :class="{
+                  'text-amber-400 font-black': isTeamStringHighlighted(
+                    getTeamName(game, 'away'),
+                  ),
+                }"
+              >
+                <span
+                  v-if="getTeamRank(game, 'away')"
+                  class="text-zinc-400 font-bold mr-1"
+                  >#{{ getTeamRank(game, "away") }}</span
+                >{{ getTeamName(game, "away") }}
+              </span>
+              <span
+                v-if="hasPossession(game, 'away')"
+                class="text-amber-500 text-xs animate-pulse"
+                >🏈</span
+              >
+            </div>
+            <div class="font-mono text-xl font-black text-white pl-4">
+              {{ getTeamScore(game, "away") }}
+            </div>
+          </div>
+
+          <!-- HOME SLOT -->
+          <div
+            class="flex items-center justify-between"
+            :class="{
+              'opacity-40':
+                getGameState(game) === 'post' && !isWinner(game, 'home'),
+            }"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <img
+                :src="getTeamLogo(game, 'home')"
+                class="w-6 h-6 object-contain flex-shrink-0"
+                loading="lazy"
+              />
+              <span
+                class="font-bold text-white tracking-tight truncate text-sm"
+                :class="{
+                  'text-amber-400 font-black': isTeamStringHighlighted(
+                    getTeamName(game, 'home'),
+                  ),
+                }"
+              >
+                <span
+                  v-if="getTeamRank(game, 'home')"
+                  class="text-zinc-400 font-bold mr-1"
+                  >#{{ getTeamRank(game, "home") }}</span
+                >{{ getTeamName(game, "home") }}
+              </span>
+              <span
+                v-if="hasPossession(game, 'home')"
+                class="text-amber-500 text-xs animate-pulse"
+                >🏈</span
+              >
+            </div>
+            <div class="font-mono text-xl font-black text-white pl-4">
+              {{ getTeamScore(game, "home") }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAMECAST DETAILS MODAL DRAWER -->
+    <div
+      v-if="showModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto"
+      @click.self="closeModal"
+    >
+      <div
+        class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative text-sm"
+      >
+        <!-- MODAL LOADING STATE -->
+        <div
+          v-if="modalLoading"
+          class="flex flex-col items-center justify-center py-32 text-zinc-500 w-full"
+        >
+          <div
+            class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"
+          ></div>
+          <p class="text-xs">Fetching live summary metrics...</p>
+        </div>
+
+        <div
+          v-else-if="!modalData && modalView !== 'team'"
+          class="p-8 text-center text-zinc-400 relative"
+        >
+          <button
+            @click="closeModal"
+            class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl p-2"
+          >
+            ✕
+          </button>
+          Failed to fetch extended match details for this event.
+        </div>
+
+        <!-- RE-IMPLEMENTED SAFETY WRAPPER: Completely gates property lookups until modalData populates -->
+        <div
+          v-if="modalData || modalView === 'team'"
+          class="flex flex-col w-full"
+        >
+          <div
+            class="flex justify-end p-2 border-b border-zinc-800/40 bg-zinc-950/20"
+          >
+            <button
+              @click="closeModal"
+              class="text-zinc-400 hover:text-white text-xs font-bold px-4 py-2 transition-all"
+            >
+              ✕ CLOSE WINDOW
+            </button>
+          </div>
+
+          <div
+            v-if="modalView === 'game'"
+            class="p-6 border-b border-zinc-800 bg-zinc-950/40"
+          >
+            <div
+              class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40"
+            >
+              <!-- AWAY BRAND (Columns 1, 2, 3) -->
+              <div
+                class="col-span-3 flex flex-col sm:flex-row items-center text-center sm:text-left gap-1 sm:gap-3 w-full min-w-0"
+              >
+                <img
+                  :src="modalData.teams.away.logo"
+                  class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0"
+                />
+                <div class="min-w-0 w-full">
+                  <h3
+                    class="text-xs sm:text-base font-bold text-white truncate px-1"
+                  >
+                    <span
+                      v-if="modalData.teams.away.rank"
+                      class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5"
+                      >#{{ modalData.teams.away.rank }}</span
+                    >
+                    <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
+                    <button
+                      @click.stop="openTeamDetails('away')"
+                      class="block sm:hidden w-full text-left truncate hover:text-blue-400"
+                    >
+                      {{
+                        modalData.teams.away.abbrev || modalData.teams.away.name
+                      }}
+                    </button>
+                    <button
+                      @click.stop="openTeamDetails('away')"
+                      class="hidden sm:inline truncate hover:text-blue-400"
+                    >
+                      {{ modalData.teams.away.name }}
+                    </button>
+                  </h3>
+                  <p
+                    class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase"
+                  >
+                    Away
+                  </p>
+                </div>
+              </div>
+
+              <!-- CENTER LIVE RUNNING SCORE WITH INTEGRATED POSSESSION LOGIC (Column 4) -->
+              <div
+                class="col-span-1 flex flex-col items-center justify-center font-mono select-none px-1"
+              >
+                <div
+                  class="flex items-center bg-zinc-950 px-2 py-1 sm:px-4 sm:py-2 rounded-xl border border-zinc-800/80 text-sm sm:text-2xl font-black text-white whitespace-nowrap"
+                >
+                  <!-- Football emoji lights up if Away has possession -->
+                  <span
+                    v-if="
+                      selectedLeague !== 'mlb' &&
+                      hasPossession(
+                        games.find((g) => g.id === modalData.id),
+                        'away',
+                      )
+                    "
+                    class="text-amber-500 text-xs sm:text-sm animate-pulse mr-1 sm:mr-2"
+                    >🏈</span
+                  >
+
+                  <span>{{ modalData.teams.away.score }}</span>
+                  <span
+                    class="text-zinc-600 text-xs sm:text-lg font-normal font-sans mx-1 sm:mx-1.5"
+                    >vs</span
+                  >
+                  <span>{{ modalData.teams.home.score }}</span>
+
+                  <!-- Football emoji lights up if Home has possession -->
+                  <span
+                    v-if="
+                      selectedLeague !== 'mlb' &&
+                      hasPossession(
+                        games.find((g) => g.id === modalData.id),
+                        'home',
+                      )
+                    "
+                    class="text-amber-500 text-xs sm:text-sm animate-pulse ml-1 sm:mr-2"
+                    >🏈</span
+                  >
+                </div>
+              </div>
+
+              <!-- HOME BRAND (Columns 5, 6, 7) -->
+              <div
+                class="col-span-3 flex flex-col-reverse sm:flex-row items-center text-center sm:text-right gap-1 sm:gap-3 w-full min-w-0 justify-end"
+              >
+                <div class="min-w-0 w-full">
+                  <h3
+                    class="text-xs sm:text-base font-bold text-white truncate px-1"
+                  >
+                    <span
+                      v-if="modalData.teams.home.rank"
+                      class="text-amber-500 font-black text-[10px] sm:text-sm mr-0.5"
+                      >#{{ modalData.teams.home.rank }}</span
+                    >
+                    <!-- 🟢 Shows abbreviation on tiny screens, full name everywhere else -->
+                    <button
+                      @click.stop="openTeamDetails('home')"
+                      class="block sm:hidden w-full text-right truncate hover:text-blue-400"
+                    >
+                      {{
+                        modalData.teams.home.abbrev || modalData.teams.home.name
+                      }}
+                    </button>
+                    <button
+                      @click.stop="openTeamDetails('home')"
+                      class="hidden sm:inline truncate hover:text-blue-400"
+                    >
+                      {{ modalData.teams.home.name }}
+                    </button>
+                  </h3>
+                  <p
+                    class="text-[9px] sm:text-[11px] text-zinc-400 tracking-wider uppercase"
+                  >
+                    Home
+                  </p>
+                </div>
+                <img
+                  :src="modalData.teams.home.logo"
+                  class="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0"
+                />
+              </div>
+            </div>
+
+            <p
+              v-if="modalView === 'game' && modalSeriesSummary"
+              class="mb-4 text-center text-xs font-semibold text-zinc-400"
+            >
+              {{ modalSeriesSummary }}
+            </p>
+
+            <div
+              v-if="modalView === 'game'"
+              class="overflow-x-auto w-full bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/60"
+            >
+              <table
+                class="w-full text-center font-mono text-xs text-zinc-300 min-w-[280px]"
+              >
+                <thead>
+                  <tr
+                    class="text-zinc-500 border-b border-zinc-800/80 pb-1.5 uppercase font-sans tracking-widest text-[10px]"
+                  >
+                    <th class="text-left font-medium px-2">TEAM</th>
+                    <th
+                      v-for="head in linescoreHeaders"
+                      :key="head"
+                      class="px-2 font-black"
+                    >
+                      {{ head }}
+                    </th>
+                    <th
+                      class="px-2 font-black text-white border-l border-zinc-800/80 pl-3"
+                    >
+                      TOT
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-900/60">
+                  <tr class="h-9">
+                    <td
+                      class="text-left font-sans font-bold text-zinc-400 px-2"
+                    >
+                      {{ modalData.teams.away.abbrev }}
+                    </td>
+                    <td
+                      v-for="(val, idx) in linescores.away"
+                      :key="'away-' + idx"
+                      class="px-2 font-bold text-zinc-300"
+                    >
+                      {{ val }}
+                    </td>
+                    <td
+                      class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm"
+                    >
+                      {{ modalData.teams.away.score }}
+                    </td>
+                  </tr>
+                  <tr class="h-9">
+                    <td
+                      class="text-left font-sans font-bold text-zinc-400 px-2"
+                    >
+                      {{ modalData.teams.home.abbrev }}
+                    </td>
+                    <td
+                      v-for="(val, idx) in linescores.home"
+                      :key="'home-' + idx"
+                      class="px-2 font-bold text-zinc-300"
+                    >
+                      {{ val }}
+                    </td>
+                    <td
+                      class="px-2 font-black text-amber-400 border-l border-zinc-800/80 bg-zinc-950/40 pl-3 text-sm"
+                    >
+                      {{ modalData.teams.home.score }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div
+            v-if="modalView === 'game'"
+            class="flex bg-zinc-950/60 border-b border-zinc-800 p-1"
+          >
+            <button
+              @click="modalTab = 'stats'"
+              :class="
+                modalTab === 'stats'
+                  ? 'bg-zinc-800 text-white font-bold'
+                  : 'text-zinc-400'
+              "
+              class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
+            >
+              📊 TEAM STATS
+            </button>
+            <button
+              @click="modalTab = 'leaders'"
+              :class="
+                modalTab === 'leaders'
+                  ? 'bg-zinc-800 text-white font-bold'
+                  : 'text-zinc-400'
+              "
+              class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
+            >
+              🏃 PLAYER LEADERS
+            </button>
+          </div>
+
+          <div v-if="modalView === 'game'" class="p-6 flex-1 bg-zinc-900">
+            <div v-if="modalTab === 'stats'" class="space-y-6">
+              <div
+                v-if="currentDrive"
+                class="bg-blue-950/30 border border-blue-900/50 rounded-xl p-3.5 mb-4"
+              >
+                <div class="flex items-center justify-between mb-1.5 text-xs">
+                  <span
+                    class="text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5"
+                  >
+                    <span
+                      class="w-2 h-2 rounded-full bg-red-500 animate-ping"
+                    ></span>
+                    Live Drive
+                  </span>
+                  <span class="text-zinc-400 font-mono font-medium">{{
+                    currentDrive.result || "In progress..."
+                  }}</span>
+                </div>
+                <p class="text-white font-bold text-sm tracking-tight mb-0.5">
+                  {{ currentDrive.description }}
+                </p>
+                <p
+                  v-if="currentDrive.recap"
+                  class="text-xs text-zinc-400 font-medium"
+                >
+                  {{ currentDrive.recap }}
+                </p>
+              </div>
+
+              <div
+                v-if="winProbabilityChart.points"
+                class="bg-zinc-950/40 border border-zinc-800/80 rounded-xl p-4"
+              >
+                <h4
+                  class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3"
+                >
+                  Live Win Probability Trend
+                </h4>
+                <div
+                  class="w-full h-24 relative bg-zinc-950/80 rounded-lg border border-zinc-900/60 p-1"
+                >
+                  <div
+                    class="absolute left-2 top-1.5 text-[9px] font-bold text-zinc-500 uppercase"
+                  >
+                    {{ modalData.teams.away.abbrev }} Advantage
+                  </div>
+                  <div
+                    class="absolute left-2 bottom-1.5 text-[9px] font-bold text-zinc-500 uppercase"
+                  >
+                    {{ modalData.teams.home.abbrev }} Advantage
+                  </div>
+                  <svg
+                    class="w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    <line
+                      x1="0"
+                      y1="50"
+                      x2="100"
+                      y2="50"
+                      stroke="#333333"
+                      stroke-width="1"
+                      stroke-dasharray="4"
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="#eab308"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      :points="winProbabilityChart.points"
+                    />
+                    <circle
+                      v-if="winProbabilityChart.singlePoint"
+                      :cx="winProbabilityChart.singlePoint.x"
+                      :cy="winProbabilityChart.singlePoint.y"
+                      r="2.5"
+                      fill="#eab308"
+                      stroke="#18181b"
+                      stroke-width="1"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="space-y-3.5 mt-2">
+                <div v-if="selectedLeague === 'mlb'" class="flex justify-end">
+                  <select
+                    v-model="mlbStatGroup"
+                    aria-label="MLB stat category"
+                    class="bg-zinc-950 border border-zinc-800 text-zinc-200 rounded-lg px-3 py-2 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="batting">Batting</option>
+                    <option value="pitching">Pitching</option>
+                    <option value="fielding">Fielding</option>
+                  </select>
+                </div>
+                <!-- Loop through our customized teamStats computed property instead of raw attributes -->
+                <div
+                  v-for="stat in teamStats"
+                  :key="stat.label"
+                  class="border-b border-zinc-800/40 pb-3"
+                >
+                  <div
+                    class="flex justify-between items-center text-xs font-medium mb-1.5"
+                  >
+                    <span class="font-mono text-zinc-300 font-bold">{{
+                      stat.awayDisplay
+                    }}</span>
+                    <span
+                      class="text-zinc-400 uppercase tracking-wider font-semibold text-[10px]"
+                      >{{ stat.label }}</span
+                    >
+                    <span class="font-mono text-zinc-300 font-bold">{{
+                      stat.homeDisplay
+                    }}</span>
+                  </div>
+                  <div
+                    class="flex h-2 bg-zinc-950 rounded-full overflow-hidden"
+                  >
+                    <div
+                      class="rounded-l-full transition-all duration-300"
+                      :style="{
+                        width: stat.awayPct + '%',
+                        backgroundColor: teamStatBarColors.away,
+                      }"
+                    ></div>
+                    <div class="bg-zinc-800/80 flex-1"></div>
+                    <div
+                      class="rounded-r-full transition-all duration-300"
+                      :style="{
+                        width: stat.homePct + '%',
+                        backgroundColor: teamStatBarColors.home,
+                      }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- FIXED RENDER MATRIX FOR THE PLAYER LEADERS TAB GRID -->
+            <div
+              v-else-if="modalTab === 'leaders'"
+              class="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              <div
+                v-for="category in playerLeaders"
+                :key="category.title"
+                class="bg-zinc-950/40 border border-zinc-800/80 rounded-2xl p-4"
+              >
+                <h4
+                  class="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-800/60 pb-2 mb-3.5"
+                >
+                  {{ category.title }} Leaders
+                </h4>
+
+                <div class="space-y-4">
+                  <div
+                    v-for="player in category.athletes"
+                    :key="player.name"
+                    class="flex items-center gap-3 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/40"
+                  >
+                    <img
+                      :src="player.headshot"
+                      class="w-10 h-10 rounded-full bg-zinc-800 object-cover border border-zinc-700/60 flex-shrink-0"
+                    />
+                    <div class="min-w-0 flex-1">
+                      <div
+                        class="font-bold text-white text-xs tracking-tight truncate"
+                      >
+                        {{ player.name }}
+                      </div>
+                      <div
+                        class="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-0.5"
+                      >
+                        {{ player.teamAbbrev }} · #{{ player.jersey }}
+                      </div>
+                      <div
+                        class="font-mono text-xs font-bold text-amber-400 mt-1 flex flex-wrap gap-1.5"
+                      >
+                        <span
+                          v-for="(val, idx) in player.stats"
+                          :key="idx"
+                          class="bg-zinc-950 px-1.5 py-0.5 rounded text-[9px] border border-zinc-900"
+                        >
+                          {{ category.labels[idx] || "STAT" }}:{{ val }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="p-4 sm:p-6 flex-1 bg-zinc-900 space-y-5 sm:space-y-6"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <button
+                @click="returnToGame"
+                class="text-zinc-400 hover:text-white text-xs font-bold"
+              >
+                ← BACK
+              </button>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest"
+                >Team Details</span
+              >
+            </div>
+
+            <div
+              v-if="teamLoading"
+              class="flex flex-col items-center justify-center py-16 text-zinc-500"
+            >
+              <div
+                class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"
+              ></div>
+              <p class="text-xs">Fetching team details...</p>
+            </div>
+
+            <div v-else class="space-y-6">
+              <div
+                v-if="teamData"
+                class="flex items-center gap-3 sm:gap-4 border-b border-zinc-800 pb-5"
+              >
+                <img
+                  :src="
+                    teamData.team?.logos?.[0]?.href ||
+                    teamData.team?.logo ||
+                    selectedTeam.logo
+                  "
+                  class="w-16 h-16 object-contain"
+                />
+                <div class="min-w-0">
+                  <h3 class="text-lg sm:text-xl font-black text-white truncate">
+                    {{ teamData.team?.displayName || selectedTeam.name }}
+                  </h3>
+                  <p class="text-xs text-zinc-400 mt-1">
+                    {{
+                      teamData.team?.abbreviation ||
+                      selectedTeam.abbrev ||
+                      selectedTeam.abbreviation
+                    }}<span v-if="teamData.team?.location">
+                      · {{ teamData.team.location }}</span
+                    >
+                  </p>
+                  <p
+                    v-if="teamData.groups?.name || teamData.team?.groups?.name"
+                    class="text-xs text-zinc-500 mt-1"
+                  >
+                    {{ teamData.groups?.name || teamData.team.groups.name }}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                v-if="teamError"
+                class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+              >
+                {{ teamError }}
+              </div>
+
+              <div
+                v-if="teamRecords.length || teamRecordStats.length"
+                class="space-y-5"
+              >
+                <div
+                  v-if="teamRecords.length"
+                  class="grid grid-cols-2 gap-2 sm:gap-3"
+                >
+                  <div
+                    v-for="record in teamRecords"
+                    :key="record.label"
+                    class="bg-gradient-to-br from-blue-950/60 to-zinc-950/60 border border-blue-900/50 rounded-2xl px-3 sm:px-4 py-3"
+                  >
+                    <div
+                      class="text-[10px] text-blue-300/70 uppercase tracking-widest font-bold"
+                    >
+                      {{ record.label }}
+                    </div>
+                    <div
+                      class="font-mono text-xl sm:text-2xl font-black text-white mt-1 truncate"
+                    >
+                      {{ record.value }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="teamRecordStats.length" class="space-y-3">
+                  <button
+                    @click="showSeasonMetrics = !showSeasonMetrics"
+                    class="flex items-center justify-between w-full text-left text-xs font-black text-zinc-400 uppercase tracking-widest hover:text-white"
+                  >
+                    <span>Season Metrics</span>
+                    <span class="text-base leading-none">{{
+                      showSeasonMetrics ? "−" : "+"
+                    }}</span>
+                  </button>
+                  <div
+                    v-if="showSeasonMetrics"
+                    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
+                  >
+                    <div
+                      v-for="stat in teamRecordStats"
+                      :key="stat.key"
+                      class="bg-zinc-950/70 border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-3"
+                    >
+                      <div
+                        class="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight"
+                      >
+                        {{ stat.label }}
+                      </div>
+                      <div
+                        class="font-mono text-base sm:text-lg font-black text-white mt-2 truncate"
+                      >
+                        {{ stat.value }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4
+                  class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3"
+                >
+                  Schedule
+                </h4>
+                <div
+                  v-if="scheduleError"
+                  class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
+                >
+                  {{ scheduleError }}
+                </div>
+                <div
+                  v-else-if="teamSchedule.length === 0"
+                  class="border border-dashed border-zinc-800 rounded-xl p-8 text-center text-sm text-zinc-500"
+                >
+                  No schedule available.
+                </div>
+                <div v-else class="space-y-2">
+                  <div
+                    v-for="game in teamSchedule"
+                    :key="game.id"
+                    class="flex items-start justify-between gap-2 sm:gap-3 bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-2.5 sm:p-3"
+                  >
+                    <div class="min-w-0">
+                      <div class="text-[10px] text-zinc-500">
+                        {{ game.date
+                        }}<span v-if="game.week"> · {{ game.week }}</span>
+                      </div>
+                      <div
+                        class="flex items-center gap-2 text-sm font-bold text-white truncate mt-1"
+                      >
+                        <img
+                          :src="game.opponentLogo"
+                          class="w-5 h-5 object-contain shrink-0"
+                          loading="lazy"
+                        />
+                        <span class="truncate"
+                          >{{ game.homeAway === "home" ? "vs" : "at" }}
+                          {{ game.opponent }}</span
+                        >
+                      </div>
+                      <div
+                        v-if="game.venue"
+                        class="text-[10px] text-zinc-500 mt-1 truncate"
+                      >
+                        {{ game.venue }}
+                      </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                      <div
+                        class="flex items-center gap-2 font-mono font-black text-white"
+                      >
+                        <img
+                          :src="game.teamLogo"
+                          class="w-5 h-5 object-contain shrink-0"
+                          loading="lazy"
+                        />
+                        <span>{{ game.score }}</span>
+                      </div>
+                      <div class="text-[10px] text-zinc-400 uppercase mt-1">
+                        {{ game.result || game.status }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /modalData check safety wrap -->
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { computed, onMounted, ref } from "vue";
+import {
+  fetchStandings as fetchStandingsApi,
+  fetchTeamDetails,
+  getGameSummaryUrl,
+  getScoreboardRequestParams,
+  getScoreboardUrl,
+} from "./api/espn.js";
+import {
+  formatGameTime as formatGameTimeUtil,
+  getFavoriteFilterText as getFavoriteFilterTextUtil,
+  getGameState as getGameStateUtil,
+  getSeriesSummary as getSeriesSummaryUtil,
+  getLinescoreHeaders as getLinescoreHeadersUtil,
+  getLinescoreValues as getLinescoreValuesUtil,
+  getPlayerLeaders as getPlayerLeadersUtil,
+  getBaseballTeamStatComparisons as getBaseballTeamStatComparisonsUtil,
+  getNetwork as getNetworkUtil,
+  getWinProbabilityChart as getWinProbabilityChartUtil,
+  getSituation as getSituationUtil,
+  getTeamLogo as getTeamLogoUtil,
+  getTeamName as getTeamNameUtil,
+  getTeamRank as getTeamRankUtil,
+  getTeamScore as getTeamScoreUtil,
+  getTeamStatComparisons as getTeamStatComparisonsUtil,
+  getTeamStatBarColors as getTeamStatBarColorsUtil,
+  getTvLineupLayout as getTvLineupLayoutUtil,
+  getTvLineupTeamStyle as getTvLineupTeamStyleUtil,
+  hasPossession as hasPossessionUtil,
+  isGameHighlighted as isGameHighlightedUtil,
+  isTeamStringHighlighted as isTeamStringHighlightedUtil,
+  isWinner as isWinnerUtil,
+  sortGames as sortGamesUtil,
+} from "./app/scoreboard.js";
+import { buildGameDetail } from "./domain/game.js";
+import { normalizeSchedule } from "./domain/schedule.js";
+import {
+  canGoBackWithinApp,
+  initializeAppHistory,
+  pushAppHistoryEntry,
+  readAppHistoryEntry,
+  replaceAppHistoryEntry,
+} from "./app/navigation.js";
+import {
+  getStandingPositionKey,
+  normalizeStandings,
+  sortStandingTeams as sortStandingTeamsUtil,
+} from "./domain/standings.js";
+import { getTeamRecords, getTeamRecordStats } from "./domain/team.js";
+
+export default {
+  setup() {
+    const selectedLeague = ref("college-football");
+    const seasonType = ref(2);
+    const week = ref(1);
+    const selectedGroup = ref("80");
+    const selectedDate = ref(new Date().toLocaleDateString("en-CA"));
+    const mlbStatGroup = ref("batting");
+    const isDateLeague = computed(() =>
+      ["mlb", "nba", "nhl"].includes(selectedLeague.value),
+    );
+    const games = ref([]);
+    const loading = ref(false);
+    const viewMode = ref("scoreboard");
+    const standings = ref([]);
+    const standingsLoading = ref(false);
+    const standingsError = ref("");
+    const standingsSort = ref({});
+    let standingsRequestId = 0;
+    let scoreboardRequestId = 0;
+    let gameRequestId = 0;
+
+    const showModal = ref(false);
+    const modalLoading = ref(false);
+    const modalData = ref(null);
+    const selectedGame = ref(null);
+    const modalTab = ref("stats");
+    const modalView = ref("game");
+    const selectedTeamSide = ref(null);
+    const selectedTeamOverride = ref(null);
+    const teamData = ref(null);
+    const teamScheduleData = ref(null);
+    const teamLoading = ref(false);
+    const teamError = ref("");
+    const scheduleError = ref("");
+    const showSeasonMetrics = ref(false);
+    let teamRequestId = 0;
+
+    let pollingInterval = null;
+
+    const createNavigationSnapshot = (modal = null) => ({
+      league: selectedLeague.value,
+      view: viewMode.value,
+      week: week.value,
+      seasonType: seasonType.value,
+      selectedGroup: selectedGroup.value,
+      selectedDate: selectedDate.value,
+      modal,
+    });
+    const pushNavigationEntry = (modal = null) =>
+      pushAppHistoryEntry(window.history, createNavigationSnapshot(modal));
+    const replaceCurrentNavigationEntry = (modal) => {
+      const currentEntry = readAppHistoryEntry(window.history.state);
+      const nextModal =
+        modal === undefined ? (currentEntry?.snapshot.modal ?? null) : modal;
+      replaceAppHistoryEntry(
+        window.history,
+        createNavigationSnapshot(nextModal),
+      );
+    };
+    const hasSavedNavigation = Boolean(
+      readAppHistoryEntry(window.history.state),
+    );
+    const initialNavigationEntry = initializeAppHistory(
+      window.history,
+      createNavigationSnapshot(),
+    );
+    selectedLeague.value = initialNavigationEntry.snapshot.league;
+    viewMode.value = initialNavigationEntry.snapshot.view;
+    week.value = initialNavigationEntry.snapshot.week;
+    seasonType.value = initialNavigationEntry.snapshot.seasonType;
+    selectedGroup.value = initialNavigationEntry.snapshot.selectedGroup;
+    selectedDate.value = initialNavigationEntry.snapshot.selectedDate;
+
+    // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
+    const getFavoriteFilterText = () =>
+      getFavoriteFilterTextUtil(selectedLeague.value);
+
+    const handleGameClick = (game) => {
+      if (getGameState(game) !== "pre") {
+        openModal(game);
+      }
+    };
+
+    const fetchScoreboard = async (
+      isInitialBoot = false,
+      showLoading = isInitialBoot,
+    ) => {
+      const requestId = ++scoreboardRequestId;
+      if (showLoading) loading.value = true;
+      try {
+        const params = getScoreboardRequestParams(selectedLeague.value, {
+          date: selectedDate.value,
+          week: week.value,
+          seasonType: seasonType.value,
+          group: selectedGroup.value,
+          initial: isInitialBoot,
+        });
+        const endpoint = getScoreboardUrl(selectedLeague.value, params);
+
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        if (requestId !== scoreboardRequestId) return;
+        games.value = data.events || [];
+
+        if (
+          isInitialBoot &&
+          !isDateLeague.value &&
+          data.week &&
+          data.week.number
+        ) {
+          week.value = data.week.number;
+          if (data.season && data.season.type) {
+            seasonType.value = data.season.type;
+          }
+          replaceCurrentNavigationEntry();
+        }
+      } catch (err) {
+        if (requestId === scoreboardRequestId) {
+          console.error("Scoreboard fetch error:", err);
+        }
+      } finally {
+        if (requestId === scoreboardRequestId && showLoading) {
+          loading.value = false;
+        }
+      }
+    };
+
+    const fetchGameDetail = async (eventId) => {
+      const requestId = ++gameRequestId;
+      modalLoading.value = true;
+      try {
+        const endpoint = getGameSummaryUrl(selectedLeague.value, eventId);
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        if (
+          requestId !== gameRequestId ||
+          !showModal.value ||
+          modalView.value !== "game" ||
+          String(selectedGame.value?.id) !== String(eventId)
+        )
+          return;
+        modalData.value = buildGameDetail(data, eventId);
+      } catch (err) {
+        if (requestId === gameRequestId) {
+          console.error("Summary payload details parse error:", err);
+          modalData.value = null;
+        }
+      } finally {
+        if (requestId === gameRequestId) modalLoading.value = false;
+      }
+    };
+    const fetchStandings = async () => {
+      const requestId = ++standingsRequestId;
+      standingsLoading.value = true;
+      standingsError.value = "";
+      try {
+        const response = await fetchStandingsApi(selectedLeague.value, fetch);
+        if (requestId !== standingsRequestId) return;
+        standings.value = normalizeStandings(response, {
+          league: selectedLeague.value,
+        });
+        standingsSort.value = Object.fromEntries(
+          standings.value.flatMap((group) => {
+            const key = getStandingPositionKey(group);
+            return key ? [[group.id, { key, direction: "asc" }]] : [];
+          }),
+        );
+      } catch (err) {
+        if (requestId === standingsRequestId) {
+          standingsError.value = err.message || "Unable to load standings.";
+          console.error("Standings fetch error:", err);
+        }
+      } finally {
+        if (requestId === standingsRequestId) standingsLoading.value = false;
+      }
+    };
+    const setDashboardView = async (view) => {
+      if (viewMode.value === view) return;
+      viewMode.value = view;
+      pushNavigationEntry();
+      if (view === "standings") await fetchStandings();
+    };
+    const handleGroupChange = () => {
+      pushNavigationEntry();
+      triggerImmediateFetch();
+    };
+    const handleDateChange = () => {
+      pushNavigationEntry();
+      triggerImmediateFetch();
+    };
+    const getStandingStat = (team, key) =>
+      team.stats.find((stat) => stat.key === key)?.value ?? "--";
+    const getStandingSortDirection = (groupId, key) =>
+      standingsSort.value[groupId]?.key === key
+        ? standingsSort.value[groupId].direction
+        : null;
+    const toggleStandingsSort = (groupId, key) => {
+      const current = standingsSort.value[groupId];
+      if (current?.key !== key) {
+        standingsSort.value = {
+          ...standingsSort.value,
+          [groupId]: { key, direction: "asc" },
+        };
+      } else if (current.direction === "asc") {
+        standingsSort.value = {
+          ...standingsSort.value,
+          [groupId]: { key, direction: "desc" },
+        };
+      } else {
+        const nextSort = { ...standingsSort.value };
+        delete nextSort[groupId];
+        standingsSort.value = nextSort;
+      }
+    };
+    const getSortedStandingTeams = (group) => {
+      const sort = standingsSort.value[group.id];
+      return sort
+        ? sortStandingTeamsUtil(group.teams, sort.key, sort.direction)
+        : group.teams;
+    };
+
+    const modalSeriesSummary = computed(() => {
+      const summaryCompetition =
+        modalData.value?.raw?.header?.competitions?.[0];
+      return (
+        getSeriesSummary(summaryCompetition) ||
+        getSeriesSummary(selectedGame.value?.competitions?.[0])
+      );
+    });
+    const selectedTeam = computed(
+      () =>
+        selectedTeamOverride.value ||
+        modalData.value?.teams?.[selectedTeamSide.value] ||
+        {},
+    );
+    const teamRecordStats = computed(() => getTeamRecordStats(teamData.value));
+    const teamRecords = computed(() => getTeamRecords(teamData.value));
+    const teamSchedule = computed(() => {
+      const teamId = selectedTeam.value.id;
+      if (!teamId) return [];
+      return normalizeSchedule(teamScheduleData.value, teamId, "en-US");
+    });
+
+    const resetTeamView = () => {
+      modalView.value = "game";
+      selectedTeamSide.value = null;
+      selectedTeamOverride.value = null;
+      teamData.value = null;
+      teamScheduleData.value = null;
+      teamLoading.value = false;
+      teamError.value = "";
+      scheduleError.value = "";
+      showSeasonMetrics.value = false;
+      teamRequestId++;
+    };
+
+    const openTeamDetails = async (teamOrSide, { pushHistory = true } = {}) => {
+      const team =
+        typeof teamOrSide === "string"
+          ? modalData.value?.teams?.[teamOrSide]
+          : teamOrSide;
+      if (!team?.id) return;
+      const requestId = ++teamRequestId;
+      if (typeof teamOrSide === "string") {
+        selectedTeamSide.value = teamOrSide;
+        selectedTeamOverride.value = null;
+      } else {
+        selectedTeamSide.value = null;
+        selectedTeamOverride.value = team;
+        selectedGame.value = null;
+        modalData.value = null;
+        modalLoading.value = false;
+        showModal.value = true;
+      }
+      modalView.value = "team";
+      if (pushHistory) {
+        pushNavigationEntry({
+          type: "team",
+          teamId: String(team.id),
+          team: {
+            id: String(team.id),
+            name: team.name || team.abbrev || team.abbreviation || "Team",
+            abbrev: team.abbrev || team.abbreviation || "",
+            logo: team.logo || "",
+          },
+          source: typeof teamOrSide === "string" ? "game" : "standings",
+          ...(typeof teamOrSide === "string"
+            ? {
+                gameId: String(
+                  modalData.value?.id || selectedGame.value?.id || "",
+                ),
+                side: teamOrSide,
+              }
+            : {}),
+        });
+      }
+      teamData.value = null;
+      teamScheduleData.value = null;
+      teamError.value = "";
+      scheduleError.value = "";
+      teamLoading.value = true;
+      try {
+        const { details, schedule } = await fetchTeamDetails(
+          selectedLeague.value,
+          team.id,
+          fetch,
+        );
+        if (requestId !== teamRequestId || !showModal.value) return;
+        teamData.value = details;
+        teamScheduleData.value = schedule;
+      } catch (err) {
+        if (requestId === teamRequestId) {
+          teamError.value = err.message || "Unable to load team details.";
+          scheduleError.value = "Unable to load schedule.";
+        }
+      } finally {
+        if (requestId === teamRequestId) teamLoading.value = false;
+      }
+    };
+
+    const returnToGame = () => {
+      const currentEntry = readAppHistoryEntry(window.history.state);
+      if (
+        currentEntry?.snapshot.modal?.type === "team" &&
+        canGoBackWithinApp(currentEntry) &&
+        currentEntry.index >
+          (currentEntry.modalBaseIndex ?? currentEntry.rootIndex)
+      ) {
+        window.history.back();
+        return;
+      }
+      if (modalData.value) {
+        modalView.value = "game";
+        replaceCurrentNavigationEntry({
+          type: "game",
+          eventId: String(modalData.value.id),
+        });
+      } else {
+        closeModal();
+      }
+    };
+    const openModal = (game, { pushHistory = true } = {}) => {
+      showModal.value = true;
+      selectedGame.value = game;
+      resetTeamView();
+      modalData.value = null;
+      modalTab.value = "stats";
+      if (pushHistory) {
+        pushNavigationEntry({ type: "game", eventId: String(game.id) });
+      }
+      fetchGameDetail(game.id);
+    };
+
+    const closeModal = () => {
+      const currentEntry = readAppHistoryEntry(window.history.state);
+      if (currentEntry?.snapshot.modal) {
+        const modalBaseIndex =
+          currentEntry.modalBaseIndex ?? currentEntry.rootIndex;
+        const historySteps = modalBaseIndex - currentEntry.index;
+        if (historySteps < 0) {
+          window.history.go(historySteps);
+          return;
+        }
+      }
+      showModal.value = false;
+      modalData.value = null;
+      selectedGame.value = null;
+      gameRequestId++;
+      resetTeamView();
+      replaceCurrentNavigationEntry(null);
+    };
+
+    const restoreNavigationEntry = async (entry, isInitialLoad = false) => {
+      const snapshot = entry.snapshot;
+      scoreboardRequestId++;
+      standingsRequestId++;
+      gameRequestId++;
+      teamRequestId++;
+      selectedLeague.value = snapshot.league;
+      viewMode.value = snapshot.view;
+      week.value = snapshot.week;
+      seasonType.value = snapshot.seasonType;
+      selectedGroup.value = snapshot.selectedGroup;
+      selectedDate.value = snapshot.selectedDate;
+      standings.value = [];
+      standingsLoading.value = false;
+      standingsError.value = "";
+      modalData.value = null;
+      selectedGame.value = null;
+      selectedTeamSide.value = null;
+      selectedTeamOverride.value = null;
+      teamData.value = null;
+      teamScheduleData.value = null;
+      teamLoading.value = false;
+      modalLoading.value = false;
+      teamError.value = "";
+      scheduleError.value = "";
+      showSeasonMetrics.value = false;
+      showModal.value = false;
+      modalView.value = "game";
+
+      const pendingRequests = [
+        fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
+      ];
+      if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
+      if (snapshot.modal?.type === "game") {
+        openModal({ id: snapshot.modal.eventId }, { pushHistory: false });
+      } else if (snapshot.modal?.type === "team") {
+        const team = snapshot.modal.team || {
+          id: snapshot.modal.teamId,
+          name: "Team",
+        };
+        openTeamDetails(team, { pushHistory: false });
+      }
+      await Promise.all(pendingRequests);
+    };
+
+    const handlePopState = (event) => {
+      const entry = readAppHistoryEntry(event.state);
+      if (entry) restoreNavigationEntry(entry);
+    };
+
+    const linescoreHeaders = computed(() => {
+      const compList = modalData.value?.raw?.header?.competitions;
+      const comp = compList && compList.length > 0 ? compList[0] : null;
+      if (!comp) return [];
+
+      const competitors = comp.competitors || [];
+      const awayLines =
+        competitors.length > 0 ? competitors[0].linescores || [] : [];
+      const homeLines =
+        competitors.length > 1 ? competitors[1].linescores || [] : [];
+
+      return getLinescoreHeadersUtil(
+        selectedLeague.value,
+        awayLines,
+        homeLines,
+      );
+    });
+
+    const linescores = computed(() => {
+      const compList = modalData.value?.raw?.header?.competitions;
+      const comp = compList && compList.length > 0 ? compList[0] : null;
+      if (!comp) return { away: [], home: [] };
+      return getLinescoreValuesUtil(comp, linescoreHeaders.value.length);
+    });
+
+    const currentDrive = computed(() => {
+      if (!["nfl", "college-football"].includes(selectedLeague.value)) {
+        return null;
+      }
+      const dr = modalData.value?.drives?.current;
+      if (!dr || Object.keys(dr).length === 0) return null;
+      return {
+        description: dr.description || "Active drive ongoing...",
+        result: dr.result || "Ongoing",
+        recap: dr.recap?.recap || "",
+      };
+    });
+
+    const winProbabilityChart = computed(() =>
+      getWinProbabilityChartUtil(modalData.value?.winprobability),
+    );
+
+    const teamStats = computed(() => {
+      if (!modalData.value || !modalData.value.teams) return [];
+
+      const awayStats = modalData.value.teams.away?.statistics || [];
+      const homeStats = modalData.value.teams.home?.statistics || [];
+
+      if (selectedLeague.value === "mlb") {
+        const rawBox = modalData.value.raw?.boxscore?.teams || [];
+        return getBaseballTeamStatComparisonsUtil(rawBox, mlbStatGroup.value);
+      }
+
+      return getTeamStatComparisonsUtil(awayStats, homeStats);
+    });
+
+    const teamStatBarColors = computed(() =>
+      getTeamStatBarColorsUtil(modalData.value?.teams),
+    );
+
+    const playerLeaders = computed(() => getPlayerLeadersUtil(modalData.value));
+
+    const triggerImmediateFetch = async () => {
+      clearInterval(pollingInterval);
+      await fetchScoreboard(false);
+      startPoller();
+    };
+
+    const startPoller = () => {
+      pollingInterval = setInterval(() => {
+        fetchScoreboard(false);
+        if (
+          showModal.value &&
+          modalView.value === "game" &&
+          modalData.value?.id
+        ) {
+          fetchGameDetail(modalData.value.id);
+        }
+      }, 15000);
+    };
+
+    const switchTab = async (league) => {
+      if (selectedLeague.value === league) return;
+      resetTeamView();
+      selectedLeague.value = league;
+      standingsRequestId++;
+      standingsLoading.value = false;
+      standings.value = [];
+      standingsError.value = "";
+      selectedGroup.value = "";
+      if (["mlb", "nba", "nhl"].includes(league)) {
+        selectedDate.value = new Date().toLocaleDateString("en-CA");
+      }
+      pushNavigationEntry();
+      await fetchScoreboard(true);
+      triggerImmediateFetch();
+      if (viewMode.value === "standings") await fetchStandings();
+    };
+
+    const adjustWeek = (amount) => {
+      if (week.value + amount < 1) return;
+      week.value += amount;
+      pushNavigationEntry();
+      triggerImmediateFetch();
+    };
+
+    const setSeasonType = (type) => {
+      if (seasonType.value === type && week.value === 1) return;
+      seasonType.value = type;
+      week.value = 1;
+      pushNavigationEntry();
+      triggerImmediateFetch();
+    };
+
+    const sortedGames = computed(() =>
+      sortGamesUtil(games.value, selectedLeague.value),
+    );
+    const tvLineup = computed(() =>
+      getTvLineupLayoutUtil(
+        sortedGames.value,
+        selectedLeague.value,
+        seasonType.value,
+        isDateLeague.value
+          ? selectedDate.value
+          : new Date().toLocaleDateString("en-CA"),
+      ),
+    );
+    const tvLineupScrollLeft = ref(0);
+    const handleTvLineupScroll = (event) => {
+      tvLineupScrollLeft.value = event.currentTarget.scrollLeft;
+    };
+
+    const isTeamStringHighlighted = (name) =>
+      isTeamStringHighlightedUtil(name, getFavoriteFilterText());
+
+    const isGameHighlighted = (game) =>
+      isGameHighlightedUtil(game, getFavoriteFilterText());
+
+    const getSituation = (game) => getSituationUtil(game, selectedLeague.value);
+    const hasPossession = (game, homeAway) =>
+      hasPossessionUtil(game, homeAway, selectedLeague.value);
+
+    const isWinner = (game, type) => isWinnerUtil(game, type);
+    const getGameState = (game) => getGameStateUtil(game);
+    const getSeriesSummary = (competition) => getSeriesSummaryUtil(competition);
+    const getNetwork = (game) => getNetworkUtil(game);
+    const formatGameTime = (game) => formatGameTimeUtil(game);
+    const getTeamName = (game, type) => getTeamNameUtil(game, type);
+    const getTeamLogo = (game, type) => getTeamLogoUtil(game, type);
+    const getTeamScore = (game, type) => getTeamScoreUtil(game, type);
+    const getTeamRank = (game, type) => getTeamRankUtil(game, type);
+    const getTvLineupTeamStyle = (game, type) =>
+      getTvLineupTeamStyleUtil(game, type);
+
+    onMounted(async () => {
+      window.addEventListener("popstate", handlePopState);
+      await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
+      startPoller();
+    });
+
+    return {
+      selectedLeague,
+      seasonType,
+      week,
+      selectedGroup,
+      selectedDate,
+      mlbStatGroup,
+      isDateLeague,
+      games,
+      loading,
+      viewMode,
+      standings,
+      standingsLoading,
+      standingsError,
+      setDashboardView,
+      getStandingStat,
+      getStandingSortDirection,
+      toggleStandingsSort,
+      getSortedStandingTeams,
+      showModal,
+      modalLoading,
+      modalData,
+      modalTab,
+      modalView,
+      selectedTeamSide,
+      selectedTeam,
+      teamData,
+      teamLoading,
+      teamError,
+      scheduleError,
+      showSeasonMetrics,
+      teamRecords,
+      teamRecordStats,
+      teamSchedule,
+      sortedGames,
+      tvLineup,
+      tvLineupScrollLeft,
+      handleTvLineupScroll,
+      linescoreHeaders,
+      linescores,
+      currentDrive,
+      winProbabilityChart,
+      teamStats,
+      teamStatBarColors,
+      playerLeaders,
+      switchTab,
+      adjustWeek,
+      setSeasonType,
+      triggerImmediateFetch,
+      handleGroupChange,
+      handleDateChange,
+      openModal,
+      openTeamDetails,
+      returnToGame,
+      closeModal,
+      getGameState,
+      getSeriesSummary,
+      modalSeriesSummary,
+      getSituation,
+      hasPossession,
+      getNetwork,
+      formatGameTime,
+      getTeamName,
+      getTeamLogo,
+      getTeamScore,
+      getTeamRank,
+      getTvLineupTeamStyle,
+      isWinner,
+      isTeamStringHighlighted,
+      isGameHighlighted,
+      handleGameClick,
+    };
+  },
+};
+</script>

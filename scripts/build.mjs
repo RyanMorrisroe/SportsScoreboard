@@ -1,43 +1,9 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { copyFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { build } from "vite";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const root = join(__dirname, '..');
-const distDir = join(root, 'dist');
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-if (existsSync(distDir)) {
-  rmSync(distDir, { recursive: true, force: true });
-}
-
-mkdirSync(distDir, { recursive: true });
-
-for (const relativePath of ['index.html', 'LICENSE']) {
-  copyFileSync(join(root, relativePath), join(distDir, relativePath));
-}
-
-copyDirectory(join(root, 'src'), join(distDir, 'src'));
-
-function copyDirectory(sourceDir, targetDir) {
-  mkdirSync(targetDir, { recursive: true });
-
-  for (const entry of readdirSync(sourceDir)) {
-    const source = join(sourceDir, entry);
-    const target = join(targetDir, entry);
-    const isDirectory = statSync(source).isDirectory();
-
-    if (isDirectory) {
-      copyDirectory(source, target);
-    } else {
-      copyFileSync(source, target);
-    }
-  }
-}
+await build({ configFile: join(root, "vite.config.js") });
+copyFileSync(join(root, "LICENSE"), join(root, "dist", "LICENSE"));

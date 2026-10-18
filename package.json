@@ -4,14 +4,20 @@
   "type": "module",
   "scripts": {
     "build": "npm test && node ./scripts/build.mjs",
-    "serve": "python -m http.server --directory dist",
+    "serve": "vite --host 0.0.0.0 --port 8000 --strictPort",
+    "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
     "test": "vitest run",
     "test:live": "vitest run tests/live",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "latest",
-    "vitest": "latest"
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.4",
+    "vitest": "latest",
+    "vue": "^3.5.44"
   }
 }
