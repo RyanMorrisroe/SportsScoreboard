@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   formatGameTime,
   getCompetitor,
-  getFavoriteFilterText,
   getGameState,
   isBeforeFootballWeekStart,
   getTvLineupDurationMinutes,
@@ -25,7 +24,7 @@ import {
   hasPossession,
   getWinProbabilityChart,
   isGameHighlighted,
-  isTeamStringHighlighted,
+  isTeamHighlighted,
   isWinner,
   sortGames,
 } from "../../src/app/scoreboard.js";
@@ -62,11 +61,6 @@ const makeGame = (overrides = {}) => ({
 });
 
 describe("scoreboard helpers", () => {
-  it("uses the expected favorite-team fallback for each league", () => {
-    expect(getFavoriteFilterText("college-football")).toBe("Northwestern");
-    expect(getFavoriteFilterText("nfl")).toBe("Chicago");
-  });
-
   it("starts football weeks at 3 a.m. in the viewer's local timezone", () => {
     expect(isBeforeFootballWeekStart(
       new Date("2026-10-18T08:00:00Z"),
@@ -622,7 +616,6 @@ describe("scoreboard helpers", () => {
     expect(hasPossession({ competitions: [{ competitors: [{ homeAway: "home", id: "7" }], situation: { possession: "9" } }] }, "home", "football")).toBe(false);
     expect(getSituation({ competitions: [{ situation: {} }] }, "football")).toBe("");
     expect(getGameState({})).toBe("");
-    expect(getFavoriteFilterText("mlb")).toBe("Chicago");
   });
 
   it("covers remaining sort and pregame branches", () => {
@@ -681,9 +674,10 @@ describe("scoreboard helpers", () => {
       }],
     });
 
-    expect(isTeamStringHighlighted("Northwestern Wildcats", "Northwestern")).toBe(true);
-    expect(isGameHighlighted(liveGame, "home")).toBe(true);
-    expect(isGameHighlighted(makeGame({ competitions: [{ competitors: [{ homeAway: "away", team: { displayName: "Other" } }, { homeAway: "home", team: { displayName: "Other 2" } }] }] }), "favorite")).toBe(false);
+    expect(isTeamHighlighted("2", ["2"])).toBe(true);
+    expect(isTeamHighlighted("12", ["2"])).toBe(false);
+    expect(isGameHighlighted(liveGame, ["2"])).toBe(true);
+    expect(isGameHighlighted(makeGame({ competitions: [{ competitors: [{ homeAway: "away", id: "3", team: { displayName: "Other" } }, { homeAway: "home", id: "4", team: { displayName: "Other 2" } }] }] }), ["2"])).toBe(false);
     expect(sortGames([finalGame, liveGame, earlyPre], "nfl").map((game) => game.id)).toEqual(["live", "pre-early", "final"]);
     expect(sortGames([
       makeGame({ id: "a", date: "2026-09-19T17:00:00Z", status: { type: { state: "pre", detail: "Pre" } } }),

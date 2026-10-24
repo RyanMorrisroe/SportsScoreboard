@@ -1,8 +1,3 @@
-export function getFavoriteFilterText(selectedLeague) {
-  if (selectedLeague === "college-football") return "Northwestern";
-  return "Chicago";
-}
-
 export function isBeforeFootballWeekStart(
   date = new Date(),
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -653,14 +648,16 @@ export function isWinner(game, type) {
   return getCompetitor(game, type)?.winner === true;
 }
 
-export function isTeamStringHighlighted(name, matchStr) {
-  return name.toLowerCase().includes(matchStr.toLowerCase());
+export function isTeamHighlighted(teamId, favoriteTeamIds = []) {
+  if (teamId === undefined || teamId === null) return false;
+  const id = String(teamId);
+  return favoriteTeamIds.some((favoriteId) => String(favoriteId) === id);
 }
 
-export function isGameHighlighted(game, favoriteText) {
+export function isGameHighlighted(game, favoriteTeamIds = []) {
   return (
-    isTeamStringHighlighted(getTeamName(game, "home"), favoriteText) ||
-    isTeamStringHighlighted(getTeamName(game, "away"), favoriteText)
+    isTeamHighlighted(getCompetitor(game, "home")?.id, favoriteTeamIds) ||
+    isTeamHighlighted(getCompetitor(game, "away")?.id, favoriteTeamIds)
   );
 }
 

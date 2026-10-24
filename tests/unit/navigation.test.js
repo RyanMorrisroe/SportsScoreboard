@@ -3,6 +3,7 @@ import {
   canGoBackWithinApp,
   initializeAppHistory,
   pushAppHistoryEntry,
+  reconcileAppSnapshot,
   readAppHistoryEntry,
   replaceAppHistoryEntry,
 } from "../../src/app/navigation.js";
@@ -31,6 +32,20 @@ function makeHistory(state = { host: "preserved" }) {
 }
 
 describe("navigation history helpers", () => {
+  it("redirects history snapshots away from hidden leagues and closes their modal", () => {
+    const snapshot = makeSnapshot({
+      league: "nfl",
+      modal: { type: "game", eventId: "game-1" },
+    });
+
+    expect(reconcileAppSnapshot(snapshot, ["nba", "mlb"], "nba")).toEqual({
+      ...snapshot,
+      league: "nba",
+      modal: null,
+    });
+    expect(reconcileAppSnapshot(snapshot, ["nfl", "nba"], "nba")).toBe(snapshot);
+  });
+
   it("restores the TV lineup view from a valid snapshot", () => {
     const history = makeHistory();
     const entry = initializeAppHistory(
