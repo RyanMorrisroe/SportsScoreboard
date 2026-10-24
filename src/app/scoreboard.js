@@ -80,44 +80,84 @@ export function getLinescoreValues(competition, periodCount) {
   };
 }
 
-export function getPlayerLeaders(gameDetail) {
-  const players = gameDetail?.raw?.boxscore?.players || [];
-  const categories = [];
+function getPlayerStatGroupTitle(category, league, labels) {
+  const sourceTitle = category.name || category.displayName || category.shortDisplayName;
+  if (sourceTitle) {
+    return sourceTitle
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/^./, (letter) => letter.toUpperCase());
+  }
 
-  players.forEach((teamBlock) => {
-    const teamAbbrev = teamBlock.team?.abbreviation || "";
-    if (!Array.isArray(teamBlock.statistics)) return;
+  if (league === "mlb") {
+    if (labels.includes("IP") || category.keys?.includes("fullInnings.partInnings")) {
+      return "Pitching";
+    }
+    if (labels.includes("H-AB") || labels.includes("AB")) return "Batting";
+    if (labels.includes("E") || labels.includes("PO")) return "Fielding";
+  }
 
-    teamBlock.statistics.forEach((statCategory) => {
-      if (!Array.isArray(statCategory.athletes) || !statCategory.athletes.length) return;
-      const title = statCategory.name || statCategory.displayName || "Player stats";
-      let category = categories.find(
-        (item) => item.title.toLowerCase() === title.toLowerCase(),
-      );
-      if (!category) {
-        category = {
-          title: title.charAt(0).toUpperCase() + title.slice(1),
-          labels: statCategory.labels || [],
-          athletes: [],
-        };
-        categories.push(category);
-      }
+  return "Player Stats";
+}
 
-      statCategory.athletes.slice(0, 2).forEach((playerRow) => {
-        category.athletes.push({
-          name: playerRow.athlete?.displayName || "Player",
-          jersey: playerRow.athlete?.jersey || "-",
-          headshot:
-            playerRow.athlete?.headshot?.href ||
-            "https://a.espncdn.com/i/headshots/placeholder.png",
-          teamAbbrev,
-          stats: playerRow.stats || [],
-        });
-      });
+export function getPlayerBoxScore(gameDetail, league) {
+  const raw = gameDetail?.raw;
+  const rawPlayers = Array.isArray(raw?.boxscore?.players) ? raw.boxscore.players : [];
+  const competitors = raw?.header?.competitions?.[0]?.competitors || [];
+  const teams = ["away", "home"].map((side) => {
+    const detailTeam = gameDetail?.teams?.[side] || {};
+    const competitor = competitors.find((entry) => entry.homeAway === side);
+    const teamId = String(detailTeam.id || competitor?.id || "");
+    const teamBlock = rawPlayers.find((entry) => {
+      const boxTeamId = String(entry?.team?.id || "");
+      return teamId && boxTeamId === teamId ||
+        entry?.team?.abbreviation && entry.team.abbreviation === detailTeam.abbrev;
     });
+    const statistics = Array.isArray(teamBlock?.statistics) ? teamBlock.statistics : [];
+    const groups = statistics.flatMap((category, groupIndex) => {
+      const athletes = Array.isArray(category?.athletes) ? category.athletes : [];
+      if (!athletes.length) return [];
+      const rawLabels = category.labels || category.names || category.keys || [];
+      const sourceLabels = Array.isArray(rawLabels) ? rawLabels : [];
+      const labelCount = Math.max(
+        sourceLabels.length,
+        ...athletes.map((row) => Array.isArray(row?.stats) ? row.stats.length : 0),
+      );
+      const labels = Array.from({ length: labelCount }, (_, index) =>
+        String(sourceLabels[index] || `STAT ${index + 1}`),
+      );
+
+      return [{
+        id: `${side}-${groupIndex}`,
+        title: getPlayerStatGroupTitle(category, league, labels),
+        labels,
+        players: athletes.map((row, playerIndex) => ({
+          id: String(row?.athlete?.id || `${teamId}-${groupIndex}-${playerIndex}`),
+          name: row?.athlete?.displayName || "Player",
+          jersey: row?.athlete?.jersey || "",
+          position: row?.athlete?.position?.abbreviation || row?.athlete?.position?.displayName || "",
+          headshot:
+            row?.athlete?.headshot?.href ||
+            "https://a.espncdn.com/i/headshots/placeholder.png",
+          starter: row?.starter === true,
+          stats: Array.isArray(row?.stats) ? row.stats.map((value) => value ?? "") : [],
+        })),
+      }];
+    });
+
+    return {
+      id: teamId,
+      side,
+      name: detailTeam.name || competitor?.team?.displayName || "Team",
+      abbreviation: detailTeam.abbrev || competitor?.team?.abbreviation || "",
+      logo: detailTeam.logo || competitor?.team?.logo || "",
+      groups,
+    };
   });
 
-  return categories;
+  return {
+    available: teams.some((team) => team.groups.length > 0),
+    teams,
+  };
 }
 
 function getNumericStatValue(stat) {
@@ -261,6 +301,39 @@ export function getTeamStatBarColors(teams) {
     away: getTeamStatBarColor(teams?.away, "#2563eb"),
     home: getTeamStatBarColor(teams?.home, "#059669"),
   };
+}
+
+function getTeamFlowColor(team, fallback) {
+  const primary = normalizeHexColor(team?.color);
+  if (primary) {
+    return relativeLuminance(primary) < 0.12
+      ? lightenHexColor(primary, 0.35)
+      : primary;
+  }
+
+  const alternate = normalizeHexColor(team?.alternateColor);
+  return alternate && relativeLuminance(alternate) < 0.88
+    ? alternate
+    : fallback;
+}
+
+export function getGameFlowColors(teams) {
+  const teamColors = {
+    away: getTeamFlowColor(teams?.away, "#2563eb"),
+    home: getTeamFlowColor(teams?.home, "#059669"),
+  };
+  const awayChannels = teamColors.away.slice(1).match(/.{2}/g).map((channel) => parseInt(channel, 16));
+  const homeChannels = teamColors.home.slice(1).match(/.{2}/g).map((channel) => parseInt(channel, 16));
+  const colorDistance = Math.sqrt(
+    awayChannels.reduce(
+      (distance, channel, index) => distance + (channel - homeChannels[index]) ** 2,
+      0,
+    ),
+  );
+
+  return colorDistance < 100
+    ? { away: "#60a5fa", home: "#34d399" }
+    : teamColors;
 }
 
 export function getWinProbabilityChart(probabilities) {

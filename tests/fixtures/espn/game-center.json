@@ -1,0 +1,181 @@
+{
+  "football": {
+    "drives": {
+      "previous": [
+        {
+          "id": "drive-1",
+          "description": "3 plays, 35 yards",
+          "displayResult": "Touchdown",
+          "team": { "id": "away-1", "abbreviation": "AWY" },
+          "plays": [
+            {
+              "id": "football-play-1",
+              "sequenceNumber": "1",
+              "text": "Pass complete for 10 yards",
+              "period": { "number": 1, "displayValue": "1st Quarter" },
+              "clock": { "displayValue": "12:00" },
+              "awayScore": 0,
+              "homeScore": 0,
+              "scoringPlay": false,
+              "end": { "downDistanceText": "2nd & 5", "possessionText": "AWY 35", "yardLine": 35 }
+            },
+            {
+              "id": "football-play-2",
+              "sequenceNumber": "2",
+              "text": "Touchdown pass",
+              "period": { "number": 1, "displayValue": "1st Quarter" },
+              "clock": { "displayValue": "8:30" },
+              "awayScore": 7,
+              "homeScore": 0,
+              "scoringPlay": true,
+              "end": { "downDistanceText": "1st & Goal", "possessionText": "HOME 2", "yardLine": 2 }
+            }
+          ]
+        }
+      ],
+      "current": {
+        "id": "drive-2",
+        "team": { "id": "home-1", "abbreviation": "HME" },
+        "plays": [
+          {
+            "id": "football-play-3",
+            "sequenceNumber": "3",
+            "text": "Run for 4 yards",
+            "period": { "number": 1, "displayValue": "1st Quarter" },
+            "awayScore": 7,
+            "homeScore": 0,
+            "scoringPlay": false
+          }
+        ]
+      }
+    },
+    "scoringPlays": [
+      { "id": "football-play-2", "text": "Touchdown pass", "awayScore": 7, "homeScore": 0, "period": { "number": 1 } }
+    ],
+    "winprobability": [{ "homeWinPercentage": 0.3 }, { "homeWinPercentage": 0.7 }]
+  },
+  "baseball": {
+    "plays": [
+      {
+        "id": "baseball-play-1",
+        "sequenceNumber": "1",
+        "text": "Top of the 1st inning",
+        "period": { "type": "Top", "number": 1, "displayValue": "1st Inning" },
+        "scoringPlay": false,
+        "awayScore": 0,
+        "homeScore": 0
+      },
+      {
+        "id": "baseball-play-2",
+        "sequenceNumber": "2",
+        "text": "Home run",
+        "period": { "type": "Top", "number": 1, "displayValue": "1st Inning" },
+        "scoringPlay": true,
+        "scoreValue": 1,
+        "team": { "id": "away-1", "abbreviation": "AWY" },
+        "awayScore": 1,
+        "homeScore": 0,
+        "outs": 1,
+        "pitchCount": "2-1"
+      }
+    ]
+  },
+  "basketball": {
+    "plays": [
+      {
+        "id": "basketball-play-1",
+        "sequenceNumber": "1",
+        "text": "Jump ball",
+        "period": { "number": 1, "displayValue": "1st Quarter" },
+        "clock": { "displayValue": "12:00" },
+        "scoringPlay": false,
+        "awayScore": 0,
+        "homeScore": 0
+      },
+      {
+        "id": "basketball-play-2",
+        "sequenceNumber": "2",
+        "text": "Three point basket",
+        "period": { "number": 1, "displayValue": "1st Quarter" },
+        "clock": { "displayValue": "11:32" },
+        "scoringPlay": true,
+        "scoreValue": 3,
+        "team": { "id": "home-1", "abbreviation": "HME" },
+        "awayScore": 0,
+        "homeScore": 3
+      }
+    ],
+    "winprobability": [{ "homeWinPercentage": 0.62 }]
+  },
+  "hockey": {
+    "plays": [
+      {
+        "id": "hockey-play-1",
+        "sequenceNumber": "1",
+        "text": "Start of 1st Period",
+        "period": { "number": 1, "displayValue": "1st" },
+        "clock": { "displayValue": "0:00" },
+        "scoringPlay": false,
+        "awayScore": 0,
+        "homeScore": 0
+      },
+      {
+        "id": "hockey-play-2",
+        "sequenceNumber": "2",
+        "text": "Goal scored",
+        "period": { "number": 1, "displayValue": "1st" },
+        "clock": { "displayValue": "4:12" },
+        "scoringPlay": true,
+        "scoreValue": 1,
+        "team": { "id": "away-1", "abbreviation": "AWY" },
+        "awayScore": 1,
+        "homeScore": 0
+      }
+    ]
+  },
+  "pregame": {
+    "header": {
+      "competitions": [
+        {
+          "date": "2026-10-24T23:00:00Z",
+          "venue": { "fullName": "Example Arena", "address": { "city": "Example City", "state": "EX" } },
+          "competitors": [
+            {
+              "id": "away-1",
+              "homeAway": "away",
+              "team": { "displayName": "Away Team", "abbreviation": "AWY", "logo": "away.png" },
+              "record": [{ "type": "total", "summary": "4-2" }],
+              "curatedRank": { "current": 8 }
+            },
+            {
+              "id": "home-1",
+              "homeAway": "home",
+              "team": { "displayName": "Home Team", "abbreviation": "HME", "logo": "home.png" },
+              "record": [{ "type": "total", "summary": "3-3" }]
+            }
+          ]
+        }
+      ]
+    },
+    "lastFiveGames": [
+      {
+        "team": { "id": "away-1" },
+        "events": [
+          {
+            "id": "previous-1",
+            "gameDate": "2026-10-18T20:00:00Z",
+            "gameResult": "W",
+            "score": "24-17",
+            "atVs": "@",
+            "opponent": { "id": "opponent-1", "displayName": "Recent Opponent" },
+            "opponentLogo": "opponent.png"
+          }
+        ]
+      }
+    ],
+    "seasonseries": [
+      { "type": "season", "title": "Regular Season Series", "summary": "Series tied 1-1", "seriesScore": "1-1", "completed": false }
+    ],
+    "gameInfo": { "venue": { "fullName": "Example Arena", "address": { "city": "Example City", "state": "EX" } } }
+  }
+}

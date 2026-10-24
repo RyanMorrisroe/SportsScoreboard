@@ -12,7 +12,7 @@ import {
   getLinescoreHeaders,
   getLinescoreValues,
   getNetwork,
-  getPlayerLeaders,
+  getPlayerBoxScore,
   getSituation,
   getTeamLogo,
   getTeamName,
@@ -20,6 +20,7 @@ import {
   getTeamScore,
   getTeamStatComparisons,
   getTeamStatBarColors,
+  getGameFlowColors,
   getBaseballTeamStatComparisons,
   hasPossession,
   getWinProbabilityChart,
@@ -204,56 +205,92 @@ describe("scoreboard helpers", () => {
     }, 3)).toEqual({ away: [0, 2, "0"], home: ["-", "-", "-"] });
   });
 
-  it("normalizes NBA and NHL player leader groups with optional names", () => {
-    const nbaPlayers = getPlayerLeaders({
+  it("keeps every player and separates teams when normalizing an NBA box score", () => {
+    const boxScore = getPlayerBoxScore({
+      teams: {
+        away: { id: "away-1", name: "Away Team", abbrev: "AWY" },
+        home: { id: "home-1", name: "Home Team", abbrev: "HME" },
+      },
       raw: {
-        boxscore: {
-          players: [{
-            team: { abbreviation: "NY" },
+        header: { competitions: [{ competitors: [
+          { id: "home-1", homeAway: "home" },
+          { id: "away-1", homeAway: "away" },
+        ] }] },
+        boxscore: { players: [
+          {
+            team: { id: "home-1", abbreviation: "HME" },
             statistics: [{
-              labels: ["PTS", "REB"],
-              athletes: [{
-                athlete: { displayName: "NBA Player", jersey: "8" },
-                stats: ["25", "6"],
-              }],
+              labels: ["MIN", "PTS", "REB"],
+              athletes: [{ athlete: { displayName: "Home Player" }, stats: ["30", "20", "8"] }],
             }],
-          }],
-        },
+          },
+          {
+            team: { id: "away-1", abbreviation: "AWY" },
+            statistics: [{
+              labels: ["MIN", "PTS", "REB"],
+              athletes: [
+                { athlete: { id: "p1", displayName: "Player One", jersey: "1", position: { abbreviation: "G" } }, stats: ["30", "25", "6"], starter: true },
+                { athlete: { id: "p2", displayName: "Player Two", jersey: "2" }, stats: ["20", "12", "4"] },
+                { athlete: { id: "p3", displayName: "Player Three", jersey: "3" }, stats: ["10", "5", "2"] },
+              ],
+            }],
+          },
+        ] },
       },
-    });
-    expect(nbaPlayers).toEqual([{
-      title: "Player stats",
-      labels: ["PTS", "REB"],
-      athletes: [{
-        name: "NBA Player",
-        jersey: "8",
-        headshot: "https://a.espncdn.com/i/headshots/placeholder.png",
-        teamAbbrev: "NY",
-        stats: ["25", "6"],
-      }],
-    }]);
+    }, "nba");
 
-    expect(getPlayerLeaders({
-      raw: {
-        boxscore: {
-          players: [{
-            team: { abbreviation: "BOS" },
-            statistics: [
-              { name: "forwards", athletes: [{ athlete: { displayName: "Forward" } }] },
-              { name: "skaters", athletes: [] },
-            ],
-          }],
-        },
-      },
-    })[0].title).toBe("Forwards");
-    expect(getPlayerLeaders({})).toEqual([]);
-    expect(getPlayerLeaders({
-      raw: { boxscore: { players: [{ statistics: [{ athletes: [{}] }] }] } },
-    })[0].athletes[0]).toMatchObject({
+    expect(boxScore.available).toBe(true);
+    expect(boxScore.teams.map((team) => team.side)).toEqual(["away", "home"]);
+    expect(boxScore.teams[0].groups[0]).toMatchObject({
+      title: "Player Stats",
+      labels: ["MIN", "PTS", "REB"],
+    });
+    expect(boxScore.teams[0].groups[0].players).toHaveLength(3);
+    expect(boxScore.teams[0].groups[0].players[0]).toMatchObject({
+      id: "p1",
+      name: "Player One",
+      jersey: "1",
+      position: "G",
+      starter: true,
+      stats: ["30", "25", "6"],
+    });
+    expect(boxScore.teams[1].groups[0].players[0].name).toBe("Home Player");
+  });
+
+  it("distinguishes unnamed MLB batting and pitching groups", () => {
+    const boxScore = getPlayerBoxScore({
+      teams: { away: { id: "a", abbrev: "A" }, home: { id: "h", abbrev: "H" } },
+      raw: { boxscore: { players: [{
+        team: { id: "a", abbreviation: "A" },
+        statistics: [
+          { labels: ["H-AB", "AB", "R"], athletes: [{ athlete: { displayName: "Batter" }, stats: ["2-4", "4", "1"] }] },
+          { labels: ["IP", "H", "ER"], keys: ["fullInnings.partInnings", "hits", "earnedRuns"], athletes: [{ athlete: { displayName: "Pitcher" }, stats: ["6.0", "4", "2"] }] },
+        ],
+      }] } },
+    }, "mlb");
+
+    expect(boxScore.teams[0].groups.map((group) => group.title)).toEqual([
+      "Batting",
+      "Pitching",
+    ]);
+  });
+
+  it("handles absent and partial player-stat payloads explicitly", () => {
+    expect(getPlayerBoxScore({}).available).toBe(false);
+    const boxScore = getPlayerBoxScore({
+      teams: { away: { id: "a", abbrev: "A" } },
+      raw: { boxscore: { players: [{
+        team: { id: "a", abbreviation: "A" },
+        statistics: [{ athletes: [{ stats: ["12", "4"] }] }],
+      }] } },
+    });
+    expect(boxScore.available).toBe(true);
+    expect(boxScore.teams[0].groups[0].labels).toEqual(["STAT 1", "STAT 2"]);
+    expect(boxScore.teams[0].groups[0].players[0]).toMatchObject({
       name: "Player",
-      jersey: "-",
-      teamAbbrev: "",
-      stats: [],
+      jersey: "",
+      headshot: "https://a.espncdn.com/i/headshots/placeholder.png",
+      stats: ["12", "4"],
     });
   });
 
@@ -403,6 +440,21 @@ describe("scoreboard helpers", () => {
       away: "#2563eb",
       home: "#059669",
     });
+  });
+
+  it("uses distinct team colors for game flow and falls back when they are too similar", () => {
+    expect(getGameFlowColors({
+      away: { color: "d71920" },
+      home: { color: "1e88e5" },
+    })).toEqual({ away: "#d71920", home: "#1e88e5" });
+    expect(getGameFlowColors({
+      away: { color: "2574a9" },
+      home: { color: "2b79ad" },
+    })).toEqual({ away: "#60a5fa", home: "#34d399" });
+    expect(getGameFlowColors({
+      away: { color: "492f92", alternateColor: "ffffff" },
+      home: { color: "d71920" },
+    })).toEqual({ away: "#8978b8", home: "#d71920" });
   });
 
   it("reports possession, network, and winner details", () => {

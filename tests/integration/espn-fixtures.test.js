@@ -4,12 +4,13 @@ import schedule from "../fixtures/espn/nfl-team-schedule.json";
 import nba from "../fixtures/espn/nba.json";
 import nhl from "../fixtures/espn/nhl.json";
 import mlbBoxscoreStats from "../fixtures/espn/mlb-boxscore-stats.json";
+import playerBoxscoreSamples from "../fixtures/espn/player-boxscore-samples.json";
 import standingsFixture from "../fixtures/espn/standings.json";
 import { fetchStandings, fetchTeamDetails, getTeamUrls, getStandingsUrl } from "../../src/api/espn.js";
 import {
   getLinescoreHeaders,
   getLinescoreValues,
-  getPlayerLeaders,
+  getPlayerBoxScore,
   getTeamName,
   getTeamScore,
   getTeamStatBarColors,
@@ -96,7 +97,7 @@ describe("ESPN fixture contracts", () => {
       headers: [1, 2, 3, 4],
       awayLines: ["19", "25", "28", "26"],
       homeLines: ["27", "27", "31", "30"],
-      leadersTitle: "Player stats",
+      playerGroupTitle: "Player Stats",
       firstStatAwayPct: (36 / (36 + 43)) * 100,
       statBarColors: { away: "#f58426", home: "#008ca8" },
       recordLabel: "Overall Record",
@@ -117,7 +118,7 @@ describe("ESPN fixture contracts", () => {
       headers: [1, 2, 3, "OT"],
       awayLines: ["1", "3", "0", "1"],
       homeLines: ["1", "2", "1", "0"],
-      leadersTitle: "Forwards",
+      playerGroupTitle: "Forwards",
       firstStatAwayPct: (8 / (8 + 14)) * 100,
       statBarColors: { away: "#e30b2b", home: "#918f90" },
       recordLabel: "Overall Record",
@@ -161,12 +162,10 @@ describe("ESPN fixture contracts", () => {
         ? { points: "50,72", singlePoint: { x: 50, y: 72 } }
         : { points: "", singlePoint: null },
     );
-    expect(getPlayerLeaders(detail)[0]).toMatchObject({
-      title: expected.leadersTitle,
-      athletes: expect.arrayContaining([
-        expect.objectContaining({ name: expect.any(String), teamAbbrev: expect.any(String) }),
-      ]),
-    });
+    const playerBoxScore = getPlayerBoxScore(detail, league);
+    expect(playerBoxScore.available).toBe(true);
+    expect(playerBoxScore.teams[0].groups[0].title).toBe(expected.playerGroupTitle);
+    expect(playerBoxScore.teams[0].groups[0].players.length).toBeGreaterThan(0);
     expect(getTeamRecords(fixture.teamDetails)).toEqual([
       { label: expected.recordLabel, value: expected.record },
     ]);
@@ -185,6 +184,39 @@ describe("ESPN fixture contracts", () => {
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(1, getTeamUrls(league, fixture.teamId).details);
     expect(fetchImpl).toHaveBeenNthCalledWith(2, getTeamUrls(league, fixture.teamId).schedule);
+  });
+
+  it.each([
+    ["nfl", playerBoxscoreSamples.nfl],
+    ["college-football", playerBoxscoreSamples["college-football"]],
+    ["mlb", playerBoxscoreSamples.mlb],
+    ["nba", nba.summary],
+    ["nhl", nhl.summary],
+  ])("normalizes ESPN player box-score groups for %s", (league, summary) => {
+    const detail = buildGameDetail(summary, `fixture-${league}`);
+    const boxScore = getPlayerBoxScore(detail, league);
+
+    expect(boxScore.available).toBe(true);
+    expect(boxScore.teams.map((team) => team.side)).toEqual(["away", "home"]);
+    expect(boxScore.teams.every((team) => team.groups.length > 0)).toBe(true);
+    expect(boxScore.teams.flatMap((team) => team.groups).every((group) =>
+      group.labels.length > 0 && group.players.length > 0,
+    )).toBe(true);
+
+    if (league === "mlb") {
+      expect(boxScore.teams[0].groups.map((group) => group.title)).toEqual([
+        "Batting",
+        "Pitching",
+      ]);
+    }
+    if (league === "nfl" || league === "college-football") {
+      expect(boxScore.teams[0].groups.map((group) => group.title)).toEqual([
+        "Passing",
+        "Rushing",
+        "Receiving",
+        "Defensive",
+      ]);
+    }
   });
 
   it("exposes batting, pitching, and fielding stats from an MLB boxscore", () => {

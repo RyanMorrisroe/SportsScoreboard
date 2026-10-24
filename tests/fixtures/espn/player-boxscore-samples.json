@@ -1,0 +1,94 @@
+{
+  "nfl": {
+    "header": {
+      "competitions": [{
+        "competitors": [
+          { "id": "30", "homeAway": "home", "team": { "displayName": "Jacksonville Jaguars", "abbreviation": "JAX" } },
+          { "id": "34", "homeAway": "away", "team": { "displayName": "Houston Texans", "abbreviation": "HOU" } }
+        ]
+      }]
+    },
+    "boxscore": {
+      "players": [
+        {
+          "team": { "id": "34", "abbreviation": "HOU" },
+          "statistics": [
+            { "name": "passing", "labels": ["C/ATT", "YDS", "AVG", "TD"], "keys": ["completions/passingAttempts", "passingYards", "yardsPerPassAttempt", "passingTouchdowns"], "athletes": [{ "athlete": { "id": "4432577", "displayName": "C.J. Stroud", "jersey": "7" }, "stats": ["24/34", "312", "9.2", "3"] }] },
+            { "name": "rushing", "labels": ["CAR", "YDS", "AVG", "TD"], "keys": ["rushingAttempts", "rushingYards", "yardsPerRushAttempt", "rushingTouchdowns"], "athletes": [{ "athlete": { "id": "4429059", "displayName": "Woody Marks", "jersey": "4" }, "stats": ["15", "56", "3.7", "0"] }] },
+            { "name": "receiving", "labels": ["REC", "YDS", "AVG", "TD"], "keys": ["receptions", "receivingYards", "yardsPerReception", "receivingTouchdowns"], "athletes": [{ "athlete": { "id": "4586312", "displayName": "Jaylin Noel", "jersey": "13" }, "stats": ["4", "107", "26.8", "1"] }] },
+            { "name": "defensive", "labels": ["TOT", "SOLO", "SACKS", "TFL"], "keys": ["totalTackles", "soloTackles", "sacks", "tacklesForLoss"], "athletes": [{ "athlete": { "id": "4602699", "displayName": "Kamari Lassiter", "jersey": "3" }, "stats": ["8", "6", "0", "0"] }] }
+          ]
+        },
+        {
+          "team": { "id": "30", "abbreviation": "JAX" },
+          "statistics": [
+            { "name": "passing", "labels": ["C/ATT", "YDS", "AVG", "TD"], "keys": ["completions/passingAttempts", "passingYards", "yardsPerPassAttempt", "passingTouchdowns"], "athletes": [{ "athlete": { "id": "4360310", "displayName": "Trevor Lawrence", "jersey": "16" }, "stats": ["24/41", "306", "7.5", "4"] }] },
+            { "name": "rushing", "labels": ["CAR", "YDS", "AVG", "TD"], "keys": ["rushingAttempts", "rushingYards", "yardsPerRushAttempt", "rushingTouchdowns"], "athletes": [{ "athlete": { "id": "4362619", "displayName": "Chris Rodriguez Jr.", "jersey": "24" }, "stats": ["11", "55", "5.0", "0"] }] },
+            { "name": "receiving", "labels": ["REC", "YDS", "AVG", "TD"], "keys": ["receptions", "receivingYards", "yardsPerReception", "receivingTouchdowns"], "athletes": [{ "athlete": { "id": "3916433", "displayName": "Jakobi Meyers", "jersey": "3" }, "stats": ["5", "83", "16.6", "0"] }] },
+            { "name": "defensive", "labels": ["TOT", "SOLO", "SACKS", "TFL"], "keys": ["totalTackles", "soloTackles", "sacks", "tacklesForLoss"], "athletes": [{ "athlete": { "id": "3050073", "displayName": "Foyesade Oluokun", "jersey": "23" }, "stats": ["8", "4", "0", "0"] }] }
+          ]
+        }
+      ]
+    }
+  },
+  "college-football": {
+    "header": {
+      "competitions": [{
+        "competitors": [
+          { "id": "2390", "homeAway": "home", "team": { "displayName": "Miami Hurricanes", "abbreviation": "MIA" } },
+          { "id": "221", "homeAway": "away", "team": { "displayName": "Pittsburgh Panthers", "abbreviation": "PITT" } }
+        ]
+      }]
+    },
+    "boxscore": {
+      "players": [
+        {
+          "team": { "id": "221", "abbreviation": "PITT" },
+          "statistics": [
+            { "name": "passing", "labels": ["C/ATT", "YDS", "AVG", "TD"], "keys": ["completions/passingAttempts", "passingYards", "yardsPerPassAttempt", "passingTouchdowns"], "athletes": [{ "athlete": { "id": "4714300", "displayName": "Holden Geriner", "jersey": "15" }, "stats": ["7/11", "109", "9.9", "0"] }] },
+            { "name": "rushing", "labels": ["CAR", "YDS", "AVG", "TD"], "keys": ["rushingAttempts", "rushingYards", "yardsPerRushAttempt", "rushingTouchdowns"], "athletes": [{ "athlete": { "id": "5158978", "displayName": "Damon Ferguson Jr.", "jersey": "26" }, "stats": ["8", "43", "5.4", "1"] }] },
+            { "name": "receiving", "labels": ["REC", "YDS", "AVG", "TD"], "keys": ["receptions", "receivingYards", "yardsPerReception", "receivingTouchdowns"], "athletes": [{ "athlete": { "id": "5102556", "displayName": "Cataurus Hicks", "jersey": "3" }, "stats": ["3", "87", "29.0", "0"] }] },
+            { "name": "defensive", "labels": ["TOT", "SOLO", "SACKS", "TFL"], "keys": ["totalTackles", "soloTackles", "sacks", "tacklesForLoss"], "athletes": [{ "athlete": { "id": "5154305", "displayName": "Cruce Brookins", "jersey": "12" }, "stats": ["9", "5", "0", "0"] }] }
+          ]
+        },
+        {
+          "team": { "id": "2390", "abbreviation": "MIA" },
+          "statistics": [
+            { "name": "passing", "labels": ["C/ATT", "YDS", "AVG", "TD"], "keys": ["completions/passingAttempts", "passingYards", "yardsPerPassAttempt", "passingTouchdowns"], "athletes": [{ "athlete": { "id": "5121169", "displayName": "Darian Mensah", "jersey": "10" }, "stats": ["24/28", "331", "11.8", "3"] }] },
+            { "name": "rushing", "labels": ["CAR", "YDS", "AVG", "TD"], "keys": ["rushingAttempts", "rushingYards", "yardsPerRushAttempt", "rushingTouchdowns"], "athletes": [{ "athlete": { "id": "4870736", "displayName": "Mark Fletcher Jr.", "jersey": "4" }, "stats": ["13", "41", "3.2", "1"] }] },
+            { "name": "receiving", "labels": ["REC", "YDS", "AVG", "TD"], "keys": ["receptions", "receivingYards", "yardsPerReception", "receivingTouchdowns"], "athletes": [{ "athlete": { "id": "5159175", "displayName": "Malachi Toney", "jersey": "1" }, "stats": ["12", "159", "13.3", "2"] }] },
+            { "name": "defensive", "labels": ["TOT", "SOLO", "SACKS", "TFL"], "keys": ["totalTackles", "soloTackles", "sacks", "tacklesForLoss"], "athletes": [{ "athlete": { "id": "5259295", "displayName": "JJ Dunnigan", "jersey": "25" }, "stats": ["4", "4", "0", "0"] }] }
+          ]
+        }
+      ]
+    }
+  },
+  "mlb": {
+    "header": {
+      "competitions": [{
+        "competitors": [
+          { "id": "6", "homeAway": "home", "team": { "displayName": "Detroit Tigers", "abbreviation": "DET" } },
+          { "id": "15", "homeAway": "away", "team": { "displayName": "Atlanta Braves", "abbreviation": "ATL" } }
+        ]
+      }]
+    },
+    "boxscore": {
+      "players": [
+        {
+          "team": { "id": "15", "abbreviation": "ATL" },
+          "statistics": [
+            { "labels": ["H-AB", "AB", "R", "H"], "keys": ["hits-atBats", "atBats", "runs", "hits"], "athletes": [{ "athlete": { "id": "31117", "displayName": "Jurickson Profar" }, "stats": ["1-4", "4", "0", "1"] }] },
+            { "labels": ["IP", "H", "R", "ER"], "keys": ["fullInnings.partInnings", "hits", "runs", "earnedRuns"], "athletes": [{ "athlete": { "id": "40927", "displayName": "Joey Wentz" }, "stats": ["5.0", "6", "2", "2"] }] }
+          ]
+        },
+        {
+          "team": { "id": "6", "abbreviation": "DET" },
+          "statistics": [
+            { "labels": ["H-AB", "AB", "R", "H"], "keys": ["hits-atBats", "atBats", "runs", "hits"], "athletes": [{ "athlete": { "id": "34958", "displayName": "Jahmai Jones" }, "stats": ["3-4", "4", "2", "3"] }] },
+            { "labels": ["IP", "H", "R", "ER"], "keys": ["fullInnings.partInnings", "hits", "runs", "earnedRuns"], "athletes": [{ "athlete": { "id": "5182933", "displayName": "Keider Montero" }, "stats": ["3.0", "2", "3", "3"] }] }
+          ]
+        }
+      ]
+    }
+  }
+}

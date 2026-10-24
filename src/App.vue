@@ -549,7 +549,6 @@
                   v-for="entry in channel.games"
                   :key="entry.game.id"
                   type="button"
-                  :disabled="getGameState(entry.game) === 'pre'"
                   :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
                   :title="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')} · ${entry.status}`"
                   @click.stop="handleGameClick(entry.game)"
@@ -558,9 +557,7 @@
                     isGameHighlighted(entry.game)
                       ? 'border-amber-500 ring-1 ring-amber-500/30'
                       : 'border-zinc-700',
-                    getGameState(entry.game) === 'pre'
-                      ? 'cursor-default opacity-90'
-                      : 'cursor-pointer hover:bg-zinc-800 active:bg-zinc-700',
+                    'cursor-pointer hover:bg-zinc-800 active:bg-zinc-700',
                   ]"
                   :style="{
                     left: `${entry.left}px`,
@@ -631,15 +628,9 @@
             v-for="entry in tvLineup.unscheduled"
             :key="entry.game.id"
             type="button"
-            :disabled="getGameState(entry.game) === 'pre'"
             :aria-label="`${getTeamName(entry.game, 'away')} at ${getTeamName(entry.game, 'home')}, ${entry.status}`"
             @click.stop="handleGameClick(entry.game)"
-            class="grid min-h-[84px] grid-cols-[30px_minmax(0,1fr)_30px] grid-rows-3 items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 p-2 text-left"
-            :class="
-              getGameState(entry.game) === 'pre'
-                ? 'cursor-default'
-                : 'cursor-pointer hover:bg-zinc-800'
-            "
+            class="grid min-h-[84px] grid-cols-[30px_minmax(0,1fr)_30px] grid-rows-3 items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 p-2 text-left cursor-pointer hover:bg-zinc-800"
           >
             <img
               :src="getTeamLogo(entry.game, 'away')"
@@ -696,16 +687,17 @@
         v-for="game in sortedGames"
         :key="game.id"
         role="button"
+        tabindex="0"
+        :aria-label="`${getTeamName(game, 'away')} at ${getTeamName(game, 'home')}`"
         @click.stop="handleGameClick(game)"
+        @keydown.enter.prevent="handleGameClick(game)"
+        @keydown.space.prevent="handleGameClick(game)"
         class="w-full text-left bg-zinc-900/90 border rounded-2xl p-4 transition-all duration-150 backdrop-blur-sm shadow-sm hover:bg-zinc-800/60 block select-none touch-manipulation appearance-none [webkit-tap-highlight-color:transparent]"
-        :disabled="getGameState(game) === 'pre'"
         :class="[
           isGameHighlighted(game)
             ? 'border-amber-500 shadow-amber-500/10 shadow-lg ring-1 ring-amber-500/20'
             : 'border-zinc-800/80',
-          getGameState(game) === 'pre'
-            ? 'cursor-default opacity-90'
-            : 'cursor-pointer active:scale-[0.99] active:bg-zinc-800/90',
+          'cursor-pointer active:scale-[0.99] active:bg-zinc-800/90',
         ]"
       >
         <!-- TOP EVENT META BAR -->
@@ -1093,34 +1085,207 @@
 
           <div
             v-if="modalView === 'game'"
-            class="flex bg-zinc-950/60 border-b border-zinc-800 p-1"
+            role="tablist"
+            aria-label="Game center views"
+            class="flex gap-1 overflow-x-auto bg-zinc-950/60 border-b border-zinc-800 p-1"
           >
             <button
-              @click="modalTab = 'stats'"
+              v-for="tab in modalTabs"
+              :key="tab.id"
+              type="button"
+              role="tab"
+              :aria-selected="modalTab === tab.id"
+              @click="modalTab = tab.id"
               :class="
-                modalTab === 'stats'
+                modalTab === tab.id
                   ? 'bg-zinc-800 text-white font-bold'
                   : 'text-zinc-400'
               "
-              class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
+              class="min-w-fit flex-1 text-center px-3 py-2.5 rounded-lg text-[10px] sm:text-xs tracking-wider font-semibold transition-all"
             >
-              📊 TEAM STATS
-            </button>
-            <button
-              @click="modalTab = 'leaders'"
-              :class="
-                modalTab === 'leaders'
-                  ? 'bg-zinc-800 text-white font-bold'
-                  : 'text-zinc-400'
-              "
-              class="flex-1 text-center py-2.5 rounded-lg text-xs tracking-wider font-semibold transition-all"
-            >
-              🏃 PLAYER LEADERS
+              {{ tab.label }}
             </button>
           </div>
 
           <div v-if="modalView === 'game'" class="p-6 flex-1 bg-zinc-900">
-            <div v-if="modalTab === 'stats'" class="space-y-6">
+            <section v-if="modalTab === 'matchup'" class="space-y-5">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-4">
+                <div>
+                  <h4 class="text-sm font-black uppercase tracking-wider text-white">Matchup</h4>
+                  <p class="mt-1 text-xs text-zinc-400">
+                    {{ pregameMatchup.date ? formatMatchupDate(pregameMatchup.date) : 'Start time TBD' }}
+                  </p>
+                </div>
+                <div v-if="pregameMatchup.venue" class="text-right text-xs text-zinc-400">
+                  <p class="font-semibold text-zinc-200">{{ pregameMatchup.venue }}</p>
+                  <p v-if="pregameMatchup.venueLocation">{{ pregameMatchup.venueLocation }}</p>
+                </div>
+              </div>
+
+              <div v-if="pregameMatchup.away && pregameMatchup.home" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <article
+                  v-for="team in [pregameMatchup.away, pregameMatchup.home]"
+                  :key="team.homeAway"
+                  class="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+                >
+                  <div class="flex items-center gap-3 border-b border-zinc-800/80 pb-3">
+                    <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`" class="h-10 w-10 shrink-0 object-contain" />
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-sm font-bold text-white">{{ team.name }}</p>
+                      <p class="mt-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                        {{ team.homeAway }}<span v-if="team.abbreviation"> · {{ team.abbreviation }}</span>
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <p v-if="team.rank" class="text-xs font-black text-amber-400">#{{ team.rank }}</p>
+                      <p class="text-xs font-mono font-bold text-zinc-300">{{ team.record || 'Record unavailable' }}</p>
+                    </div>
+                  </div>
+
+                  <div class="pt-3">
+                    <h5 class="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Previous games</h5>
+                    <div v-if="team.recentGames.length" class="space-y-2">
+                      <div v-for="game in team.recentGames" :key="game.id" class="flex items-center gap-2 text-xs">
+                        <span
+                          class="w-5 shrink-0 text-center font-black"
+                          :class="game.result.toUpperCase().startsWith('W') ? 'text-emerald-400' : game.result.toUpperCase().startsWith('L') ? 'text-rose-400' : 'text-zinc-400'"
+                        >{{ game.result || '-' }}</span>
+                        <span class="min-w-0 flex-1 truncate text-zinc-300">{{ game.atVs }} {{ game.opponent }}</span>
+                        <span class="shrink-0 font-mono text-zinc-500">{{ game.score }}</span>
+                        <span class="shrink-0 text-[10px] text-zinc-500">{{ formatRecentGameDate(game.date) }}</span>
+                      </div>
+                    </div>
+                    <p v-else class="text-xs text-zinc-500">{{ matchupLoading ? 'Loading previous games...' : 'Previous games unavailable.' }}</p>
+                  </div>
+                </article>
+              </div>
+              <p v-else class="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4 text-sm text-zinc-400">
+                Matchup details are not available for this event.
+              </p>
+
+              <div v-if="pregameMatchup.series" class="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <h5 class="text-xs font-bold uppercase tracking-wider text-zinc-400">{{ pregameMatchup.series.title }}</h5>
+                  <span v-if="pregameMatchup.series.score" class="font-mono text-sm font-black text-amber-400">{{ pregameMatchup.series.score }}</span>
+                </div>
+                <p class="mt-2 text-sm text-zinc-200">{{ pregameMatchup.series.summary }}</p>
+              </div>
+            </section>
+
+            <section v-else-if="modalTab === 'timeline'" class="space-y-5">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+                <div>
+                  <h4 class="text-sm font-black uppercase tracking-wider text-white">Play-by-play</h4>
+                  <p class="mt-1 text-xs text-zinc-500">
+                    {{ playTimeline.mode === 'all-plays' ? 'Full play history' : playTimeline.mode === 'scoring-only' ? 'Scoring plays only' : 'Event history unavailable' }}
+                  </p>
+                </div>
+                <div v-if="playTimeline.mode === 'all-plays'" class="flex min-h-11 items-center gap-3 text-xs font-semibold text-zinc-300">
+                  <span>Scoring only</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="showScoringOnly"
+                    aria-label="Show scoring plays only"
+                    @click="showScoringOnly = !showScoringOnly"
+                    class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
+                    :class="showScoringOnly ? 'bg-amber-500' : 'bg-zinc-700'"
+                  >
+                    <span class="sr-only">Show scoring plays only</span>
+                    <span
+                      class="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform"
+                      :class="showScoringOnly ? 'translate-x-6' : 'translate-x-1'"
+                    ></span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="playTimeline.mode === 'unavailable'" class="rounded-xl border border-zinc-800 bg-zinc-950/30 p-5 text-sm text-zinc-400">
+                ESPN did not provide play-by-play or scoring events for this game.
+              </div>
+              <div v-else-if="playTimeline.mode === 'scoring-only'" class="rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                ESPN provides scoring events for this game, but not a full play-by-play timeline.
+              </div>
+
+              <div v-if="timelineGroups.length" class="space-y-5">
+                <section v-for="group in timelineGroups" :key="group.label">
+                  <h5 class="mb-2 border-b border-zinc-800 pb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">{{ group.label }}</h5>
+                  <div class="divide-y divide-zinc-800/70">
+                    <article
+                      v-for="event in group.events"
+                      :key="event.id"
+                      class="grid grid-cols-[58px_minmax(0,1fr)] gap-3 py-3"
+                      :class="event.scoring ? 'border-l-2 border-amber-400 pl-3' : 'pl-3'"
+                    >
+                      <div class="space-y-1 text-right">
+                        <p class="font-mono text-[10px] font-bold text-zinc-400">{{ event.clock || event.eventType || 'Play' }}</p>
+                        <p v-if="event.teamAbbreviation" class="truncate text-[9px] font-bold uppercase text-zinc-500">{{ event.teamAbbreviation }}</p>
+                      </div>
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                          <p class="min-w-0 flex-1 text-xs leading-relaxed text-zinc-200">{{ event.description }}</p>
+                          <span v-if="event.awayScore !== null && event.homeScore !== null" class="shrink-0 rounded bg-zinc-950 px-2 py-1 font-mono text-[10px] font-black text-white">
+                            {{ event.awayScore }} - {{ event.homeScore }}
+                          </span>
+                        </div>
+                        <div v-if="event.downDistance || event.fieldPosition || event.pitchCount !== null || event.outs !== null || event.isTurnover || event.isPenalty" class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+                          <span v-if="event.downDistance">{{ event.downDistance }}</span>
+                          <span v-if="event.fieldPosition">{{ event.fieldPosition }}</span>
+                          <span v-if="event.outs !== null">{{ event.outs }} outs</span>
+                          <span v-if="event.pitchCount !== null">{{ event.pitchCount }} pitches</span>
+                          <span v-if="event.isTurnover" class="font-bold text-rose-400">Turnover</span>
+                          <span v-if="event.isPenalty" class="font-bold text-amber-400">Penalty</span>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </section>
+              </div>
+              <p v-else-if="playTimeline.mode === 'all-plays'" class="text-sm text-zinc-500">
+                No scoring plays match this filter.
+              </p>
+            </section>
+
+            <section v-else-if="modalTab === 'flow'" class="space-y-5">
+              <div class="border-b border-zinc-800 pb-4">
+                <h4 class="text-sm font-black uppercase tracking-wider text-white">Game flow</h4>
+                <p class="mt-1 text-xs text-zinc-500">Score progression and scoring events</p>
+              </div>
+
+              <div v-if="gameFlow.points.length" class="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider">
+                  <span :style="{ color: gameFlowColors.away }">{{ modalData.teams.away.abbrev }} score</span>
+                  <span :style="{ color: gameFlowColors.home }">{{ modalData.teams.home.abbrev }} score</span>
+                </div>
+                <div class="h-44 w-full rounded-lg bg-zinc-950/70 p-2 sm:h-56">
+                  <svg class="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Score progression chart">
+                    <line x1="0" y1="50" x2="100" y2="50" stroke="#3f3f46" stroke-width="0.6" stroke-dasharray="2 3" />
+                    <polyline :points="gameFlow.awayPoints" fill="none" :stroke="gameFlowColors.away" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                    <polyline :points="gameFlow.homePoints" fill="none" :stroke="gameFlowColors.home" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </div>
+                <div class="mt-3 flex justify-between text-[9px] uppercase tracking-wider text-zinc-600">
+                  <span>Start</span><span>End of game</span>
+                </div>
+              </div>
+              <p v-else class="rounded-xl border border-zinc-800 bg-zinc-950/30 p-5 text-sm text-zinc-400">
+                Score progression is unavailable because ESPN did not provide scoring events with score snapshots.
+              </p>
+
+              <div v-if="gameFlow.markers.length" class="space-y-2">
+                <h5 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Scoring events</h5>
+                <div class="divide-y divide-zinc-800/70">
+                  <div v-for="marker in gameFlow.markers" :key="`flow-${marker.event.id}`" class="flex items-start gap-3 py-2.5">
+                    <span class="shrink-0 font-mono text-[10px] font-black text-amber-400">{{ marker.awayScore }} - {{ marker.homeScore }}</span>
+                    <span class="min-w-0 flex-1 text-xs text-zinc-300">{{ marker.event.description }}</span>
+                    <span class="shrink-0 text-[10px] text-zinc-500">{{ marker.event.periodLabel }}</span>
+                  </div>
+                </div>
+              </div>
+
+            </section>
+
+            <div v-else-if="modalTab === 'stats'" class="space-y-6">
               <div
                 v-if="currentDrive"
                 class="bg-blue-950/30 border border-blue-900/50 rounded-xl p-3.5 mb-4"
@@ -1261,58 +1426,81 @@
               </div>
             </div>
 
-            <!-- FIXED RENDER MATRIX FOR THE PLAYER LEADERS TAB GRID -->
             <div
-              v-else-if="modalTab === 'leaders'"
-              class="grid grid-cols-1 md:grid-cols-3 gap-4"
+              v-else-if="modalTab === 'boxscore'"
+              class="space-y-4"
             >
-              <div
-                v-for="category in playerLeaders"
-                :key="category.title"
-                class="bg-zinc-950/40 border border-zinc-800/80 rounded-2xl p-4"
+              <p
+                v-if="!playerBoxScore.available"
+                class="rounded-xl border border-zinc-800 bg-zinc-950/30 p-5 text-sm text-zinc-400"
               >
-                <h4
-                  class="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-800/60 pb-2 mb-3.5"
-                >
-                  {{ category.title }} Leaders
-                </h4>
+                ESPN has not provided player box-score data for this game.
+              </p>
 
-                <div class="space-y-4">
-                  <div
-                    v-for="player in category.athletes"
-                    :key="player.name"
-                    class="flex items-center gap-3 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/40"
+              <template v-else>
+                <div
+                  role="tablist"
+                  aria-label="Box score team"
+                  class="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-950/60 p-1 lg:hidden"
+                >
+                  <button
+                    v-for="team in playerBoxScore.teams"
+                    :key="team.side"
+                    type="button"
+                    role="tab"
+                    :aria-selected="selectedBoxScoreSide === team.side"
+                    @click="selectedBoxScoreSide = team.side"
+                    class="min-h-10 flex-1 rounded-md px-3 text-xs font-bold transition-colors"
+                    :class="selectedBoxScoreSide === team.side ? 'bg-zinc-800 text-white' : 'text-zinc-400'"
                   >
-                    <img
-                      :src="player.headshot"
-                      class="w-10 h-10 rounded-full bg-zinc-800 object-cover border border-zinc-700/60 flex-shrink-0"
-                    />
-                    <div class="min-w-0 flex-1">
-                      <div
-                        class="font-bold text-white text-xs tracking-tight truncate"
-                      >
-                        {{ player.name }}
-                      </div>
-                      <div
-                        class="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-0.5"
-                      >
-                        {{ player.teamAbbrev }} · #{{ player.jersey }}
-                      </div>
-                      <div
-                        class="font-mono text-xs font-bold text-amber-400 mt-1 flex flex-wrap gap-1.5"
-                      >
-                        <span
-                          v-for="(val, idx) in player.stats"
-                          :key="idx"
-                          class="bg-zinc-950 px-1.5 py-0.5 rounded text-[9px] border border-zinc-900"
-                        >
-                          {{ category.labels[idx] || "STAT" }}:{{ val }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    {{ team.side.toUpperCase() }} · {{ team.abbreviation }}
+                  </button>
                 </div>
-              </div>
+
+                <div class="space-y-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+                  <section
+                    v-for="team in playerBoxScore.teams"
+                    :key="team.side"
+                    class="min-w-0 space-y-4 border-b border-zinc-800 pb-5 lg:border-b-0 lg:pb-0"
+                    :class="selectedBoxScoreSide === team.side ? 'block' : 'hidden lg:block'"
+                  >
+                    <header class="flex items-center gap-3 border-b border-zinc-800 pb-3">
+                      <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`" class="h-8 w-8 shrink-0 object-contain" />
+                      <div class="min-w-0">
+                        <h4 class="truncate text-sm font-black text-white">{{ team.name }}</h4>
+                        <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{{ team.side }} · {{ team.abbreviation }}</p>
+                      </div>
+                    </header>
+
+                    <section v-for="group in team.groups" :key="group.id" class="min-w-0">
+                      <h5 class="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">{{ group.title }}</h5>
+                      <div class="max-w-full overflow-x-auto rounded-lg border border-zinc-800/80">
+                        <table class="w-full min-w-max border-collapse text-left text-xs">
+                          <thead class="bg-zinc-950/90 text-[10px] uppercase tracking-wider text-zinc-500">
+                            <tr>
+                              <th scope="col" class="sticky left-0 z-10 min-w-36 bg-zinc-950 px-3 py-2 font-bold">Player</th>
+                              <th v-for="(label, index) in group.labels" :key="`${label}-${index}`" scope="col" class="whitespace-nowrap px-3 py-2 text-right font-bold">{{ label }}</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-zinc-800/70">
+                            <tr v-for="player in group.players" :key="player.id" class="hover:bg-zinc-800/30">
+                              <th scope="row" class="sticky left-0 z-10 min-w-36 bg-zinc-900 px-3 py-2 text-left font-semibold text-zinc-200">
+                                <span class="block max-w-44 truncate">{{ player.name }}</span>
+                                <span v-if="player.jersey || player.position" class="mt-0.5 block text-[9px] font-medium uppercase text-zinc-500">
+                                  <template v-if="player.jersey">#{{ player.jersey }}</template><template v-if="player.jersey && player.position"> · </template>{{ player.position }}
+                                </span>
+                              </th>
+                              <td v-for="(label, index) in group.labels" :key="`${label}-${index}`" class="whitespace-nowrap px-3 py-2 text-right font-mono text-zinc-300">{{ player.stats[index] ?? '—' }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+                    <p v-if="!team.groups.length" class="text-xs text-zinc-500">Player stats for this team are not available yet.</p>
+                  </section>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -1527,6 +1715,7 @@ import {
   fetchStandings as fetchStandingsApi,
   fetchTeamDetails,
   getGameSummaryUrl,
+  getTeamUrls,
   getScoreboardRequestParams,
   getScoreboardUrl,
 } from "./api/espn.js";
@@ -1546,7 +1735,7 @@ import {
   getSeriesSummary as getSeriesSummaryUtil,
   getLinescoreHeaders as getLinescoreHeadersUtil,
   getLinescoreValues as getLinescoreValuesUtil,
-  getPlayerLeaders as getPlayerLeadersUtil,
+  getPlayerBoxScore as getPlayerBoxScoreUtil,
   getBaseballTeamStatComparisons as getBaseballTeamStatComparisonsUtil,
   getNetwork as getNetworkUtil,
   getWinProbabilityChart as getWinProbabilityChartUtil,
@@ -1556,7 +1745,7 @@ import {
   getTeamRank as getTeamRankUtil,
   getTeamScore as getTeamScoreUtil,
   getTeamStatComparisons as getTeamStatComparisonsUtil,
-  getTeamStatBarColors as getTeamStatBarColorsUtil,
+  getGameFlowColors as getGameFlowColorsUtil,
   getTvLineupLayout as getTvLineupLayoutUtil,
   getTvLineupTeamStyle as getTvLineupTeamStyleUtil,
   hasPossession as hasPossessionUtil,
@@ -1566,6 +1755,9 @@ import {
   sortGames as sortGamesUtil,
 } from "./app/scoreboard.js";
 import { buildGameDetail } from "./domain/game.js";
+import { normalizeMatchup } from "./domain/matchup.js";
+import { normalizePlayByPlay } from "./domain/playByPlay.js";
+import { buildGameFlow } from "./app/gameFlow.js";
 import { normalizeSchedule } from "./domain/schedule.js";
 import {
   canGoBackWithinApp,
@@ -1619,7 +1811,11 @@ export default {
     const modalLoading = ref(false);
     const modalData = ref(null);
     const selectedGame = ref(null);
-    const modalTab = ref("stats");
+    const modalTab = ref("timeline");
+    const showScoringOnly = ref(false);
+    const selectedBoxScoreSide = ref("away");
+    const matchupSchedules = ref({});
+    const matchupLoading = ref(false);
     const modalView = ref("game");
     const selectedTeamSide = ref(null);
     const selectedTeamOverride = ref(null);
@@ -1702,11 +1898,7 @@ export default {
       savePreferences(nextPreferences);
     };
 
-    const handleGameClick = (game) => {
-      if (getGameState(game) !== "pre") {
-        openModal(game);
-      }
-    };
+    const handleGameClick = (game) => openModal(game);
 
     const fetchScoreboard = async (
       isInitialBoot = false,
@@ -1787,7 +1979,13 @@ export default {
           String(selectedGame.value?.id) !== String(eventId)
         )
           return;
+        const previousStatus = modalGameStatus.value;
         modalData.value = buildGameDetail(data, eventId);
+        const isPregame = modalGameStatus.value === "pre";
+        if ((previousStatus === "pre") !== isPregame) {
+          modalTab.value = isPregame ? "matchup" : "stats";
+        }
+        void fetchMatchupSchedules(data, eventId, requestId);
       } catch (err) {
         if (requestId === gameRequestId) {
           console.error("Summary payload details parse error:", err);
@@ -1795,6 +1993,45 @@ export default {
         }
       } finally {
         if (requestId === gameRequestId) modalLoading.value = false;
+      }
+    };
+
+    const fetchMatchupSchedules = async (raw, eventId, requestId) => {
+      const competition = raw?.header?.competitions?.[0] || {};
+      const competitors = Array.isArray(competition.competitors)
+        ? competition.competitors
+        : [];
+      const summaryTeams = Array.isArray(raw?.lastFiveGames) ? raw.lastFiveGames : [];
+      const missingTeamIds = competitors
+        .map((competitor) => String(competitor?.id ?? competitor?.team?.id ?? ""))
+        .filter((teamId) => teamId && !summaryTeams.some(
+          (entry) => String(entry?.team?.id ?? "") === teamId && Array.isArray(entry?.events) && entry.events.length,
+        ));
+
+      if (!missingTeamIds.length) {
+        matchupLoading.value = false;
+        return;
+      }
+
+      matchupLoading.value = true;
+      try {
+        const schedules = await Promise.all(missingTeamIds.map(async (teamId) => {
+          try {
+            const urls = getTeamUrls(selectedLeague.value, teamId);
+            return [teamId, await fetchJson(urls.schedule, fetch)];
+          } catch {
+            return [teamId, null];
+          }
+        }));
+        if (
+          requestId === gameRequestId &&
+          showModal.value &&
+          String(selectedGame.value?.id) === String(eventId)
+        ) {
+          matchupSchedules.value = Object.fromEntries(schedules);
+        }
+      } finally {
+        if (requestId === gameRequestId) matchupLoading.value = false;
       }
     };
     const fetchStandings = async () => {
@@ -2061,7 +2298,11 @@ export default {
       selectedGame.value = game;
       resetTeamView();
       modalData.value = null;
-      modalTab.value = "stats";
+      modalTab.value = getGameState(game) === "pre" ? "matchup" : "stats";
+      showScoringOnly.value = false;
+      selectedBoxScoreSide.value = "away";
+      matchupSchedules.value = {};
+      matchupLoading.value = false;
       if (pushHistory) {
         pushNavigationEntry({ type: "game", eventId: String(game.id) });
       }
@@ -2169,6 +2410,71 @@ export default {
       return getLinescoreValuesUtil(comp, linescoreHeaders.value.length);
     });
 
+    const modalGameStatus = computed(() => {
+      const summaryStatus = modalData.value?.raw?.header?.competitions?.[0]?.status?.type?.state;
+      return String(summaryStatus || getGameState(selectedGame.value)).toLowerCase();
+    });
+    const modalTabs = computed(() => modalGameStatus.value === "pre"
+      ? [
+          { id: "matchup", label: "MATCHUP" },
+          { id: "stats", label: "TEAM STATS" },
+        ]
+      : [
+          { id: "stats", label: "TEAM STATS" },
+          { id: "flow", label: "FLOW" },
+          { id: "timeline", label: "TIMELINE" },
+          { id: "boxscore", label: "BOX SCORE" },
+          { id: "matchup", label: "MATCHUP" },
+        ]);
+    const pregameMatchup = computed(() =>
+      normalizeMatchup(modalData.value?.raw, matchupSchedules.value),
+    );
+    const playTimeline = computed(() =>
+      normalizePlayByPlay(modalData.value?.raw, selectedLeague.value),
+    );
+    const visibleTimelineEvents = computed(() =>
+      showScoringOnly.value
+        ? playTimeline.value.events.filter((event) => event.scoring)
+        : playTimeline.value.events,
+    );
+    const timelineGroups = computed(() => {
+      const groups = [];
+      for (const event of visibleTimelineEvents.value) {
+        const label = event.periodLabel || "Game";
+        let group = groups.find((entry) => entry.label === label);
+        if (!group) {
+          group = { label, events: [] };
+          groups.push(group);
+        }
+        group.events.push(event);
+      }
+      return groups;
+    });
+    const gameFlow = computed(() =>
+      buildGameFlow(playTimeline.value, modalData.value?.teams),
+    );
+    const formatRecentGameDate = (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+      }).format(date);
+    };
+    const formatMatchupDate = (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(date);
+    };
+
     const currentDrive = computed(() => {
       if (!["nfl", "college-football"].includes(selectedLeague.value)) {
         return null;
@@ -2200,11 +2506,14 @@ export default {
       return getTeamStatComparisonsUtil(awayStats, homeStats);
     });
 
-    const teamStatBarColors = computed(() =>
-      getTeamStatBarColorsUtil(modalData.value?.teams),
+    const gameFlowColors = computed(() =>
+      getGameFlowColorsUtil(modalData.value?.teams),
     );
+    const teamStatBarColors = gameFlowColors;
 
-    const playerLeaders = computed(() => getPlayerLeadersUtil(modalData.value));
+    const playerBoxScore = computed(() =>
+      getPlayerBoxScoreUtil(modalData.value, selectedLeague.value),
+    );
 
     const triggerImmediateFetch = async () => {
       clearInterval(pollingInterval);
@@ -2351,6 +2660,18 @@ export default {
       modalLoading,
       modalData,
       modalTab,
+      modalGameStatus,
+      modalTabs,
+      pregameMatchup,
+      matchupLoading,
+      selectedBoxScoreSide,
+      playTimeline,
+      showScoringOnly,
+      timelineGroups,
+      gameFlow,
+      gameFlowColors,
+      formatRecentGameDate,
+      formatMatchupDate,
       modalView,
       selectedTeamSide,
       selectedTeam,
@@ -2372,7 +2693,7 @@ export default {
       winProbabilityChart,
       teamStats,
       teamStatBarColors,
-      playerLeaders,
+      playerBoxScore,
       switchTab,
       adjustWeek,
       setSeasonType,
