@@ -1,64 +1,201 @@
 <template>
   <div class="p-4 md:p-6">
-    <!-- TOP TOUCH-FRIENDLY SPORT TABS NAVIGATION -->
+    <!-- SPORT TABS -->
+    <div class="flex items-center gap-2 mb-6">
+      <div
+        class="flex min-w-0 flex-1 items-center overflow-x-auto border-b border-zinc-800 rounded-xl bg-zinc-900/50 p-1 max-w-md"
+        role="tablist"
+        aria-label="Sports"
+      >
+      <button
+        v-for="league in visibleLeagues"
+        :key="league.id"
+        type="button"
+        role="tab"
+        :aria-selected="selectedLeague === league.id"
+        @click="switchTab(league.id)"
+        :class="
+          selectedLeague === league.id
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'
+        "
+        class="flex-1 whitespace-nowrap text-center py-2.5 px-3 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      >
+        {{ league.label }}
+      </button>
+      </div>
+      <button
+        type="button"
+        @click="openSettings"
+        :aria-expanded="settingsOpen"
+        aria-haspopup="dialog"
+        class="shrink-0 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs font-bold text-zinc-300 hover:text-white"
+      >
+        Settings
+      </button>
+    </div>
+
     <div
-      class="flex border-b border-zinc-800 mb-6 bg-zinc-900/50 p-1 rounded-xl max-w-md mx-auto md:mx-0"
+      v-if="settingsOpen"
+      class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+      @click.self="closeSettings"
+      @keydown.esc.window="closeSettings"
     >
-      <button
-        @click="switchTab('college-football')"
-        :class="
-          selectedLeague === 'college-football'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-zinc-400 hover:text-zinc-200'
-        "
-        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
+      <div
+        class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl"
       >
-        🏈 CFB
-      </button>
-      <button
-        @click="switchTab('nfl')"
-        :class="
-          selectedLeague === 'nfl'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-zinc-400 hover:text-zinc-200'
-        "
-        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
-      >
-        🏈 NFL
-      </button>
-      <button
-        @click="switchTab('mlb')"
-        :class="
-          selectedLeague === 'mlb'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-zinc-400 hover:text-zinc-200'
-        "
-        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
-      >
-        ⚾ MLB
-      </button>
-      <button
-        @click="switchTab('nba')"
-        :class="
-          selectedLeague === 'nba'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-zinc-400 hover:text-zinc-200'
-        "
-        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
-      >
-        🏀 NBA
-      </button>
-      <button
-        @click="switchTab('nhl')"
-        :class="
-          selectedLeague === 'nhl'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-zinc-400 hover:text-zinc-200'
-        "
-        class="flex-1 text-center py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all duration-150"
-      >
-        🏒 NHL
-      </button>
+        <header class="flex items-center justify-between border-b border-zinc-800 px-4 py-3 sm:px-5">
+          <h2 id="settings-title" class="text-base font-black text-white">Settings</h2>
+          <button
+            type="button"
+            @click="closeSettings"
+            class="rounded-lg px-3 py-2 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          >
+            Close
+          </button>
+        </header>
+
+        <div class="space-y-6 overflow-y-auto p-4 sm:p-5">
+          <section aria-labelledby="sports-settings-title">
+            <h3 id="sports-settings-title" class="mb-3 text-sm font-black text-white">Sports</h3>
+            <div class="divide-y divide-zinc-800 rounded-xl border border-zinc-800">
+              <div
+                v-for="(league, index) in orderedLeagues"
+                :key="league.id"
+                class="flex items-center gap-3 px-3 py-2.5"
+              >
+                <label class="flex min-w-0 flex-1 items-center gap-3 text-sm font-semibold text-zinc-200">
+                  <input
+                    type="checkbox"
+                    :checked="preferences.visibleLeagues.includes(league.id)"
+                    :disabled="preferences.visibleLeagues.length === 1 && preferences.visibleLeagues[0] === league.id"
+                    @change="setLeagueVisibility(league.id, $event.target.checked)"
+                    class="h-4 w-4 accent-blue-500"
+                  />
+                  <span class="truncate">{{ league.name }}</span>
+                </label>
+                <button
+                  type="button"
+                  :disabled="index === 0"
+                  :aria-label="`Move ${league.name} up`"
+                  title="Move up"
+                  @click="moveLeagueInOrder(league.id, -1)"
+                  class="rounded-md px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  :disabled="index === orderedLeagues.length - 1"
+                  :aria-label="`Move ${league.name} down`"
+                  title="Move down"
+                  @click="moveLeagueInOrder(league.id, 1)"
+                  class="rounded-md px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-30"
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="favorite-teams-title" class="border-t border-zinc-800 pt-5">
+            <h3 id="favorite-teams-title" class="mb-3 text-sm font-black text-white">Favorite teams</h3>
+            <label class="mb-3 block text-xs font-semibold text-zinc-400">
+              Sport
+              <span class="relative mt-1.5 block">
+                <select
+                  v-model="favoriteLeague"
+                  @change="handleFavoriteLeagueChange"
+                  class="block w-full appearance-none rounded-lg border border-zinc-700 bg-zinc-950 px-3 pr-10 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option v-for="league in LEAGUES" :key="league.id" :value="league.id">
+                    {{ league.name }}
+                  </option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  class="pointer-events-none absolute right-5 top-1/2 h-2 w-2 -translate-y-3/4 rotate-45 border-b-2 border-r-2 border-zinc-300"
+                ></span>
+              </span>
+            </label>
+
+            <div class="mb-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <span class="text-xs font-bold uppercase tracking-wide text-zinc-400">Selected</span>
+                <span class="font-mono text-xs text-zinc-500">{{ selectedFavoriteTeams.length }}</span>
+              </div>
+              <div v-if="selectedFavoriteTeams.length" class="flex flex-wrap gap-2">
+                <div
+                  v-for="team in selectedFavoriteTeams"
+                  :key="team.id"
+                  class="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 py-1 pl-2 pr-1 text-xs text-amber-200"
+                >
+                  <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`" class="h-5 w-5 object-contain" />
+                  <span>{{ team.name }}</span>
+                  <button
+                    type="button"
+                    :aria-label="`Remove ${team.name} from favorites`"
+                    @click="toggleFavorite(team)"
+                    class="rounded px-1.5 py-1 text-amber-100 hover:bg-amber-500/20"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+              <p v-else class="text-xs text-zinc-500">No favorite teams selected.</p>
+            </div>
+
+            <label class="mb-2 block text-xs font-semibold text-zinc-400">
+              Find a team
+              <input
+                v-model="favoriteSearch"
+                type="search"
+                autocomplete="off"
+                placeholder="Search teams"
+                class="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+
+            <div v-if="teamOptionsLoading" class="flex items-center gap-3 py-5 text-sm text-zinc-400">
+              <div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+              Loading teams...
+            </div>
+            <div v-else-if="teamOptionsError" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-900/60 bg-red-950/20 p-3 text-sm text-red-300">
+              <span>{{ teamOptionsError }}</span>
+              <button
+                type="button"
+                @click="loadFavoriteTeamOptions(favoriteLeague, true)"
+                class="rounded-md border border-red-800 px-3 py-1.5 text-xs font-bold hover:bg-red-950"
+              >
+                Retry
+              </button>
+            </div>
+            <div v-else-if="filteredTeamOptions.length" class="max-h-64 divide-y divide-zinc-800 overflow-y-auto rounded-xl border border-zinc-800">
+              <label
+                v-for="team in filteredTeamOptions"
+                :key="team.id"
+                class="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800/60"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isFavoriteTeam(team.id)"
+                  @change="toggleFavorite(team)"
+                  class="h-4 w-4 accent-amber-500"
+                />
+                <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`" class="h-6 w-6 shrink-0 object-contain" loading="lazy" />
+                <span class="min-w-0 flex-1 truncate">{{ team.name }}</span>
+                <span class="font-mono text-xs text-zinc-500">{{ team.abbreviation }}</span>
+              </label>
+            </div>
+            <p v-else class="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-500">
+              {{ teamOptionsByLeague[favoriteLeague] ? 'No teams match this search.' : 'No team list loaded.' }}
+            </p>
+          </section>
+        </div>
+      </div>
     </div>
 
     <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
@@ -67,25 +204,30 @@
     >
       <div class="flex flex-wrap items-center gap-3 justify-start w-full">
         <!-- CFB CONFERENCE DROPDOWN -->
-        <select
-          v-if="selectedLeague === 'college-football'"
-          v-model="selectedGroup"
-          @change="handleGroupChange"
-          class="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
-        >
-          <option value="80">All</option>
-          <option value="">Top 25 Rankings</option>
-          <option value="1">ACC</option>
-          <option value="4">Big 12</option>
-          <option value="5">Big Ten (B1G)</option>
-          <option value="12">C-USA</option>
-          <option value="18">Independent</option>
-          <option value="15">MAC</option>
-          <option value="17">Mountain West</option>
-          <option value="9">PAC-12</option>
-          <option value="8">SEC</option>
-          <option value="37">Sun Belt</option>
-        </select>
+        <span v-if="selectedLeague === 'college-football'" class="relative inline-block">
+          <select
+            v-model="selectedGroup"
+            @change="handleGroupChange"
+            class="block min-w-[140px] appearance-none rounded-xl border border-zinc-800 bg-zinc-950 px-3 pr-9 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="80">All</option>
+            <option value="">Top 25 Rankings</option>
+            <option value="1">ACC</option>
+            <option value="4">Big 12</option>
+            <option value="5">Big Ten (B1G)</option>
+            <option value="12">C-USA</option>
+            <option value="18">Independent</option>
+            <option value="15">MAC</option>
+            <option value="17">Mountain West</option>
+            <option value="9">PAC-12</option>
+            <option value="8">SEC</option>
+            <option value="37">Sun Belt</option>
+          </select>
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-3/4 rotate-45 border-b-2 border-r-2 border-zinc-300"
+          ></span>
+        </span>
 
         <!-- FOOTBALL WEEK CHANGER CONTROLS -->
         <div
@@ -631,9 +773,7 @@
               <span
                 class="font-bold text-white tracking-tight truncate text-sm"
                 :class="{
-                  'text-amber-400 font-black': isTeamStringHighlighted(
-                    getTeamName(game, 'away'),
-                  ),
+                  'text-amber-400 font-black': isTeamHighlighted(game, 'away'),
                 }"
               >
                 <span
@@ -670,9 +810,7 @@
               <span
                 class="font-bold text-white tracking-tight truncate text-sm"
                 :class="{
-                  'text-amber-400 font-black': isTeamStringHighlighted(
-                    getTeamName(game, 'home'),
-                  ),
+                  'text-amber-400 font-black': isTeamHighlighted(game, 'home'),
                 }"
               >
                 <span
@@ -1392,9 +1530,17 @@ import {
   getScoreboardRequestParams,
   getScoreboardUrl,
 } from "./api/espn.js";
+import { LEAGUES, getLeague } from "./app/leagues.js";
+import {
+  loadPreferences,
+  moveLeague as moveLeaguePreference,
+  savePreferences,
+  setLeagueVisibility as setLeagueVisibilityPreference,
+  toggleFavoriteTeam,
+} from "./app/preferences.js";
 import {
   formatGameTime as formatGameTimeUtil,
-  getFavoriteFilterText as getFavoriteFilterTextUtil,
+  getCompetitor as getCompetitorUtil,
   getGameState as getGameStateUtil,
   isBeforeFootballWeekStart,
   getSeriesSummary as getSeriesSummaryUtil,
@@ -1415,7 +1561,7 @@ import {
   getTvLineupTeamStyle as getTvLineupTeamStyleUtil,
   hasPossession as hasPossessionUtil,
   isGameHighlighted as isGameHighlightedUtil,
-  isTeamStringHighlighted as isTeamStringHighlightedUtil,
+  isTeamHighlighted as isTeamHighlightedUtil,
   isWinner as isWinnerUtil,
   sortGames as sortGamesUtil,
 } from "./app/scoreboard.js";
@@ -1425,10 +1571,12 @@ import {
   canGoBackWithinApp,
   initializeAppHistory,
   pushAppHistoryEntry,
+  reconcileAppSnapshot,
   readAppHistoryEntry,
   replaceAppHistoryEntry,
 } from "./app/navigation.js";
 import {
+  getUniqueStandingTeams,
   getStandingPositionKey,
   normalizeStandings,
   sortStandingTeams as sortStandingTeamsUtil,
@@ -1437,7 +1585,17 @@ import { getTeamRecords, getTeamRecordStats } from "./domain/team.js";
 
 export default {
   setup() {
-    const selectedLeague = ref("college-football");
+    const preferences = ref(loadPreferences());
+    const orderedLeagues = computed(() =>
+      preferences.value.leagueOrder.map(getLeague).filter(Boolean),
+    );
+    const visibleLeagues = computed(() =>
+      orderedLeagues.value.filter((league) =>
+        preferences.value.visibleLeagues.includes(league.id),
+      ),
+    );
+    const firstVisibleLeague = () => visibleLeagues.value[0]?.id || LEAGUES[0].id;
+    const selectedLeague = ref(firstVisibleLeague());
     const seasonType = ref(2);
     const week = ref(1);
     const selectedGroup = ref("80");
@@ -1498,20 +1656,51 @@ export default {
     const hasSavedNavigation = Boolean(
       readAppHistoryEntry(window.history.state),
     );
-    const initialNavigationEntry = initializeAppHistory(
+    let initialNavigationEntry = initializeAppHistory(
       window.history,
       createNavigationSnapshot(),
     );
+    const initialSnapshot = reconcileAppSnapshot(
+      initialNavigationEntry.snapshot,
+      preferences.value.visibleLeagues,
+      firstVisibleLeague(),
+    );
+    if (initialSnapshot !== initialNavigationEntry.snapshot) {
+      initialNavigationEntry = replaceAppHistoryEntry(window.history, {
+        ...initialSnapshot,
+      });
+    }
     selectedLeague.value = initialNavigationEntry.snapshot.league;
     viewMode.value = initialNavigationEntry.snapshot.view;
     week.value = initialNavigationEntry.snapshot.week;
     seasonType.value = initialNavigationEntry.snapshot.seasonType;
     selectedGroup.value = initialNavigationEntry.snapshot.selectedGroup;
     selectedDate.value = initialNavigationEntry.snapshot.selectedDate;
-
-    // Change your favorite team filter here. This is used to highlight your preferred team in the scoreboard.
-    const getFavoriteFilterText = () =>
-      getFavoriteFilterTextUtil(selectedLeague.value);
+    const settingsOpen = ref(false);
+    const favoriteLeague = ref(selectedLeague.value);
+    const favoriteSearch = ref("");
+    const teamOptionsByLeague = ref({});
+    const teamOptionsLoading = ref(false);
+    const teamOptionsError = ref("");
+    let teamOptionsRequestId = 0;
+    const selectedFavoriteTeams = computed(
+      () => preferences.value.favoriteTeams[favoriteLeague.value] || [],
+    );
+    const favoriteTeamIds = computed(
+      () => (preferences.value.favoriteTeams[selectedLeague.value] || []).map((team) => team.id),
+    );
+    const filteredTeamOptions = computed(() => {
+      const query = favoriteSearch.value.trim().toLocaleLowerCase();
+      const teams = teamOptionsByLeague.value[favoriteLeague.value] || [];
+      if (!query) return teams;
+      return teams.filter((team) =>
+        `${team.name} ${team.abbreviation}`.toLocaleLowerCase().includes(query),
+      );
+    });
+    const persistPreferences = (nextPreferences) => {
+      preferences.value = nextPreferences;
+      savePreferences(nextPreferences);
+    };
 
     const handleGameClick = (game) => {
       if (getGameState(game) !== "pre") {
@@ -1633,6 +1822,75 @@ export default {
         if (requestId === standingsRequestId) standingsLoading.value = false;
       }
     };
+    const loadFavoriteTeamOptions = async (leagueId, force = false) => {
+      if (!LEAGUES.some((league) => league.id === leagueId)) return;
+      const requestId = ++teamOptionsRequestId;
+      teamOptionsError.value = "";
+      if (!force && teamOptionsByLeague.value[leagueId]) {
+        teamOptionsLoading.value = false;
+        return;
+      }
+      teamOptionsLoading.value = true;
+      try {
+        const response = await fetchStandingsApi(leagueId, fetch);
+        const teams = getUniqueStandingTeams(
+          normalizeStandings(response, { league: leagueId }),
+        );
+        if (!teams.length) throw new Error("No teams were returned for this league.");
+        if (requestId !== teamOptionsRequestId) return;
+        teamOptionsByLeague.value = {
+          ...teamOptionsByLeague.value,
+          [leagueId]: teams,
+        };
+      } catch (err) {
+        if (requestId === teamOptionsRequestId) {
+          teamOptionsError.value = err.message || "Unable to load teams.";
+        }
+      } finally {
+        if (requestId === teamOptionsRequestId) teamOptionsLoading.value = false;
+      }
+    };
+    const handleFavoriteLeagueChange = () => {
+      favoriteSearch.value = "";
+      loadFavoriteTeamOptions(favoriteLeague.value);
+    };
+    const openSettings = () => {
+      settingsOpen.value = true;
+      favoriteLeague.value = selectedLeague.value;
+      favoriteSearch.value = "";
+      loadFavoriteTeamOptions(favoriteLeague.value);
+    };
+    const closeSettings = () => {
+      settingsOpen.value = false;
+      teamOptionsRequestId++;
+      teamOptionsLoading.value = false;
+    };
+    const setLeagueVisibility = (leagueId, visible) => {
+      const nextPreferences = setLeagueVisibilityPreference(
+        preferences.value,
+        leagueId,
+        visible,
+      );
+      persistPreferences(nextPreferences);
+      if (visible || selectedLeague.value !== leagueId) return;
+
+      const nextLeague = nextPreferences.leagueOrder.find((league) =>
+        nextPreferences.visibleLeagues.includes(league),
+      );
+      if (nextLeague) switchTab(nextLeague);
+    };
+    const moveLeagueInOrder = (leagueId, direction) => {
+      persistPreferences(
+        moveLeaguePreference(preferences.value, leagueId, direction),
+      );
+    };
+    const toggleFavorite = (team) => {
+      persistPreferences(
+        toggleFavoriteTeam(preferences.value, favoriteLeague.value, team),
+      );
+    };
+    const isFavoriteTeam = (teamId) =>
+      selectedFavoriteTeams.value.some((team) => team.id === String(teamId));
     const setDashboardView = async (view) => {
       if (viewMode.value === view) return;
       viewMode.value = view;
@@ -1830,7 +2088,14 @@ export default {
     };
 
     const restoreNavigationEntry = async (entry, isInitialLoad = false) => {
-      const snapshot = entry.snapshot;
+      let snapshot = reconcileAppSnapshot(
+        entry.snapshot,
+        preferences.value.visibleLeagues,
+        firstVisibleLeague(),
+      );
+      if (snapshot !== entry.snapshot) {
+        replaceAppHistoryEntry(window.history, snapshot);
+      }
       scoreboardRequestId++;
       standingsRequestId++;
       gameRequestId++;
@@ -1961,6 +2226,7 @@ export default {
     };
 
     const switchTab = async (league) => {
+      if (!preferences.value.visibleLeagues.includes(league)) return;
       if (selectedLeague.value === league) return;
       resetTeamView();
       selectedLeague.value = league;
@@ -2011,11 +2277,14 @@ export default {
       tvLineupScrollLeft.value = event.currentTarget.scrollLeft;
     };
 
-    const isTeamStringHighlighted = (name) =>
-      isTeamStringHighlightedUtil(name, getFavoriteFilterText());
+    const isTeamHighlighted = (game, homeAway) =>
+      isTeamHighlightedUtil(
+        getCompetitorUtil(game, homeAway)?.id,
+        favoriteTeamIds.value,
+      );
 
     const isGameHighlighted = (game) =>
-      isGameHighlightedUtil(game, getFavoriteFilterText());
+      isGameHighlightedUtil(game, favoriteTeamIds.value);
 
     const getSituation = (game) => getSituationUtil(game, selectedLeague.value);
     const hasPossession = (game, homeAway) =>
@@ -2040,6 +2309,26 @@ export default {
     });
 
     return {
+      LEAGUES,
+      preferences,
+      orderedLeagues,
+      visibleLeagues,
+      settingsOpen,
+      openSettings,
+      closeSettings,
+      setLeagueVisibility,
+      moveLeagueInOrder,
+      favoriteLeague,
+      handleFavoriteLeagueChange,
+      selectedFavoriteTeams,
+      favoriteSearch,
+      filteredTeamOptions,
+      teamOptionsByLeague,
+      teamOptionsLoading,
+      teamOptionsError,
+      loadFavoriteTeamOptions,
+      toggleFavorite,
+      isFavoriteTeam,
       selectedLeague,
       seasonType,
       week,
@@ -2107,7 +2396,7 @@ export default {
       getTeamRank,
       getTvLineupTeamStyle,
       isWinner,
-      isTeamStringHighlighted,
+      isTeamHighlighted,
       isGameHighlighted,
       handleGameClick,
     };

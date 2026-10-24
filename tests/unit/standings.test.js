@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/espn/standings.json";
 import {
+  getUniqueStandingTeams,
   getStandingPositionKey,
   normalizeStandings,
   sortStandingTeams,
@@ -69,6 +70,26 @@ describe("standings normalization", () => {
         }],
       },
     ]);
+  });
+
+  it("extracts one selectable team per ID across nested groups", () => {
+    const teams = getUniqueStandingTeams(normalizeStandings(fixture));
+
+    expect(teams).toEqual([
+      {
+        id: "2",
+        name: "Boston Celtics",
+        abbreviation: "BOS",
+        logo: "celtics.png",
+      },
+      {
+        id: "9",
+        name: "Golden State Warriors",
+        abbreviation: "GS",
+        logo: "warriors.png",
+      },
+    ]);
+    expect(getUniqueStandingTeams(null)).toEqual([]);
   });
 
   it("handles empty, partial, and root-level standings payloads", () => {

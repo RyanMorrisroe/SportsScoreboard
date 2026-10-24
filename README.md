@@ -13,7 +13,9 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 - Automatic scoreboard refresh every 15 seconds
 - Game detail modal with scores, team statistics, scoring plays, drives, and win probability when supplied by ESPN
 - Clickable team names that open team information, records, statistics, and schedule
-- Favorite-team highlighting and game sorting
+- Customizable sport tabs, including visibility and ordering
+- Multiple favorite teams per league, highlighted by ESPN team ID
+- Browser-local preference persistence for favorite teams and sport settings
 - Defensive handling for missing logos, scores, dates, records, and partial ESPN responses
 - Static deployment with relative JavaScript module paths
 

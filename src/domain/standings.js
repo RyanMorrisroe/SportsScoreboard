@@ -140,6 +140,27 @@ export function normalizeStandings(payload, { league } = {}) {
   return groups;
 }
 
+export function getUniqueStandingTeams(groups) {
+  const teams = new Map();
+  for (const group of Array.isArray(groups) ? groups : []) {
+    for (const team of Array.isArray(group?.teams) ? group.teams : []) {
+      if (team?.id === undefined || team?.id === null) continue;
+      const id = String(team.id);
+      if (!teams.has(id)) {
+        teams.set(id, {
+          id,
+          name: team.name || id,
+          abbreviation: team.abbreviation || "",
+          logo: team.logo || "",
+        });
+      }
+    }
+  }
+  return [...teams.values()].sort((first, second) =>
+    first.name.localeCompare(second.name, undefined, { sensitivity: "base" }),
+  );
+}
+
 export function getStandingPositionKey(group) {
   const positionKeys = ["playoffseed", "rank", "position"];
   return group?.columns?.find((column) =>

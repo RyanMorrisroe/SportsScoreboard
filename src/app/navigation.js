@@ -114,3 +114,8 @@ export function replaceAppHistoryEntry(history, snapshot) {
 export function canGoBackWithinApp(entry) {
   return isValidEntry(entry) && entry.index > entry.rootIndex;
 }
+
+export function reconcileAppSnapshot(snapshot, visibleLeagues, fallbackLeague) {
+  if (visibleLeagues.includes(snapshot?.league)) return snapshot;
+  return { ...snapshot, league: fallbackLeague, modal: null };
+}
