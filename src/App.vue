@@ -72,7 +72,7 @@
                     type="checkbox"
                     :checked="preferences.visibleLeagues.includes(league.id)"
                     :disabled="preferences.visibleLeagues.length === 1 && preferences.visibleLeagues[0] === league.id"
-                    @change="setLeagueVisibility(league.id, $event.target.checked)"
+                    @change="setLeagueVisibility(league.id, ($event.target as HTMLInputElement).checked)"
                     class="h-4 w-4 accent-blue-500"
                   />
                   <span class="truncate">{{ league.name }}</span>
@@ -204,7 +204,7 @@
     >
       <div class="flex flex-wrap items-center gap-3 justify-start w-full">
         <!-- CFB CONFERENCE DROPDOWN -->
-        <span v-if="selectedLeague === 'college-football'" class="relative inline-block">
+        <span v-if="leagueBehavior?.schedule.supportsGroupFilter" class="relative inline-block">
           <select
             v-model="selectedGroup"
             @change="handleGroupChange"
@@ -231,9 +231,7 @@
 
         <!-- FOOTBALL WEEK CHANGER CONTROLS -->
         <div
-          v-if="
-            selectedLeague === 'college-football' || selectedLeague === 'nfl'
-          "
+          v-if="leagueBehavior?.schedule.mode === 'week'"
           class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-1 h-[38px]"
         >
           <button
@@ -256,9 +254,7 @@
 
         <!-- FOOTBALL SEASON TYPE SEGMENT CONTROLLER -->
         <div
-          v-if="
-            selectedLeague === 'college-football' || selectedLeague === 'nfl'
-          "
+          v-if="leagueBehavior?.schedule.mode === 'week'"
           class="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl h-[38px]"
         >
           <button
@@ -875,7 +871,7 @@
           </div>
 
           <div
-            v-if="modalView === 'game'"
+            v-if="modalView === 'game' && modalData"
             class="p-6 border-b border-zinc-800 bg-zinc-950/40"
           >
             <div
@@ -932,9 +928,9 @@
                   <!-- Football emoji lights up if Away has possession -->
                   <span
                     v-if="
-                      selectedLeague !== 'mlb' &&
+                      leagueBehavior?.linescore.supportsPossession &&
                       hasPossession(
-                        games.find((g) => g.id === modalData.id),
+                        games.find((g) => g.id === modalData!.id),
                         'away',
                       )
                     "
@@ -952,9 +948,9 @@
                   <!-- Football emoji lights up if Home has possession -->
                   <span
                     v-if="
-                      selectedLeague !== 'mlb' &&
+                      leagueBehavior?.linescore.supportsPossession &&
                       hasPossession(
-                        games.find((g) => g.id === modalData.id),
+                        games.find((g) => g.id === modalData!.id),
                         'home',
                       )
                     "
@@ -1254,8 +1250,8 @@
 
               <div v-if="gameFlow.points.length" class="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider">
-                  <span :style="{ color: gameFlowColors.away }">{{ modalData.teams.away.abbrev }} score</span>
-                  <span :style="{ color: gameFlowColors.home }">{{ modalData.teams.home.abbrev }} score</span>
+                  <span :style="{ color: gameFlowColors.away }">{{ modalData!.teams.away.abbrev }} score</span>
+                  <span :style="{ color: gameFlowColors.home }">{{ modalData!.teams.home.abbrev }} score</span>
                 </div>
                 <div class="h-44 w-full rounded-lg bg-zinc-950/70 p-2 sm:h-56">
                   <svg class="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Score progression chart">
@@ -1275,10 +1271,10 @@
               <div v-if="gameFlow.markers.length" class="space-y-2">
                 <h5 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Scoring events</h5>
                 <div class="divide-y divide-zinc-800/70">
-                  <div v-for="marker in gameFlow.markers" :key="`flow-${marker.event.id}`" class="flex items-start gap-3 py-2.5">
+                  <div v-for="marker in gameFlow.markers" :key="`flow-${marker.event!.id}`" class="flex items-start gap-3 py-2.5">
                     <span class="shrink-0 font-mono text-[10px] font-black text-amber-400">{{ marker.awayScore }} - {{ marker.homeScore }}</span>
-                    <span class="min-w-0 flex-1 text-xs text-zinc-300">{{ marker.event.description }}</span>
-                    <span class="shrink-0 text-[10px] text-zinc-500">{{ marker.event.periodLabel }}</span>
+                    <span class="min-w-0 flex-1 text-xs text-zinc-300">{{ marker.event!.description }}</span>
+                    <span class="shrink-0 text-[10px] text-zinc-500">{{ marker.event!.periodLabel }}</span>
                   </div>
                 </div>
               </div>
@@ -1329,12 +1325,12 @@
                   <div
                     class="absolute left-2 top-1.5 text-[9px] font-bold text-zinc-500 uppercase"
                   >
-                    {{ modalData.teams.away.abbrev }} Advantage
+                    {{ modalData!.teams.away.abbrev }} Advantage
                   </div>
                   <div
                     class="absolute left-2 bottom-1.5 text-[9px] font-bold text-zinc-500 uppercase"
                   >
-                    {{ modalData.teams.home.abbrev }} Advantage
+                    {{ modalData!.teams.home.abbrev }} Advantage
                   </div>
                   <svg
                     class="w-full h-full"
@@ -1372,7 +1368,7 @@
               </div>
 
               <div class="space-y-3.5 mt-2">
-                <div v-if="selectedLeague === 'mlb'" class="flex justify-end">
+                <div v-if="leagueBehavior?.game.teamStatsMode === 'grouped'" class="flex justify-end">
                   <select
                     v-model="mlbStatGroup"
                     aria-label="MLB stat category"
@@ -1560,7 +1556,7 @@
                     v-if="teamData.groups?.name || teamData.team?.groups?.name"
                     class="text-xs text-zinc-500 mt-1"
                   >
-                    {{ teamData.groups?.name || teamData.team.groups.name }}
+                    {{ teamData.groups?.name || teamData.team.groups?.name }}
                   </p>
                 </div>
               </div>
@@ -1708,30 +1704,24 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { computed, onMounted, ref } from "vue";
 import {
   fetchJson,
-  fetchStandings as fetchStandingsApi,
-  fetchTeamDetails,
-  getGameSummaryUrl,
-  getTeamUrls,
   getScoreboardRequestParams,
   getScoreboardUrl,
 } from "./api/espn.js";
-import { LEAGUES, getLeague } from "./app/leagues.js";
-import {
-  loadPreferences,
-  moveLeague as moveLeaguePreference,
-  savePreferences,
-  setLeagueVisibility as setLeagueVisibilityPreference,
-  toggleFavoriteTeam,
-} from "./app/preferences.js";
+import { LEAGUES, getLeague } from "./app/leagues";
+import { loadPreferences } from "./app/preferences.js";
+import { usePreferences } from "./composables/usePreferences";
+import { useAppNavigation } from "./composables/useAppNavigation";
+import { useScoreboard } from "./composables/useScoreboard";
+import { useGameDetails } from "./composables/useGameDetails";
+import { useTeamDetails } from "./composables/useTeamDetails";
 import {
   formatGameTime as formatGameTimeUtil,
   getCompetitor as getCompetitorUtil,
   getGameState as getGameStateUtil,
-  isBeforeFootballWeekStart,
   getSeriesSummary as getSeriesSummaryUtil,
   getLinescoreHeaders as getLinescoreHeadersUtil,
   getLinescoreValues as getLinescoreValuesUtil,
@@ -1753,382 +1743,181 @@ import {
   isTeamHighlighted as isTeamHighlightedUtil,
   isWinner as isWinnerUtil,
   sortGames as sortGamesUtil,
-} from "./app/scoreboard.js";
-import { buildGameDetail } from "./domain/game.js";
+} from "./app/scoreboard";
 import { normalizeMatchup } from "./domain/matchup.js";
-import { normalizePlayByPlay } from "./domain/playByPlay.js";
+import { normalizePlayByPlay } from "./domain/playByPlay";
 import { buildGameFlow } from "./app/gameFlow.js";
 import { normalizeSchedule } from "./domain/schedule.js";
 import {
   canGoBackWithinApp,
-  initializeAppHistory,
-  pushAppHistoryEntry,
   reconcileAppSnapshot,
   readAppHistoryEntry,
   replaceAppHistoryEntry,
 } from "./app/navigation.js";
 import {
-  getUniqueStandingTeams,
-  getStandingPositionKey,
-  normalizeStandings,
-  sortStandingTeams as sortStandingTeamsUtil,
-} from "./domain/standings.js";
-import { getTeamRecords, getTeamRecordStats } from "./domain/team.js";
+  getTeamRecords,
+  getTeamRecordStats,
+  normalizeTeamDetails,
+} from "./domain/team.js";
+import { resolveLeague } from "./plugins/registry";
+import { useStandings } from "./composables/useStandings";
+import type { AppHistoryEntry, AppView } from "./app/navigation";
+import type { GameDetailTeam } from "./domain/game";
+import type { LeagueId } from "./plugins/registry";
+import type { NormalizedPlayEvent } from "./domain/playByPlay";
+
+type HomeAway = "away" | "home";
+
+interface ScoreboardEvent extends Record<string, unknown> {
+  id?: string | number;
+  date?: string;
+}
+
+interface TeamChoice extends Partial<GameDetailTeam> {
+  abbreviation?: string;
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function getFirstGameCompetition(game: unknown): unknown {
+  return asArray(asObject(game).competitions)[0];
+}
+
+function getFirstSummaryCompetition(raw: unknown): unknown {
+  const header = asObject(asObject(raw).header);
+  return asArray(header.competitions)[0];
+}
+
+interface TimelineGroup {
+  label: string;
+  events: NormalizedPlayEvent[];
+}
 
 export default {
   setup() {
     const preferences = ref(loadPreferences());
     const orderedLeagues = computed(() =>
-      preferences.value.leagueOrder.map(getLeague).filter(Boolean),
+      preferences.value.leagueOrder
+        .map(getLeague)
+        .filter((league): league is NonNullable<typeof league> => league !== null),
     );
     const visibleLeagues = computed(() =>
       orderedLeagues.value.filter((league) =>
         preferences.value.visibleLeagues.includes(league.id),
       ),
     );
-    const firstVisibleLeague = () => visibleLeagues.value[0]?.id || LEAGUES[0].id;
-    const selectedLeague = ref(firstVisibleLeague());
+    const firstVisibleLeague = (): LeagueId => visibleLeagues.value[0]?.id || LEAGUES[0].id;
+    const selectedLeague = ref<LeagueId>(firstVisibleLeague());
+    const leagueBehavior = computed(() => resolveLeague(selectedLeague.value));
     const seasonType = ref(2);
     const week = ref(1);
     const selectedGroup = ref("80");
     const selectedDate = ref(new Date().toLocaleDateString("en-CA"));
     const mlbStatGroup = ref("batting");
-    const isDateLeague = computed(() =>
-      ["mlb", "nba", "nhl"].includes(selectedLeague.value),
-    );
-    const games = ref([]);
-    const loading = ref(false);
-    const viewMode = ref("scoreboard");
-    const standings = ref([]);
-    const standingsLoading = ref(false);
-    const standingsError = ref("");
-    const standingsSort = ref({});
-    let standingsRequestId = 0;
-    let scoreboardRequestId = 0;
-    let gameRequestId = 0;
-
+    const isDateLeague = computed(() => leagueBehavior.value?.schedule.mode === "date");
+    const viewMode = ref<AppView>("scoreboard");
+    const {
+      standings,
+      standingsLoading,
+      standingsError,
+      fetchStandings,
+      resetStandings,
+      getStandingStat,
+      getStandingSortDirection,
+      toggleStandingsSort,
+      getSortedStandingTeams,
+    } = useStandings(selectedLeague);
     const showModal = ref(false);
-    const modalLoading = ref(false);
-    const modalData = ref(null);
-    const selectedGame = ref(null);
+    const selectedGame = ref<ScoreboardEvent | null>(null);
     const modalTab = ref("timeline");
     const showScoringOnly = ref(false);
     const selectedBoxScoreSide = ref("away");
-    const matchupSchedules = ref({});
-    const matchupLoading = ref(false);
-    const modalView = ref("game");
-    const selectedTeamSide = ref(null);
-    const selectedTeamOverride = ref(null);
-    const teamData = ref(null);
-    const teamScheduleData = ref(null);
-    const teamLoading = ref(false);
-    const teamError = ref("");
-    const scheduleError = ref("");
+    const modalView = ref<"game" | "team">("game");
+    const selectedTeamSide = ref<HomeAway | null>(null);
+    const selectedTeamOverride = ref<TeamChoice | null>(null);
     const showSeasonMetrics = ref(false);
-    let teamRequestId = 0;
-
-    let pollingInterval = null;
-
-    const createNavigationSnapshot = (modal = null) => ({
-      league: selectedLeague.value,
-      view: viewMode.value,
-      week: week.value,
-      seasonType: seasonType.value,
-      selectedGroup: selectedGroup.value,
-      selectedDate: selectedDate.value,
-      modal,
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    const {
+      modalLoading,
+      modalData,
+      modalGameStatus,
+      matchupSchedules,
+      matchupLoading,
+      fetchGameDetail,
+      invalidateGameDetails,
+      resetMatchupSchedules,
+    } = useGameDetails({
+      selectedLeague,
+      showModal,
+      modalView,
+      selectedGame,
+      modalTab,
     });
-    const pushNavigationEntry = (modal = null) =>
-      pushAppHistoryEntry(window.history, createNavigationSnapshot(modal));
-    const replaceCurrentNavigationEntry = (modal) => {
-      const currentEntry = readAppHistoryEntry(window.history.state);
-      const nextModal =
-        modal === undefined ? (currentEntry?.snapshot.modal ?? null) : modal;
-      replaceAppHistoryEntry(
-        window.history,
-        createNavigationSnapshot(nextModal),
-      );
-    };
-    const hasSavedNavigation = Boolean(
-      readAppHistoryEntry(window.history.state),
-    );
-    let initialNavigationEntry = initializeAppHistory(
-      window.history,
-      createNavigationSnapshot(),
-    );
-    const initialSnapshot = reconcileAppSnapshot(
-      initialNavigationEntry.snapshot,
+    const {
+      teamData: rawTeamData,
+      teamScheduleData,
+      teamLoading,
+      teamError,
+      scheduleError,
+      loadTeamDetails,
+      resetTeamDetails,
+    } = useTeamDetails({ selectedLeague, showModal });
+    const teamData = computed(() => normalizeTeamDetails(rawTeamData.value));
+
+    const {
+      hasSavedNavigation,
+      initialNavigationEntry,
+      pushNavigationEntry,
+      replaceCurrentNavigationEntry,
+    } = useAppNavigation(
+      { selectedLeague, viewMode, week, seasonType, selectedGroup, selectedDate },
       preferences.value.visibleLeagues,
       firstVisibleLeague(),
     );
-    if (initialSnapshot !== initialNavigationEntry.snapshot) {
-      initialNavigationEntry = replaceAppHistoryEntry(window.history, {
-        ...initialSnapshot,
-      });
-    }
-    selectedLeague.value = initialNavigationEntry.snapshot.league;
-    viewMode.value = initialNavigationEntry.snapshot.view;
-    week.value = initialNavigationEntry.snapshot.week;
-    seasonType.value = initialNavigationEntry.snapshot.seasonType;
-    selectedGroup.value = initialNavigationEntry.snapshot.selectedGroup;
-    selectedDate.value = initialNavigationEntry.snapshot.selectedDate;
-    const settingsOpen = ref(false);
-    const favoriteLeague = ref(selectedLeague.value);
-    const favoriteSearch = ref("");
-    const teamOptionsByLeague = ref({});
-    const teamOptionsLoading = ref(false);
-    const teamOptionsError = ref("");
-    let teamOptionsRequestId = 0;
-    const selectedFavoriteTeams = computed(
-      () => preferences.value.favoriteTeams[favoriteLeague.value] || [],
+    const {
+      games,
+      loading,
+      fetchScoreboard,
+      invalidateScoreboard,
+    } = useScoreboard(
+      { selectedLeague, selectedDate, week, seasonType, selectedGroup, isDateLeague },
+      replaceCurrentNavigationEntry,
     );
-    const favoriteTeamIds = computed(
-      () => (preferences.value.favoriteTeams[selectedLeague.value] || []).map((team) => team.id),
-    );
-    const filteredTeamOptions = computed(() => {
-      const query = favoriteSearch.value.trim().toLocaleLowerCase();
-      const teams = teamOptionsByLeague.value[favoriteLeague.value] || [];
-      if (!query) return teams;
-      return teams.filter((team) =>
-        `${team.name} ${team.abbreviation}`.toLocaleLowerCase().includes(query),
-      );
-    });
-    const persistPreferences = (nextPreferences) => {
-      preferences.value = nextPreferences;
-      savePreferences(nextPreferences);
-    };
+    const {
+      settingsOpen,
+      favoriteLeague,
+      favoriteSearch,
+      selectedFavoriteTeams,
+      favoriteTeamIds,
+      filteredTeamOptions,
+      teamOptionsByLeague,
+      teamOptionsLoading,
+      teamOptionsError,
+      loadFavoriteTeamOptions,
+      handleFavoriteLeagueChange,
+      openSettings,
+      closeSettings,
+      setLeagueVisibility: updateLeagueVisibility,
+      moveLeagueInOrder,
+      toggleFavorite,
+      isFavoriteTeam,
+    } = usePreferences(preferences, selectedLeague);
 
-    const handleGameClick = (game) => openModal(game);
+    const handleGameClick = (game: ScoreboardEvent) => openModal(game);
 
-    const fetchScoreboard = async (
-      isInitialBoot = false,
-      showLoading = isInitialBoot,
-    ) => {
-      const requestId = ++scoreboardRequestId;
-      if (showLoading) loading.value = true;
-      try {
-        const params = getScoreboardRequestParams(selectedLeague.value, {
-          date: selectedDate.value,
-          week: week.value,
-          seasonType: seasonType.value,
-          group: selectedGroup.value,
-          initial: isInitialBoot,
-        });
-        const endpoint = getScoreboardUrl(selectedLeague.value, params);
-
-        let data = await fetchJson(endpoint);
-        if (requestId !== scoreboardRequestId) return;
-
-        let initialWeek = data.week?.number;
-        if (
-          isInitialBoot &&
-          ["college-football", "nfl"].includes(selectedLeague.value) &&
-          isBeforeFootballWeekStart() &&
-          Number(initialWeek) > 1
-        ) {
-          initialWeek = Number(initialWeek) - 1;
-          const previousWeekParams = getScoreboardRequestParams(
-            selectedLeague.value,
-            {
-              week: initialWeek,
-              seasonType: data.season?.type ?? seasonType.value,
-              group: selectedGroup.value,
-            },
-          );
-          data = await fetchJson(
-            getScoreboardUrl(selectedLeague.value, previousWeekParams),
-          );
-          if (requestId !== scoreboardRequestId) return;
-        }
-
-        games.value = data.events || [];
-
-        if (
-          isInitialBoot &&
-          !isDateLeague.value &&
-          data.week &&
-          data.week.number
-        ) {
-          week.value = initialWeek ?? data.week.number;
-          if (data.season && data.season.type) {
-            seasonType.value = data.season.type;
-          }
-          replaceCurrentNavigationEntry();
-        }
-      } catch (err) {
-        if (requestId === scoreboardRequestId) {
-          console.error("Scoreboard fetch error:", err);
-        }
-      } finally {
-        if (requestId === scoreboardRequestId && showLoading) {
-          loading.value = false;
-        }
-      }
-    };
-
-    const fetchGameDetail = async (eventId) => {
-      const requestId = ++gameRequestId;
-      modalLoading.value = true;
-      try {
-        const endpoint = getGameSummaryUrl(selectedLeague.value, eventId);
-        const data = await fetchJson(endpoint);
-        if (
-          requestId !== gameRequestId ||
-          !showModal.value ||
-          modalView.value !== "game" ||
-          String(selectedGame.value?.id) !== String(eventId)
-        )
-          return;
-        const previousStatus = modalGameStatus.value;
-        modalData.value = buildGameDetail(data, eventId);
-        const isPregame = modalGameStatus.value === "pre";
-        if ((previousStatus === "pre") !== isPregame) {
-          modalTab.value = isPregame ? "matchup" : "stats";
-        }
-        void fetchMatchupSchedules(data, eventId, requestId);
-      } catch (err) {
-        if (requestId === gameRequestId) {
-          console.error("Summary payload details parse error:", err);
-          modalData.value = null;
-        }
-      } finally {
-        if (requestId === gameRequestId) modalLoading.value = false;
-      }
-    };
-
-    const fetchMatchupSchedules = async (raw, eventId, requestId) => {
-      const competition = raw?.header?.competitions?.[0] || {};
-      const competitors = Array.isArray(competition.competitors)
-        ? competition.competitors
-        : [];
-      const summaryTeams = Array.isArray(raw?.lastFiveGames) ? raw.lastFiveGames : [];
-      const missingTeamIds = competitors
-        .map((competitor) => String(competitor?.id ?? competitor?.team?.id ?? ""))
-        .filter((teamId) => teamId && !summaryTeams.some(
-          (entry) => String(entry?.team?.id ?? "") === teamId && Array.isArray(entry?.events) && entry.events.length,
-        ));
-
-      if (!missingTeamIds.length) {
-        matchupLoading.value = false;
-        return;
-      }
-
-      matchupLoading.value = true;
-      try {
-        const schedules = await Promise.all(missingTeamIds.map(async (teamId) => {
-          try {
-            const urls = getTeamUrls(selectedLeague.value, teamId);
-            return [teamId, await fetchJson(urls.schedule, fetch)];
-          } catch {
-            return [teamId, null];
-          }
-        }));
-        if (
-          requestId === gameRequestId &&
-          showModal.value &&
-          String(selectedGame.value?.id) === String(eventId)
-        ) {
-          matchupSchedules.value = Object.fromEntries(schedules);
-        }
-      } finally {
-        if (requestId === gameRequestId) matchupLoading.value = false;
-      }
-    };
-    const fetchStandings = async () => {
-      const requestId = ++standingsRequestId;
-      standingsLoading.value = true;
-      standingsError.value = "";
-      try {
-        const response = await fetchStandingsApi(selectedLeague.value, fetch);
-        if (requestId !== standingsRequestId) return;
-        standings.value = normalizeStandings(response, {
-          league: selectedLeague.value,
-        });
-        standingsSort.value = Object.fromEntries(
-          standings.value.flatMap((group) => {
-            const key = getStandingPositionKey(group);
-            return key ? [[group.id, { key, direction: "asc" }]] : [];
-          }),
-        );
-      } catch (err) {
-        if (requestId === standingsRequestId) {
-          standingsError.value = err.message || "Unable to load standings.";
-          console.error("Standings fetch error:", err);
-        }
-      } finally {
-        if (requestId === standingsRequestId) standingsLoading.value = false;
-      }
-    };
-    const loadFavoriteTeamOptions = async (leagueId, force = false) => {
-      if (!LEAGUES.some((league) => league.id === leagueId)) return;
-      const requestId = ++teamOptionsRequestId;
-      teamOptionsError.value = "";
-      if (!force && teamOptionsByLeague.value[leagueId]) {
-        teamOptionsLoading.value = false;
-        return;
-      }
-      teamOptionsLoading.value = true;
-      try {
-        const response = await fetchStandingsApi(leagueId, fetch);
-        const teams = getUniqueStandingTeams(
-          normalizeStandings(response, { league: leagueId }),
-        );
-        if (!teams.length) throw new Error("No teams were returned for this league.");
-        if (requestId !== teamOptionsRequestId) return;
-        teamOptionsByLeague.value = {
-          ...teamOptionsByLeague.value,
-          [leagueId]: teams,
-        };
-      } catch (err) {
-        if (requestId === teamOptionsRequestId) {
-          teamOptionsError.value = err.message || "Unable to load teams.";
-        }
-      } finally {
-        if (requestId === teamOptionsRequestId) teamOptionsLoading.value = false;
-      }
-    };
-    const handleFavoriteLeagueChange = () => {
-      favoriteSearch.value = "";
-      loadFavoriteTeamOptions(favoriteLeague.value);
-    };
-    const openSettings = () => {
-      settingsOpen.value = true;
-      favoriteLeague.value = selectedLeague.value;
-      favoriteSearch.value = "";
-      loadFavoriteTeamOptions(favoriteLeague.value);
-    };
-    const closeSettings = () => {
-      settingsOpen.value = false;
-      teamOptionsRequestId++;
-      teamOptionsLoading.value = false;
-    };
-    const setLeagueVisibility = (leagueId, visible) => {
-      const nextPreferences = setLeagueVisibilityPreference(
-        preferences.value,
-        leagueId,
-        visible,
-      );
-      persistPreferences(nextPreferences);
-      if (visible || selectedLeague.value !== leagueId) return;
-
-      const nextLeague = nextPreferences.leagueOrder.find((league) =>
-        nextPreferences.visibleLeagues.includes(league),
-      );
+    const setLeagueVisibility = (leagueId: LeagueId, visible: boolean) => {
+      const nextLeague = updateLeagueVisibility(leagueId, visible);
       if (nextLeague) switchTab(nextLeague);
     };
-    const moveLeagueInOrder = (leagueId, direction) => {
-      persistPreferences(
-        moveLeaguePreference(preferences.value, leagueId, direction),
-      );
-    };
-    const toggleFavorite = (team) => {
-      persistPreferences(
-        toggleFavoriteTeam(preferences.value, favoriteLeague.value, team),
-      );
-    };
-    const isFavoriteTeam = (teamId) =>
-      selectedFavoriteTeams.value.some((team) => team.id === String(teamId));
-    const setDashboardView = async (view) => {
+    const setDashboardView = async (view: AppView) => {
       if (viewMode.value === view) return;
       viewMode.value = view;
       pushNavigationEntry();
@@ -2142,53 +1931,20 @@ export default {
       pushNavigationEntry();
       triggerImmediateFetch();
     };
-    const getStandingStat = (team, key) =>
-      team.stats.find((stat) => stat.key === key)?.value ?? "--";
-    const getStandingSortDirection = (groupId, key) =>
-      standingsSort.value[groupId]?.key === key
-        ? standingsSort.value[groupId].direction
-        : null;
-    const toggleStandingsSort = (groupId, key) => {
-      const current = standingsSort.value[groupId];
-      if (current?.key !== key) {
-        standingsSort.value = {
-          ...standingsSort.value,
-          [groupId]: { key, direction: "asc" },
-        };
-      } else if (current.direction === "asc") {
-        standingsSort.value = {
-          ...standingsSort.value,
-          [groupId]: { key, direction: "desc" },
-        };
-      } else {
-        const nextSort = { ...standingsSort.value };
-        delete nextSort[groupId];
-        standingsSort.value = nextSort;
-      }
-    };
-    const getSortedStandingTeams = (group) => {
-      const sort = standingsSort.value[group.id];
-      return sort
-        ? sortStandingTeamsUtil(group.teams, sort.key, sort.direction)
-        : group.teams;
-    };
-
     const modalSeriesSummary = computed(() => {
-      const summaryCompetition =
-        modalData.value?.raw?.header?.competitions?.[0];
+      const summaryCompetition = getFirstSummaryCompetition(modalData.value?.raw);
       return (
         getSeriesSummary(summaryCompetition) ||
-        getSeriesSummary(selectedGame.value?.competitions?.[0])
+        getSeriesSummary(getFirstGameCompetition(selectedGame.value))
       );
     });
-    const selectedTeam = computed(
-      () =>
-        selectedTeamOverride.value ||
-        modalData.value?.teams?.[selectedTeamSide.value] ||
-        {},
-    );
-    const teamRecordStats = computed(() => getTeamRecordStats(teamData.value));
-    const teamRecords = computed(() => getTeamRecords(teamData.value));
+    const selectedTeam = computed<TeamChoice>(() => {
+      const side = selectedTeamSide.value;
+      return selectedTeamOverride.value ||
+        (side ? modalData.value?.teams[side] : undefined) || {};
+    });
+    const teamRecordStats = computed(() => getTeamRecordStats(rawTeamData.value));
+    const teamRecords = computed(() => getTeamRecords(rawTeamData.value));
     const teamSchedule = computed(() => {
       const teamId = selectedTeam.value.id;
       if (!teamId) return [];
@@ -2199,23 +1955,20 @@ export default {
       modalView.value = "game";
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
-      teamData.value = null;
-      teamScheduleData.value = null;
-      teamLoading.value = false;
-      teamError.value = "";
-      scheduleError.value = "";
+      resetTeamDetails();
       showSeasonMetrics.value = false;
-      teamRequestId++;
     };
 
-    const openTeamDetails = async (teamOrSide, { pushHistory = true } = {}) => {
-      const team =
-        typeof teamOrSide === "string"
-          ? modalData.value?.teams?.[teamOrSide]
-          : teamOrSide;
+    const openTeamDetails = async (
+      teamOrSide: TeamChoice | HomeAway,
+      { pushHistory = true }: { pushHistory?: boolean } = {},
+    ) => {
+      const isTeamSide = teamOrSide === "away" || teamOrSide === "home";
+      const team: TeamChoice | undefined = isTeamSide
+        ? modalData.value?.teams[teamOrSide]
+        : teamOrSide;
       if (!team?.id) return;
-      const requestId = ++teamRequestId;
-      if (typeof teamOrSide === "string") {
+      if (isTeamSide) {
         selectedTeamSide.value = teamOrSide;
         selectedTeamOverride.value = null;
       } else {
@@ -2237,39 +1990,18 @@ export default {
             abbrev: team.abbrev || team.abbreviation || "",
             logo: team.logo || "",
           },
-          source: typeof teamOrSide === "string" ? "game" : "standings",
-          ...(typeof teamOrSide === "string"
+          source: isTeamSide ? "game" : "standings",
+          ...(isTeamSide
             ? {
                 gameId: String(
                   modalData.value?.id || selectedGame.value?.id || "",
                 ),
-                side: teamOrSide,
+                side: teamOrSide as HomeAway,
               }
             : {}),
         });
       }
-      teamData.value = null;
-      teamScheduleData.value = null;
-      teamError.value = "";
-      scheduleError.value = "";
-      teamLoading.value = true;
-      try {
-        const { details, schedule } = await fetchTeamDetails(
-          selectedLeague.value,
-          team.id,
-          fetch,
-        );
-        if (requestId !== teamRequestId || !showModal.value) return;
-        teamData.value = details;
-        teamScheduleData.value = schedule;
-      } catch (err) {
-        if (requestId === teamRequestId) {
-          teamError.value = err.message || "Unable to load team details.";
-          scheduleError.value = "Unable to load schedule.";
-        }
-      } finally {
-        if (requestId === teamRequestId) teamLoading.value = false;
-      }
+      await loadTeamDetails(team.id);
     };
 
     const returnToGame = () => {
@@ -2293,7 +2025,10 @@ export default {
         closeModal();
       }
     };
-    const openModal = (game, { pushHistory = true } = {}) => {
+    const openModal = (
+      game: ScoreboardEvent,
+      { pushHistory = true }: { pushHistory?: boolean } = {},
+    ) => {
       showModal.value = true;
       selectedGame.value = game;
       resetTeamView();
@@ -2301,12 +2036,11 @@ export default {
       modalTab.value = getGameState(game) === "pre" ? "matchup" : "stats";
       showScoringOnly.value = false;
       selectedBoxScoreSide.value = "away";
-      matchupSchedules.value = {};
-      matchupLoading.value = false;
+      resetMatchupSchedules();
       if (pushHistory) {
         pushNavigationEntry({ type: "game", eventId: String(game.id) });
       }
-      fetchGameDetail(game.id);
+      fetchGameDetail(String(game.id ?? ""));
     };
 
     const closeModal = () => {
@@ -2323,12 +2057,15 @@ export default {
       showModal.value = false;
       modalData.value = null;
       selectedGame.value = null;
-      gameRequestId++;
+      invalidateGameDetails();
       resetTeamView();
       replaceCurrentNavigationEntry(null);
     };
 
-    const restoreNavigationEntry = async (entry, isInitialLoad = false) => {
+    const restoreNavigationEntry = async (
+      entry: AppHistoryEntry,
+      isInitialLoad = false,
+    ) => {
       let snapshot = reconcileAppSnapshot(
         entry.snapshot,
         preferences.value.visibleLeagues,
@@ -2337,29 +2074,21 @@ export default {
       if (snapshot !== entry.snapshot) {
         replaceAppHistoryEntry(window.history, snapshot);
       }
-      scoreboardRequestId++;
-      standingsRequestId++;
-      gameRequestId++;
-      teamRequestId++;
+      invalidateScoreboard();
+      resetStandings();
+      invalidateGameDetails();
+      resetTeamDetails();
       selectedLeague.value = snapshot.league;
       viewMode.value = snapshot.view;
       week.value = snapshot.week;
       seasonType.value = snapshot.seasonType;
       selectedGroup.value = snapshot.selectedGroup;
       selectedDate.value = snapshot.selectedDate;
-      standings.value = [];
-      standingsLoading.value = false;
-      standingsError.value = "";
       modalData.value = null;
       selectedGame.value = null;
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
-      teamData.value = null;
-      teamScheduleData.value = null;
-      teamLoading.value = false;
       modalLoading.value = false;
-      teamError.value = "";
-      scheduleError.value = "";
       showSeasonMetrics.value = false;
       showModal.value = false;
       modalView.value = "game";
@@ -2380,21 +2109,18 @@ export default {
       await Promise.all(pendingRequests);
     };
 
-    const handlePopState = (event) => {
+    const handlePopState = (event: PopStateEvent) => {
       const entry = readAppHistoryEntry(event.state);
       if (entry) restoreNavigationEntry(entry);
     };
 
     const linescoreHeaders = computed(() => {
-      const compList = modalData.value?.raw?.header?.competitions;
-      const comp = compList && compList.length > 0 ? compList[0] : null;
-      if (!comp) return [];
-
-      const competitors = comp.competitors || [];
-      const awayLines =
-        competitors.length > 0 ? competitors[0].linescores || [] : [];
-      const homeLines =
-        competitors.length > 1 ? competitors[1].linescores || [] : [];
+      const rawCompetition = getFirstSummaryCompetition(modalData.value?.raw);
+      if (!rawCompetition) return [];
+      const competition = asObject(rawCompetition);
+      const competitors = asArray(competition.competitors).map(asObject);
+      const awayLines = asArray(competitors[0]?.linescores);
+      const homeLines = asArray(competitors[1]?.linescores);
 
       return getLinescoreHeadersUtil(
         selectedLeague.value,
@@ -2404,16 +2130,11 @@ export default {
     });
 
     const linescores = computed(() => {
-      const compList = modalData.value?.raw?.header?.competitions;
-      const comp = compList && compList.length > 0 ? compList[0] : null;
-      if (!comp) return { away: [], home: [] };
-      return getLinescoreValuesUtil(comp, linescoreHeaders.value.length);
+      const competition = getFirstSummaryCompetition(modalData.value?.raw);
+      if (!competition) return { away: [], home: [] };
+      return getLinescoreValuesUtil(competition, linescoreHeaders.value.length);
     });
 
-    const modalGameStatus = computed(() => {
-      const summaryStatus = modalData.value?.raw?.header?.competitions?.[0]?.status?.type?.state;
-      return String(summaryStatus || getGameState(selectedGame.value)).toLowerCase();
-    });
     const modalTabs = computed(() => modalGameStatus.value === "pre"
       ? [
           { id: "matchup", label: "MATCHUP" },
@@ -2438,10 +2159,10 @@ export default {
         : playTimeline.value.events,
     );
     const timelineGroups = computed(() => {
-      const groups = [];
+      const groups: TimelineGroup[] = [];
       for (const event of visibleTimelineEvents.value) {
         const label = event.periodLabel || "Game";
-        let group = groups.find((entry) => entry.label === label);
+        let group = groups.find((entry): entry is TimelineGroup => entry.label === label);
         if (!group) {
           group = { label, events: [] };
           groups.push(group);
@@ -2453,8 +2174,11 @@ export default {
     const gameFlow = computed(() =>
       buildGameFlow(playTimeline.value, modalData.value?.teams),
     );
-    const formatRecentGameDate = (value) => {
-      if (!value) return "";
+    const formatRecentGameDate = (value: unknown) => {
+      if (
+        typeof value !== "string" && typeof value !== "number" &&
+        !(value instanceof Date)
+      ) return "";
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "";
       return new Intl.DateTimeFormat(undefined, {
@@ -2462,8 +2186,11 @@ export default {
         day: "numeric",
       }).format(date);
     };
-    const formatMatchupDate = (value) => {
-      if (!value) return "";
+    const formatMatchupDate = (value: unknown) => {
+      if (
+        typeof value !== "string" && typeof value !== "number" &&
+        !(value instanceof Date)
+      ) return "";
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "";
       return new Intl.DateTimeFormat(undefined, {
@@ -2476,15 +2203,15 @@ export default {
     };
 
     const currentDrive = computed(() => {
-      if (!["nfl", "college-football"].includes(selectedLeague.value)) {
+      if (!leagueBehavior.value?.game.supportsDrives) {
         return null;
       }
-      const dr = modalData.value?.drives?.current;
-      if (!dr || Object.keys(dr).length === 0) return null;
+      const dr = asObject(asObject(modalData.value?.drives).current);
+      if (Object.keys(dr).length === 0) return null;
       return {
         description: dr.description || "Active drive ongoing...",
         result: dr.result || "Ongoing",
-        recap: dr.recap?.recap || "",
+        recap: asObject(dr.recap).recap || "",
       };
     });
 
@@ -2498,8 +2225,8 @@ export default {
       const awayStats = modalData.value.teams.away?.statistics || [];
       const homeStats = modalData.value.teams.home?.statistics || [];
 
-      if (selectedLeague.value === "mlb") {
-        const rawBox = modalData.value.raw?.boxscore?.teams || [];
+      if (leagueBehavior.value?.game.teamStatsMode === "grouped") {
+        const rawBox = asArray(asObject(asObject(modalData.value.raw).boxscore).teams);
         return getBaseballTeamStatComparisonsUtil(rawBox, mlbStatGroup.value);
       }
 
@@ -2516,7 +2243,7 @@ export default {
     );
 
     const triggerImmediateFetch = async () => {
-      clearInterval(pollingInterval);
+      if (pollingInterval !== null) clearInterval(pollingInterval);
       await fetchScoreboard(false);
       startPoller();
     };
@@ -2534,17 +2261,14 @@ export default {
       }, 15000);
     };
 
-    const switchTab = async (league) => {
+    const switchTab = async (league: LeagueId) => {
       if (!preferences.value.visibleLeagues.includes(league)) return;
       if (selectedLeague.value === league) return;
       resetTeamView();
       selectedLeague.value = league;
-      standingsRequestId++;
-      standingsLoading.value = false;
-      standings.value = [];
-      standingsError.value = "";
+      resetStandings();
       selectedGroup.value = "";
-      if (["mlb", "nba", "nhl"].includes(league)) {
+      if (resolveLeague(league)?.schedule.mode === "date") {
         selectedDate.value = new Date().toLocaleDateString("en-CA");
       }
       pushNavigationEntry();
@@ -2553,14 +2277,14 @@ export default {
       if (viewMode.value === "standings") await fetchStandings();
     };
 
-    const adjustWeek = (amount) => {
+    const adjustWeek = (amount: number) => {
       if (week.value + amount < 1) return;
       week.value += amount;
       pushNavigationEntry();
       triggerImmediateFetch();
     };
 
-    const setSeasonType = (type) => {
+    const setSeasonType = (type: number) => {
       if (seasonType.value === type && week.value === 1) return;
       seasonType.value = type;
       week.value = 1;
@@ -2582,33 +2306,35 @@ export default {
       ),
     );
     const tvLineupScrollLeft = ref(0);
-    const handleTvLineupScroll = (event) => {
-      tvLineupScrollLeft.value = event.currentTarget.scrollLeft;
+    const handleTvLineupScroll = (event: Event) => {
+      if (event.currentTarget instanceof HTMLElement) {
+        tvLineupScrollLeft.value = event.currentTarget.scrollLeft;
+      }
     };
 
-    const isTeamHighlighted = (game, homeAway) =>
+    const isTeamHighlighted = (game: ScoreboardEvent, homeAway: HomeAway) =>
       isTeamHighlightedUtil(
         getCompetitorUtil(game, homeAway)?.id,
         favoriteTeamIds.value,
       );
 
-    const isGameHighlighted = (game) =>
+    const isGameHighlighted = (game: ScoreboardEvent) =>
       isGameHighlightedUtil(game, favoriteTeamIds.value);
 
-    const getSituation = (game) => getSituationUtil(game, selectedLeague.value);
-    const hasPossession = (game, homeAway) =>
+    const getSituation = (game: ScoreboardEvent) => getSituationUtil(game, selectedLeague.value);
+    const hasPossession = (game: ScoreboardEvent | undefined, homeAway: HomeAway) =>
       hasPossessionUtil(game, homeAway, selectedLeague.value);
 
-    const isWinner = (game, type) => isWinnerUtil(game, type);
-    const getGameState = (game) => getGameStateUtil(game);
-    const getSeriesSummary = (competition) => getSeriesSummaryUtil(competition);
-    const getNetwork = (game) => getNetworkUtil(game);
-    const formatGameTime = (game) => formatGameTimeUtil(game);
-    const getTeamName = (game, type) => getTeamNameUtil(game, type);
-    const getTeamLogo = (game, type) => getTeamLogoUtil(game, type);
-    const getTeamScore = (game, type) => getTeamScoreUtil(game, type);
-    const getTeamRank = (game, type) => getTeamRankUtil(game, type);
-    const getTvLineupTeamStyle = (game, type) =>
+    const isWinner = (game: ScoreboardEvent, type: HomeAway) => isWinnerUtil(game, type);
+    const getGameState = (game: ScoreboardEvent | null) => getGameStateUtil(game);
+    const getSeriesSummary = (competition: unknown) => getSeriesSummaryUtil(competition);
+    const getNetwork = (game: ScoreboardEvent) => getNetworkUtil(game);
+    const formatGameTime = (game: ScoreboardEvent) => formatGameTimeUtil(game);
+    const getTeamName = (game: ScoreboardEvent, type: HomeAway) => getTeamNameUtil(game, type);
+    const getTeamLogo = (game: ScoreboardEvent, type: HomeAway) => getTeamLogoUtil(game, type);
+    const getTeamScore = (game: ScoreboardEvent, type: HomeAway) => getTeamScoreUtil(game, type);
+    const getTeamRank = (game: ScoreboardEvent, type: HomeAway) => getTeamRankUtil(game, type);
+    const getTvLineupTeamStyle = (game: ScoreboardEvent, type: HomeAway) =>
       getTvLineupTeamStyleUtil(game, type);
 
     onMounted(async () => {
@@ -2639,6 +2365,7 @@ export default {
       toggleFavorite,
       isFavoriteTeam,
       selectedLeague,
+      leagueBehavior,
       seasonType,
       week,
       selectedGroup,

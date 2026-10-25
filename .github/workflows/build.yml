@@ -26,11 +26,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests with coverage
         run: npm run test:coverage
 
       - name: Build static site
-        run: npm run build
+        run: node ./scripts/build.mjs
 
       - name: Upload static build
         uses: actions/upload-artifact@v7

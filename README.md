@@ -19,7 +19,9 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 - Defensive handling for missing logos, scores, dates, records, and partial ESPN responses
 - Static deployment with relative JavaScript module paths
 
-NOTE: As of October 17, 2026 ESPN has begun messing with its CORS headers for at least some of its APIs (most notably the teams call). It is unclear if this is a temporary glitch, deliberate, or a sign of things to come with wider restrictions. This will result in CORS exceptions for any browser-based implementation of this SPA which cannot be safely worked around within the browser. Therefore have built https://github.com/RyanMorrisroe/SportsScoreboard-Native which contains native wrappers that use a local proxy to bypass the CORS restrictions (but will not work in home assistant). To date, the only issue is on the team detail page, but that may change in the future. If ESPN fully removes its CORS headers I will likely retire this package and move this code inside the native package directly.
+## Browser CORS Limitation
+
+ESPN's browser CORS behavior has been inconsistent since October 2026, particularly for team-detail and schedule requests. A static browser deployment, including Home Assistant, cannot work around a server's CORS policy; those requests may fail even while scoreboard data continues to load. The [native wrapper](https://github.com/RyanMorrisroe/SportsScoreboard-Native) routes ESPN JSON requests through its allowlisted Tauri command instead. Check the browser console and network panel when diagnosing direct-browser failures.
 
 ## Screenshots
 
@@ -66,9 +68,11 @@ Desktop images are full-page browser captures. Mobile images are captured at Pix
 The application is a Vue 3 single-page app. Vite compiles its component templates and bundles the frontend into static files.
 
 - Vue 3 and Tailwind CSS are installed locally and included in the production bundle.
-- The browser calls ESPN directly using `fetch`.
-- Shared API and data-normalization logic lives under `src/`.
-- There is no backend, database, production Node.js runtime, or runtime configuration service.
+- Application code, the Vue script, Vite configuration, and tests are TypeScript. `tsconfig.json` enables strict checking; the production build runs `vue-tsc` before tests and bundling.
+- The SPA calls ESPN directly with `fetch` in a browser. When hosted inside Tauri, the same API adapter uses Tauri IPC to call the native ESPN proxy.
+- ESPN payloads enter through an `unknown` boundary and are normalized by typed domain modules.
+- League behavior is composed from shared defaults, sport-family defaults, and league-specific overrides in `src/plugins/`. The current registry contains College Football, NFL, MLB, NBA, and NHL.
+- The static browser build has no backend, database, production Node.js runtime, or runtime configuration service. The native Tauri wrapper optionally supplies the ESPN proxy over IPC.
 
 The application currently builds ESPN endpoints using these patterns:
 
@@ -96,20 +100,21 @@ Standings use ESPN's v2 Site API endpoint, whose response contains league-specif
 
 ```text
 index.html                         Vite HTML entry point
-src/App.vue                        Vue UI and component setup
-src/main.js                        Vue mount entry point
+src/App.vue                        Vue UI and TypeScript component setup
+src/main.ts                        Vue mount entry point
 src/styles.css                     Tailwind import and global styles
-src/api/espn.js                    ESPN URLs and fetch wrappers
-src/domain/game.js                 Game summary normalization
-src/domain/schedule.js             Team schedule normalization
-src/domain/team.js                 Team record and stat normalization
-src/app/scoreboard.js              Shared scoreboard helpers
+src/api/espn.ts                    Typed ESPN URLs and fetch wrappers
+src/domain/*.ts                    Game, team, schedule, matchup, standings, and play-by-play normalizers
+src/composables/*.ts               Typed Vue state and workflow composables
+src/plugins/                       Shared, family, and league-specific behavior contracts
+src/app/*.ts                       League lookup, preferences, history, scoreboard, and game-flow helpers
 scripts/build.mjs                  Vite production build and license packaging
-vite.config.js                     Vite, Vue, and Tailwind build configuration
-tests/unit/                        Pure unit tests
-tests/integration/                 Fixture-backed integration tests
+vite.config.ts                     Vite, Vue, and Tailwind build configuration
+tsconfig.json                      Strict TypeScript configuration
+tests/unit/*.test.ts               Unit tests
+tests/integration/*.test.ts        Fixture-backed integration tests
 tests/fixtures/espn/               Trimmed ESPN response fixtures
-tests/live/                        Live ESPN smoke tests
+tests/live/*.test.ts               Live ESPN smoke tests
 .github/workflows/build.yml        Pull request and push build workflow
 .github/workflows/espn-live.yml    Scheduled/manual live API workflow
 .github/workflows/release.yml      Version-tagged release workflow
@@ -137,15 +142,25 @@ Use `npm install` only when intentionally updating dependencies or the lockfile.
 
 ## Test
 
-Run the deterministic test suite:
+Run all discovered tests:
 
 ```bash
 npm test
 ```
 
-This includes unit tests and fixture-backed integration tests. The fixture tests do not call ESPN.
+Run strict TypeScript checking independently:
 
-Run tests with coverage:
+```bash
+npm run typecheck
+```
+
+Vitest's default discovery includes unit tests, fixture-backed integration tests, and the live ESPN smoke test. The live test makes real requests and requires network access. For deterministic unit and fixture-backed integration tests only, run:
+
+```bash
+npx vitest run tests/unit tests/integration
+```
+
+Run all discovered tests with coverage (including the live smoke test):
 
 ```bash
 npm run test:coverage
@@ -159,7 +174,7 @@ npm run test:watch
 
 ### Live ESPN Smoke Test
 
-The live smoke test calls the real ESPN endpoints and validates the response shape and normalizer behavior. It uses NFL team `12` by default and can be configured with environment variables.
+The live smoke test calls the real ESPN endpoints and validates the response shape and normalizer behavior. It uses NFL team `12` by default and can be configured with environment variables. It is included in `npm test` and `npm run test:coverage` because Vitest discovers all `*.test.ts` files by default; `npm run test:live` runs only this directory.
 
 ```bash
 npm run test:live
@@ -183,7 +198,7 @@ Create the deployable static package:
 npm run build
 ```
 
-The build first runs `npm test`, then creates `dist/` with:
+The build runs strict TypeScript checking and `npm test` before creating `dist/`. Since the default test command includes the live smoke test, building requires network access. The generated package contains:
 
 - `index.html`
 - `assets/` containing bundled JavaScript and CSS
@@ -191,13 +206,13 @@ The build first runs `npm test`, then creates `dist/` with:
 
 The browser loads no Vue, Tailwind, or application modules from a CDN or from `src/` at runtime. `dist/` is ignored by Git because it is generated output.
 
-To develop locally, start the Vite server over HTTP:
+To develop locally, start the Vite server over HTTP (it remains in the foreground until stopped):
 
 ```bash
 npm run serve
 ```
 
-Then open `http://localhost:8000`. To test the production output, run `npm run preview` after the build and open `http://localhost:4173`. Do not test by opening `index.html` with a `file:` URL.
+Then open `http://localhost:8000`. Port 8000 is strict; stop an existing server using that port before starting Vite. To test the production output, run `npm run preview` after the build and open `http://localhost:4173`. Do not test by opening `index.html` with a `file:` URL.
 
 ## GitHub Actions
 
@@ -208,7 +223,7 @@ The repository includes three workflows.
 `.github/workflows/build.yml` runs on pushes and pull requests targeting `main`. It:
 
 1. Installs the locked dependencies with `npm ci`.
-2. Runs coverage.
+2. Runs coverage, including the live ESPN smoke test discovered by Vitest.
 3. Runs the test-gated static build.
 4. Uploads `dist/` as a workflow artifact.
 
@@ -315,14 +330,14 @@ Copy the contents of `dist/` rather than the `dist/` directory itself if you wan
 
 To add another ESPN league:
 
-1. Confirm the ESPN sport and league identifiers used by the site API.
-2. Add the tab and league-specific controls in `src/App.vue`.
-3. Update sport-path and URL handling in `src/api/espn.js`.
+1. Confirm the ESPN sport and league identifiers used by the Site API.
+2. Add the league to the typed plugin registry in `src/plugins/registry.ts`, reusing its sport-family defaults and overriding only behavior that differs. `src/app/leagues.ts` derives the supported league list from this registry.
+3. Update the league UI or controls only where the new schedule mode or behavior requires it; avoid duplicating shared views and logic.
 4. Check scoreboard, summary, team, schedule, and standings response shapes, including optional and missing fields.
-5. Add representative fixtures and unit/integration coverage for league routing, presentation, and normalization before enabling the league in the UI.
-6. Run `npm test`, inspect `npm run test:coverage` for uncovered changed branches, and run `npm run build`.
+5. Add representative JSON fixtures and TypeScript unit/integration tests for routing, plugin composition, presentation, and normalization before enabling the league.
+6. Run `npm run typecheck`, deterministic tests with `npx vitest run tests/unit tests/integration`, review `npm run test:coverage`, then run `npm run build` (which also runs the live smoke test).
 
-The API and normalizer modules are intentionally separated from the UI so sport-specific payload differences can be handled without introducing a backend.
+The API, plugin, and normalizer modules are intentionally separated from the UI so sport-specific payload differences can be handled without introducing a backend.
 
 ## Troubleshooting
 
