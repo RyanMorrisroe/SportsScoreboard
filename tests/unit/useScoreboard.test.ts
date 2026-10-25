@@ -26,7 +26,10 @@ describe("useScoreboard", () => {
       week: { number: 7 },
       season: { type: 3 },
     }));
-    const scoreboard = useScoreboard(selection, replaceNavigation, { fetchJson });
+    const scoreboard = useScoreboard(selection, replaceNavigation, {
+      fetchJson,
+      isBeforeFootballWeekStart: () => false,
+    });
 
     await scoreboard.fetchScoreboard(true);
 
