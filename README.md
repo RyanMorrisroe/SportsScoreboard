@@ -6,6 +6,7 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 - College Football, NFL, MLB, NBA, and NHL scoreboard tabs
 - TV Lineup view with network rows, estimated game windows, and live scores/status
+- Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed every 15 seconds
 - Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
 - Calendar date selection for MLB, NBA, and NHL
@@ -21,7 +22,7 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 ## Browser CORS Limitation
 
-ESPN's browser CORS behavior has been inconsistent since October 2026, particularly for team-detail and schedule requests. A static browser deployment, including Home Assistant, cannot work around a server's CORS policy; those requests may fail even while scoreboard data continues to load. The [native wrapper](https://github.com/RyanMorrisroe/SportsScoreboard-Native) routes ESPN JSON requests through its allowlisted Tauri command instead. Check the browser console and network panel when diagnosing direct-browser failures.
+ESPN's browser CORS behavior has been inconsistent since October 2026, particularly for team-detail and schedule requests. A static browser deployment, including Home Assistant, cannot work around a server's CORS policy; those requests may fail even while scoreboard data continues to load. My Teams may show cached schedules or report per-team failures in browser mode; the native wrapper routes ESPN JSON requests through its allowlisted Tauri command instead. Check the browser console and network panel when diagnosing direct-browser failures.
 
 ## Screenshots
 

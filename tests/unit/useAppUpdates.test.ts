@@ -23,7 +23,10 @@ describe("app update checks", () => {
   });
 
   it("does not invoke the native check when automatic checks are disabled", async () => {
-    const preferences = ref({ ...createDefaultPreferences(), autoCheckForUpdates: false });
+    const preferences = ref({
+      ...createDefaultPreferences(),
+      autoCheckForUpdates: false,
+    });
     const updates = useAppUpdates(preferences);
 
     await updates.checkForUpdates(true);
@@ -34,7 +37,10 @@ describe("app update checks", () => {
 
   it("allows a manual check while automatic checks are disabled", async () => {
     vi.mocked(invoke).mockResolvedValue(null);
-    const preferences = ref({ ...createDefaultPreferences(), autoCheckForUpdates: false });
+    const preferences = ref({
+      ...createDefaultPreferences(),
+      autoCheckForUpdates: false,
+    });
     const updates = useAppUpdates(preferences);
 
     await updates.checkForUpdates();
@@ -54,14 +60,17 @@ describe("app update checks", () => {
     vi.mocked(invoke).mockRejectedValue(new Error("offline"));
     await updates.checkForUpdates(true);
     expect(updates.checked.value).toBe(true);
-    expect(updates.error.value).toBe("Unable to check for updates. Please try again.");
+    expect(updates.error.value).toBe(
+      "Unable to check for updates. Please try again.",
+    );
   });
 
   it("opens the selected update asset through the system opener", async () => {
     vi.mocked(invoke).mockResolvedValue({
       version: "1.8.0-wrapper.0.1.0",
       notes: "Release notes",
-      downloadUrl: "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk",
+      downloadUrl:
+        "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk",
     });
     const updates = useAppUpdates(ref(createDefaultPreferences()));
     await updates.checkForUpdates();
@@ -69,6 +78,26 @@ describe("app update checks", () => {
 
     expect(openUrl).toHaveBeenCalledWith(
       "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk",
+    );
+  });
+
+  it("shows opener rejection details and the attempted asset URL", async () => {
+    const downloadUrl =
+      "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk";
+    vi.mocked(invoke).mockResolvedValue({
+      version: "1.8.0-wrapper.0.1.0",
+      notes: "Release notes",
+      downloadUrl,
+    });
+    vi.mocked(openUrl).mockRejectedValue(new Error("No activity found"));
+    const updates = useAppUpdates(ref(createDefaultPreferences()));
+
+    await updates.checkForUpdates();
+    await updates.openUpdateDownload();
+
+    expect(updates.error.value).toBe("Unable to open the update download.");
+    expect(updates.downloadErrorDetails.value).toBe(
+      `No activity found\nURL: ${downloadUrl}`,
     );
   });
 });

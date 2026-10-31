@@ -158,6 +158,8 @@ describe("preferences composable", () => {
 
     subject.setAutoCheckForUpdates(false);
     expect(preferences.value.autoCheckForUpdates).toBe(false);
+    subject.setMyTeamsVisibility(false);
+    expect(preferences.value.showMyTeams).toBe(false);
 
     selectedLeague.value = "nba";
     expect(subject.favoriteTeamIds.value).toEqual([]);

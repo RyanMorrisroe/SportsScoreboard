@@ -6,6 +6,7 @@ import {
   normalizePreferences,
   savePreferences,
   setLeagueVisibility,
+  setMyTeamsVisibility,
   toggleFavoriteTeam,
 } from "../../src/app/preferences";
 import type { FavoriteTeam } from "../../src/app/preferences";
@@ -27,9 +28,12 @@ describe("user preferences", () => {
     expect(createDefaultPreferences()).toMatchObject({
       version: 1,
       autoCheckForUpdates: true,
+      showMyTeams: true,
       visibleLeagues: LEAGUE_IDS,
       leagueOrder: LEAGUE_IDS,
-      favoriteTeams: Object.fromEntries(LEAGUE_IDS.map((league) => [league, []])),
+      favoriteTeams: Object.fromEntries(
+        LEAGUE_IDS.map((league) => [league, []]),
+      ),
     });
   });
 
@@ -45,14 +49,21 @@ describe("user preferences", () => {
 
     expect(normalizePreferences(storedPreferences)).toMatchObject({
       autoCheckForUpdates: true,
+      showMyTeams: true,
       visibleLeagues: ["nfl"],
       leagueOrder: ["nfl", "nba", "college-football", "mlb", "nhl"],
       favoriteTeams: {
         nfl: [{ id: "12", name: "Kansas City", abbreviation: "", logo: "" }],
       },
     });
-    expect(normalizePreferences({ ...storedPreferences, autoCheckForUpdates: false })
-      .autoCheckForUpdates).toBe(false);
+    expect(
+      normalizePreferences({ ...storedPreferences, autoCheckForUpdates: false })
+        .autoCheckForUpdates,
+    ).toBe(false);
+    expect(
+      normalizePreferences({ ...storedPreferences, showMyTeams: false })
+        .showMyTeams,
+    ).toBe(false);
   });
 
   it("normalizes unsupported, duplicate, and missing league values", () => {
@@ -73,14 +84,20 @@ describe("user preferences", () => {
   });
 
   it("falls back to defaults for malformed, unavailable, or unsupported storage", () => {
-    expect(loadPreferences(makeStorage("not-json"))).toEqual(createDefaultPreferences());
-    expect(loadPreferences(makeStorage(JSON.stringify({ version: 99 })))).toEqual(
+    expect(loadPreferences(makeStorage("not-json"))).toEqual(
       createDefaultPreferences(),
     );
+    expect(
+      loadPreferences(makeStorage(JSON.stringify({ version: 99 }))),
+    ).toEqual(createDefaultPreferences());
     expect(loadPreferences(null)).toEqual(createDefaultPreferences());
-    expect(loadPreferences({ getItem: () => { throw new Error("blocked"); } })).toEqual(
-      createDefaultPreferences(),
-    );
+    expect(
+      loadPreferences({
+        getItem: () => {
+          throw new Error("blocked");
+        },
+      }),
+    ).toEqual(createDefaultPreferences());
   });
 
   it("persists normalized preferences and tolerates storage write failures", () => {
@@ -89,8 +106,16 @@ describe("user preferences", () => {
     preferences.visibleLeagues = ["nfl", "nfl"];
 
     expect(savePreferences(preferences, storage)).toBe(true);
-    expect(JSON.parse(storage.read() ?? "null")).toMatchObject({ visibleLeagues: ["nfl"] });
-    expect(savePreferences(preferences, { setItem: () => { throw new Error("blocked"); } })).toBe(false);
+    expect(JSON.parse(storage.read() ?? "null")).toMatchObject({
+      visibleLeagues: ["nfl"],
+    });
+    expect(
+      savePreferences(preferences, {
+        setItem: () => {
+          throw new Error("blocked");
+        },
+      }),
+    ).toBe(false);
     expect(savePreferences(preferences, null)).toBe(false);
   });
 
@@ -101,9 +126,22 @@ describe("user preferences", () => {
     }
 
     expect(preferences.visibleLeagues).toEqual([LEAGUE_IDS[0]]);
-    expect(setLeagueVisibility(preferences, LEAGUE_IDS[0], false).visibleLeagues).toEqual([
-      LEAGUE_IDS[0],
-    ]);
+    expect(
+      setLeagueVisibility(preferences, LEAGUE_IDS[0], false).visibleLeagues,
+    ).toEqual([LEAGUE_IDS[0]]);
+  });
+
+  it("toggles My Teams visibility independently of sport tabs", () => {
+    const hidden = normalizePreferences({
+      ...createDefaultPreferences(),
+      showMyTeams: false,
+    });
+
+    expect(hidden.showMyTeams).toBe(false);
+    expect(setMyTeamsVisibility(hidden, true).showMyTeams).toBe(true);
+    expect(setMyTeamsVisibility(hidden, false).visibleLeagues).toEqual(
+      LEAGUE_IDS,
+    );
   });
 
   it("moves a league while preserving the full order", () => {
@@ -125,7 +163,11 @@ describe("user preferences", () => {
       abbreviation: "KC",
       logo: "kc.png",
     };
-    let preferences = toggleFavoriteTeam(createDefaultPreferences(), "nfl", team);
+    let preferences = toggleFavoriteTeam(
+      createDefaultPreferences(),
+      "nfl",
+      team,
+    );
     preferences = toggleFavoriteTeam(preferences, "nfl", team);
     preferences = toggleFavoriteTeam(preferences, "mlb", team);
 

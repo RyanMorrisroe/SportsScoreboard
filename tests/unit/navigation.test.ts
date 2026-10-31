@@ -23,10 +23,18 @@ const makeSnapshot = (overrides: Partial<AppSnapshot> = {}): AppSnapshot => ({
 function makeHistory(state: unknown = { host: "preserved" }) {
   return {
     state,
-    pushState: vi.fn(function (this: AppHistory, nextState: unknown, _title: string) {
+    pushState: vi.fn(function (
+      this: AppHistory,
+      nextState: unknown,
+      _title: string,
+    ) {
       this.state = nextState;
     }),
-    replaceState: vi.fn(function (this: AppHistory, nextState: unknown, _title: string) {
+    replaceState: vi.fn(function (
+      this: AppHistory,
+      nextState: unknown,
+      _title: string,
+    ) {
       this.state = nextState;
     }),
   } satisfies AppHistory & {
@@ -47,15 +55,43 @@ describe("navigation history helpers", () => {
       league: "nba",
       modal: null,
     });
-    expect(reconcileAppSnapshot(snapshot, ["nfl", "nba"], "nba")).toBe(snapshot);
+    expect(reconcileAppSnapshot(snapshot, ["nfl", "nba"], "nba")).toBe(
+      snapshot,
+    );
+  });
+
+  it("preserves My Teams snapshots when their selected league is hidden", () => {
+    const snapshot = makeSnapshot({
+      league: "nfl",
+      view: "my-teams",
+      modal: { type: "game", eventId: "game-1" },
+    });
+
+    expect(reconcileAppSnapshot(snapshot, ["nba", "mlb"], "nba")).toBe(
+      snapshot,
+    );
   });
 
   it("restores the TV lineup view from a valid snapshot", () => {
     const history = makeHistory();
-    const entry = initializeAppHistory(history, makeSnapshot({ view: "tv-lineup" }));
+    const entry = initializeAppHistory(
+      history,
+      makeSnapshot({ view: "tv-lineup" }),
+    );
 
     expect(readAppHistoryEntry(history.state)).toEqual(entry);
     expect(entry.snapshot.view).toBe("tv-lineup");
+  });
+
+  it("restores the My Teams view from a valid snapshot", () => {
+    const history = makeHistory();
+    const entry = initializeAppHistory(
+      history,
+      makeSnapshot({ view: "my-teams" }),
+    );
+
+    expect(readAppHistoryEntry(history.state)).toEqual(entry);
+    expect(entry.snapshot.view).toBe("my-teams");
   });
 
   it("initializes a root entry while preserving host state and the URL", () => {
@@ -74,7 +110,10 @@ describe("navigation history helpers", () => {
   it("pushes distinct entries in the same app history session", () => {
     const history = makeHistory();
     initializeAppHistory(history, makeSnapshot());
-    const first = pushAppHistoryEntry(history, makeSnapshot({ selectedGroup: "8" }));
+    const first = pushAppHistoryEntry(
+      history,
+      makeSnapshot({ selectedGroup: "8" }),
+    );
     const second = pushAppHistoryEntry(
       history,
       makeSnapshot({ selectedGroup: "8", week: 5 }),
@@ -85,19 +124,27 @@ describe("navigation history helpers", () => {
     expect(first.rootIndex).toBe(second.rootIndex);
     expect(canGoBackWithinApp(second)).toBe(true);
     expect(history.pushState).toHaveBeenCalledTimes(2);
-    expect(history.pushState.mock.calls.every((call) => call.length === 2)).toBe(true);
+    expect(
+      history.pushState.mock.calls.every((call) => call.length === 2),
+    ).toBe(true);
     expect((history.state as Record<string, unknown>).host).toBe("preserved");
   });
 
   it("tracks the game entry as the base for nested team details", () => {
     const history = makeHistory();
     initializeAppHistory(history, makeSnapshot());
-    const gameEntry = pushAppHistoryEntry(history, makeSnapshot({
-      modal: { type: "game", eventId: "event-1" },
-    }));
-    const entry = pushAppHistoryEntry(history, makeSnapshot({
-      modal: { type: "team", teamId: "12" },
-    }));
+    const gameEntry = pushAppHistoryEntry(
+      history,
+      makeSnapshot({
+        modal: { type: "game", eventId: "event-1" },
+      }),
+    );
+    const entry = pushAppHistoryEntry(
+      history,
+      makeSnapshot({
+        modal: { type: "team", teamId: "12" },
+      }),
+    );
 
     expect(gameEntry.modalBaseIndex).toBe(0);
     expect(entry.modalBaseIndex).toBe(0);
@@ -119,7 +166,9 @@ describe("navigation history helpers", () => {
     const history = makeHistory();
     const entry = initializeAppHistory(history, snapshot);
 
-    expect(readAppHistoryEntry(history.state)?.snapshot.modal).toEqual(snapshot.modal);
+    expect(readAppHistoryEntry(history.state)?.snapshot.modal).toEqual(
+      snapshot.modal,
+    );
   });
 
   it("replaces the current state without creating a navigation step", () => {

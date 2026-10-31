@@ -14,6 +14,7 @@ export interface FavoriteTeam {
 export interface Preferences {
   version: typeof PREFERENCES_VERSION;
   autoCheckForUpdates: boolean;
+  showMyTeams: boolean;
   visibleLeagues: LeagueId[];
   leagueOrder: LeagueId[];
   favoriteTeams: Record<LeagueId, FavoriteTeam[]>;
@@ -40,14 +41,16 @@ function getLocalStorage(): Storage | null {
 }
 
 function normalizeTeam(value: unknown): FavoriteTeam | null {
-  if (!isObject(value) || value.id === undefined || value.id === null) return null;
+  if (!isObject(value) || value.id === undefined || value.id === null)
+    return null;
 
   const id = String(value.id).trim();
   if (!id) return null;
   return {
     id,
     name: typeof value.name === "string" && value.name.trim() ? value.name : id,
-    abbreviation: typeof value.abbreviation === "string" ? value.abbreviation : "",
+    abbreviation:
+      typeof value.abbreviation === "string" ? value.abbreviation : "",
     logo: typeof value.logo === "string" ? value.logo : "",
   };
 }
@@ -55,9 +58,10 @@ function normalizeTeam(value: unknown): FavoriteTeam | null {
 function normalizeFavoriteTeams(value: unknown): Preferences["favoriteTeams"] {
   return Object.fromEntries(
     LEAGUE_IDS.map((leagueId) => {
-      const teams = isObject(value) && Array.isArray(value[leagueId])
-        ? value[leagueId]
-        : [];
+      const teams =
+        isObject(value) && Array.isArray(value[leagueId])
+          ? value[leagueId]
+          : [];
       const seen = new Set<string>();
       const normalized = teams.flatMap((team) => {
         const normalizedTeam = normalizeTeam(team);
@@ -74,6 +78,7 @@ export function createDefaultPreferences(): Preferences {
   return {
     version: PREFERENCES_VERSION,
     autoCheckForUpdates: true,
+    showMyTeams: true,
     visibleLeagues: [...LEAGUE_IDS],
     leagueOrder: [...LEAGUE_IDS],
     favoriteTeams: normalizeFavoriteTeams({}),
@@ -82,7 +87,8 @@ export function createDefaultPreferences(): Preferences {
 
 export function normalizePreferences(value: unknown): Preferences {
   const defaults = createDefaultPreferences();
-  if (!isObject(value) || value.version !== PREFERENCES_VERSION) return defaults;
+  if (!isObject(value) || value.version !== PREFERENCES_VERSION)
+    return defaults;
 
   const ordered = Array.isArray(value.leagueOrder) ? value.leagueOrder : [];
   const leagueOrder = [
@@ -96,7 +102,10 @@ export function normalizePreferences(value: unknown): Preferences {
   return {
     version: PREFERENCES_VERSION,
     autoCheckForUpdates: value.autoCheckForUpdates !== false,
-    visibleLeagues: visibleLeagues.length ? visibleLeagues : defaults.visibleLeagues,
+    showMyTeams: value.showMyTeams !== false,
+    visibleLeagues: visibleLeagues.length
+      ? visibleLeagues
+      : defaults.visibleLeagues,
     leagueOrder,
     favoriteTeams: normalizeFavoriteTeams(value.favoriteTeams),
   };
@@ -108,7 +117,9 @@ export function loadPreferences(
   if (!storage) return createDefaultPreferences();
   try {
     const serialized = storage.getItem(PREFERENCES_KEY);
-    return serialized ? normalizePreferences(JSON.parse(serialized) as unknown) : createDefaultPreferences();
+    return serialized
+      ? normalizePreferences(JSON.parse(serialized) as unknown)
+      : createDefaultPreferences();
   } catch {
     return createDefaultPreferences();
   }
@@ -120,7 +131,10 @@ export function savePreferences(
 ): boolean {
   if (!storage) return false;
   try {
-    storage.setItem(PREFERENCES_KEY, JSON.stringify(normalizePreferences(preferences)));
+    storage.setItem(
+      PREFERENCES_KEY,
+      JSON.stringify(normalizePreferences(preferences)),
+    );
     return true;
   } catch {
     return false;
@@ -153,7 +167,11 @@ export function moveLeague(
 
   const index = normalized.leagueOrder.indexOf(leagueId as LeagueId);
   const targetIndex = index + direction;
-  if (index < 0 || targetIndex < 0 || targetIndex >= normalized.leagueOrder.length) {
+  if (
+    index < 0 ||
+    targetIndex < 0 ||
+    targetIndex >= normalized.leagueOrder.length
+  ) {
     return normalized;
   }
 
@@ -182,4 +200,11 @@ export function toggleFavoriteTeam(
       : [...teams, favorite],
   };
   return { ...normalized, favoriteTeams };
+}
+
+export function setMyTeamsVisibility(
+  preferences: unknown,
+  visible: boolean,
+): Preferences {
+  return { ...normalizePreferences(preferences), showMyTeams: visible };
 }
