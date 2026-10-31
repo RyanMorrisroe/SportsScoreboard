@@ -26,10 +26,33 @@ describe("user preferences", () => {
   it("defaults to all leagues visible in their canonical order", () => {
     expect(createDefaultPreferences()).toMatchObject({
       version: 1,
+      autoCheckForUpdates: true,
       visibleLeagues: LEAGUE_IDS,
       leagueOrder: LEAGUE_IDS,
       favoriteTeams: Object.fromEntries(LEAGUE_IDS.map((league) => [league, []])),
     });
+  });
+
+  it("preserves old version-one settings and defaults automatic update checks on", () => {
+    const storedPreferences = {
+      version: 1,
+      visibleLeagues: ["nfl"],
+      leagueOrder: ["nfl", "nba"],
+      favoriteTeams: {
+        nfl: [{ id: "12", name: "Kansas City" }],
+      },
+    };
+
+    expect(normalizePreferences(storedPreferences)).toMatchObject({
+      autoCheckForUpdates: true,
+      visibleLeagues: ["nfl"],
+      leagueOrder: ["nfl", "nba", "college-football", "mlb", "nhl"],
+      favoriteTeams: {
+        nfl: [{ id: "12", name: "Kansas City", abbreviation: "", logo: "" }],
+      },
+    });
+    expect(normalizePreferences({ ...storedPreferences, autoCheckForUpdates: false })
+      .autoCheckForUpdates).toBe(false);
   });
 
   it("normalizes unsupported, duplicate, and missing league values", () => {

@@ -1,5 +1,36 @@
 <template>
   <div class="p-4 md:p-6">
+    <div
+      v-if="update && !updateNoticeDismissed"
+      class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-bold text-amber-100">Version {{ update.version }} is available.</p>
+        <p v-if="update.notes" class="mt-1 line-clamp-2 whitespace-pre-line text-xs text-amber-100/80">
+          {{ update.notes }}
+        </p>
+      </div>
+      <div class="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          @click="openUpdateDownload"
+          class="rounded-md bg-amber-400 px-3 py-2 text-xs font-bold text-zinc-950 hover:bg-amber-300"
+        >
+          Download
+        </button>
+        <button
+          type="button"
+          @click="dismissUpdateNotice"
+          aria-label="Dismiss update notice"
+          class="rounded-md px-2 py-2 text-sm text-amber-100 hover:bg-amber-500/20"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+
     <!-- SPORT TABS -->
     <div class="flex items-center gap-2 mb-6">
       <div
@@ -98,6 +129,47 @@
                   ↓
                 </button>
               </div>
+            </div>
+          </section>
+
+          <section
+            v-if="isNativeApp"
+            aria-labelledby="updates-settings-title"
+            class="border-t border-zinc-800 pt-5"
+          >
+            <h3 id="updates-settings-title" class="mb-3 text-sm font-black text-white">Updates</h3>
+            <label class="flex items-center gap-3 text-sm font-semibold text-zinc-200">
+              <input
+                type="checkbox"
+                :checked="preferences.autoCheckForUpdates"
+                @change="setAutoCheckForUpdates(($event.target as HTMLInputElement).checked)"
+                class="h-4 w-4 accent-amber-500"
+              />
+              <span>Automatically check for updates on launch</span>
+            </label>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                :disabled="updateChecking"
+                @click="checkForUpdates()"
+                class="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+              >
+                {{ updateChecking ? 'Checking...' : 'Check for updates' }}
+              </button>
+              <button
+                v-if="update"
+                type="button"
+                @click="openUpdateDownload"
+                class="rounded-md bg-amber-400 px-3 py-2 text-xs font-bold text-zinc-950 hover:bg-amber-300"
+              >
+                Download {{ update.version }}
+              </button>
+            </div>
+            <p class="mt-3 text-xs text-zinc-400" role="status" aria-live="polite">
+              {{ updateError || (update ? `Version ${update.version} is available.` : updateChecked ? 'No update is available.' : preferences.autoCheckForUpdates ? 'Automatic checks are enabled.' : 'Automatic checks are off. You can check manually.') }}
+            </p>
+            <div v-if="update?.notes" class="mt-3 max-h-40 overflow-y-auto whitespace-pre-line rounded-md border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-300">
+              {{ update.notes }}
             </div>
           </section>
 
@@ -1739,6 +1811,7 @@
 
 <script lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { isTauri } from "@tauri-apps/api/core";
 import {
   fetchJson,
   getScoreboardRequestParams,
@@ -1747,6 +1820,7 @@ import {
 import { LEAGUES, getLeague } from "./app/leagues";
 import { loadPreferences } from "./app/preferences.js";
 import { usePreferences } from "./composables/usePreferences";
+import { useAppUpdates } from "./composables/useAppUpdates";
 import { useAppNavigation } from "./composables/useAppNavigation";
 import { useScoreboard } from "./composables/useScoreboard";
 import { useGameDetails } from "./composables/useGameDetails";
@@ -1839,6 +1913,7 @@ interface TimelineGroup {
 
 export default {
   setup() {
+    const isNativeApp = isTauri();
     const preferences = ref(loadPreferences());
     const orderedLeagues = computed(() =>
       preferences.value.leagueOrder
@@ -1976,11 +2051,22 @@ export default {
       handleFavoriteLeagueChange,
       openSettings,
       closeSettings,
+      setAutoCheckForUpdates,
       setLeagueVisibility: updateLeagueVisibility,
       moveLeagueInOrder,
       toggleFavorite,
       isFavoriteTeam,
     } = usePreferences(preferences, selectedLeague);
+    const {
+      update,
+      checking: updateChecking,
+      checked: updateChecked,
+      error: updateError,
+      noticeDismissed: updateNoticeDismissed,
+      checkForUpdates,
+      openUpdateDownload,
+      dismissUpdateNotice,
+    } = useAppUpdates(preferences);
 
     const handleGameClick = (game: ScoreboardEvent) => openModal(game);
 
@@ -2414,9 +2500,11 @@ export default {
       window.addEventListener("popstate", handlePopState);
       await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       startPoller();
+      void checkForUpdates(true);
     });
 
     return {
+      isNativeApp,
       LEAGUES,
       preferences,
       orderedLeagues,
@@ -2424,6 +2512,15 @@ export default {
       settingsOpen,
       openSettings,
       closeSettings,
+      setAutoCheckForUpdates,
+      update,
+      updateChecking,
+      updateChecked,
+      updateError,
+      updateNoticeDismissed,
+      checkForUpdates,
+      openUpdateDownload,
+      dismissUpdateNotice,
       setLeagueVisibility,
       moveLeagueInOrder,
       favoriteLeague,

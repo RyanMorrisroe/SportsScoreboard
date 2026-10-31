@@ -132,6 +132,9 @@ describe("preferences composable", () => {
     ]);
     expect(subject.isFavoriteTeam(12)).toBe(true);
 
+    subject.setAutoCheckForUpdates(false);
+    expect(preferences.value.autoCheckForUpdates).toBe(false);
+
     selectedLeague.value = "nba";
     expect(subject.favoriteTeamIds.value).toEqual([]);
   });

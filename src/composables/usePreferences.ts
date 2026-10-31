@@ -52,6 +52,10 @@ export function usePreferences(
     savePreferences(nextPreferences);
   }
 
+  function setAutoCheckForUpdates(enabled: boolean): void {
+    persistPreferences({ ...preferences.value, autoCheckForUpdates: enabled });
+  }
+
   async function loadFavoriteTeamOptions(
     leagueId: string,
     force = false,
@@ -144,6 +148,7 @@ export function usePreferences(
     teamOptionsLoading,
     teamOptionsError,
     persistPreferences,
+    setAutoCheckForUpdates,
     loadFavoriteTeamOptions,
     handleFavoriteLeagueChange,
     openSettings,
