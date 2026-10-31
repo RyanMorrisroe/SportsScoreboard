@@ -13,6 +13,7 @@ export interface FavoriteTeam {
 
 export interface Preferences {
   version: typeof PREFERENCES_VERSION;
+  autoCheckForUpdates: boolean;
   visibleLeagues: LeagueId[];
   leagueOrder: LeagueId[];
   favoriteTeams: Record<LeagueId, FavoriteTeam[]>;
@@ -72,6 +73,7 @@ function normalizeFavoriteTeams(value: unknown): Preferences["favoriteTeams"] {
 export function createDefaultPreferences(): Preferences {
   return {
     version: PREFERENCES_VERSION,
+    autoCheckForUpdates: true,
     visibleLeagues: [...LEAGUE_IDS],
     leagueOrder: [...LEAGUE_IDS],
     favoriteTeams: normalizeFavoriteTeams({}),
@@ -93,6 +95,7 @@ export function normalizePreferences(value: unknown): Preferences {
 
   return {
     version: PREFERENCES_VERSION,
+    autoCheckForUpdates: value.autoCheckForUpdates !== false,
     visibleLeagues: visibleLeagues.length ? visibleLeagues : defaults.visibleLeagues,
     leagueOrder,
     favoriteTeams: normalizeFavoriteTeams(value.favoriteTeams),
