@@ -10,30 +10,32 @@ vi.mock("../../src/api/espn", () => ({
 }));
 
 const standingsPayload = {
-  children: [{
-    id: "conference",
-    name: "Conference",
-    standings: {
-      entries: [
-        {
-          team: {
-            id: "12",
-            displayName: "Kansas City",
-            abbreviation: "KC",
-            logo: "kc.png",
+  children: [
+    {
+      id: "conference",
+      name: "Conference",
+      standings: {
+        entries: [
+          {
+            team: {
+              id: "12",
+              displayName: "Kansas City",
+              abbreviation: "KC",
+              logo: "kc.png",
+            },
           },
-        },
-        {
-          team: {
-            id: "13",
-            displayName: "Buffalo",
-            abbreviation: "BUF",
-            logo: "buf.png",
+          {
+            team: {
+              id: "13",
+              displayName: "Buffalo",
+              abbreviation: "BUF",
+              logo: "buf.png",
+            },
           },
-        },
-      ],
+        ],
+      },
     },
-  }],
+  ],
 };
 
 function setup() {
@@ -64,10 +66,28 @@ describe("preferences composable", () => {
       { id: "12", name: "Kansas City", abbreviation: "KC", logo: "kc.png" },
     ]);
     subject.favoriteSearch.value = "kan";
-    expect(subject.filteredTeamOptions.value.map((team) => team.id)).toEqual(["12"]);
+    expect(subject.filteredTeamOptions.value.map((team) => team.id)).toEqual([
+      "12",
+    ]);
 
     await subject.loadFavoriteTeamOptions("nfl");
     expect(fetchStandings).toHaveBeenCalledTimes(1);
+  });
+
+  it("tracks cached favorite-team catalogs by league until refreshed", async () => {
+    vi.mocked(fetchStandings)
+      .mockImplementationOnce(async (_league, _fetch, options) => {
+        options?.onCacheFallback?.("https://espn.test/standings", 100);
+        return standingsPayload;
+      })
+      .mockResolvedValueOnce(standingsPayload);
+    const { subject } = setup();
+
+    await subject.loadFavoriteTeamOptions("nfl");
+    expect(subject.teamOptionsCachedAtByLeague.value.nfl).toBe(100);
+
+    await subject.loadFavoriteTeamOptions("nfl", true);
+    expect(subject.teamOptionsCachedAtByLeague.value.nfl).toBeUndefined();
   });
 
   it("reports failed and empty standings responses and ignores unsupported leagues", async () => {
@@ -80,7 +100,9 @@ describe("preferences composable", () => {
     expect(subject.teamOptionsLoading.value).toBe(false);
 
     await subject.loadFavoriteTeamOptions("nba", true);
-    expect(subject.teamOptionsError.value).toBe("No teams were returned for this league.");
+    expect(subject.teamOptionsError.value).toBe(
+      "No teams were returned for this league.",
+    );
     expect(subject.teamOptionsLoading.value).toBe(false);
 
     await subject.loadFavoriteTeamOptions("unsupported");
@@ -89,9 +111,11 @@ describe("preferences composable", () => {
 
   it("resets settings state and ignores an in-flight request after closing", async () => {
     let resolveStandings!: (value: unknown) => void;
-    vi.mocked(fetchStandings).mockReturnValueOnce(new Promise((resolve) => {
-      resolveStandings = resolve;
-    }));
+    vi.mocked(fetchStandings).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveStandings = resolve;
+      }),
+    );
     const { subject, selectedLeague } = setup();
     subject.favoriteSearch.value = "old query";
     subject.favoriteLeague.value = "mlb";

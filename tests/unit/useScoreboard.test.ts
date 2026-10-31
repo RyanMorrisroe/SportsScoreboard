@@ -20,6 +20,8 @@ function createSelection(league: LeagueId) {
 
 function createCache(overrides: Partial<GameCache> = {}): GameCache {
   return {
+    getResponse: vi.fn(async () => null),
+    saveResponse: vi.fn(async () => {}),
     getScoreboard: vi.fn(async () => null),
     saveScoreboard: vi.fn(async () => {}),
     getSummary: vi.fn(async () => null),
@@ -55,7 +57,8 @@ describe("useScoreboard", () => {
 
   it("requests the previous football week before the local week starts", async () => {
     const selection = createSelection("college-football");
-    const fetchJson = vi.fn()
+    const fetchJson = vi
+      .fn()
       .mockResolvedValueOnce({ week: { number: 12 }, season: { type: 2 } })
       .mockResolvedValueOnce({
         events: [{ id: "previous-week" }],
@@ -70,8 +73,12 @@ describe("useScoreboard", () => {
     await scoreboard.fetchScoreboard(true);
 
     expect(fetchJson.mock.calls).toEqual([
-      ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80"],
-      ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?week=11&seasontype=2&groups=80"],
+      [
+        "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80",
+      ],
+      [
+        "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?week=11&seasontype=2&groups=80",
+      ],
     ]);
     expect(scoreboard.games.value).toEqual([{ id: "previous-week" }]);
     expect(selection.week.value).toBe(11);
@@ -80,9 +87,12 @@ describe("useScoreboard", () => {
   it("ignores responses invalidated while a request is pending", async () => {
     const selection = createSelection("nfl");
     let resolveFetch: (value: unknown) => void = () => {};
-    const fetchJson = vi.fn(() => new Promise<unknown>((resolve) => {
-      resolveFetch = resolve;
-    }));
+    const fetchJson = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
     const scoreboard = useScoreboard(selection, vi.fn(), { fetchJson });
     const pendingRequest = scoreboard.fetchScoreboard();
 
@@ -95,11 +105,16 @@ describe("useScoreboard", () => {
 
   it("hydrates completed games from cache when refresh fails", async () => {
     const selection = createSelection("nba");
-    const cachedFinal = { id: "cached-final", status: { type: { state: "post" } } };
+    const cachedFinal = {
+      id: "cached-final",
+      status: { type: { state: "post" } },
+    };
     const cache = createCache({
       getScoreboard: vi.fn(async () => [cachedFinal]),
     });
-    const fetchJson = vi.fn(async () => { throw new Error("offline"); });
+    const fetchJson = vi.fn(async () => {
+      throw new Error("offline");
+    });
     const logError = vi.spyOn(console, "error").mockImplementation(() => {});
     const scoreboard = useScoreboard(selection, vi.fn(), { fetchJson, cache });
 
@@ -111,7 +126,34 @@ describe("useScoreboard", () => {
     logError.mockRestore();
   });
 
-  it("records successful refreshes and saves the fetched events", async () => {
+  it("hydrates scheduled games from the response cache and labels them stale offline", async () => {
+    const selection = createSelection("nba");
+    const savedAt = 1234;
+    const cachedEvent = { id: "scheduled", status: { type: { state: "pre" } } };
+    const cache = createCache({
+      getResponse: vi.fn(async () => ({
+        value: { events: [cachedEvent] },
+        savedAt,
+      })),
+    });
+    const logError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const scoreboard = useScoreboard(selection, vi.fn(), {
+      fetchJson: vi.fn(async () => {
+        throw new Error("offline");
+      }),
+      cache,
+    });
+
+    await scoreboard.fetchScoreboard(true);
+
+    expect(scoreboard.games.value).toEqual([cachedEvent]);
+    expect(scoreboard.showingCachedData.value).toBe(true);
+    expect(scoreboard.cachedAt.value).toBe(savedAt);
+    expect(scoreboard.refreshFailed.value).toBe(true);
+    logError.mockRestore();
+  });
+
+  it("records successful network refreshes and clears cache provenance", async () => {
     const selection = createSelection("nba");
     const events = [{ id: "final-1", status: { type: { state: "post" } } }];
     const cache = createCache();
@@ -119,22 +161,22 @@ describe("useScoreboard", () => {
       cache,
       fetchJson: vi.fn(async () => ({ events })),
     });
+    scoreboard.showingCachedData.value = true;
+    scoreboard.cachedAt.value = 100;
     const now = vi.spyOn(Date, "now").mockReturnValue(1234);
 
     await scoreboard.fetchScoreboard();
 
     expect(scoreboard.lastSuccessfulRefreshAt.value).toBe(1234);
-    expect(cache.saveScoreboard).toHaveBeenCalledWith(
-      "nba",
-      expect.stringContaining("/nba/scoreboard?dates=20260919"),
-      events,
-    );
+    expect(scoreboard.showingCachedData.value).toBe(false);
+    expect(scoreboard.cachedAt.value).toBeNull();
     now.mockRestore();
   });
 
   it("reports active refreshes and keeps failures visible until the next attempt", async () => {
     const selection = createSelection("nba");
-    const fetchJson = vi.fn()
+    const fetchJson = vi
+      .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce({ events: [] });
     const logError = vi.spyOn(console, "error").mockImplementation(() => {});

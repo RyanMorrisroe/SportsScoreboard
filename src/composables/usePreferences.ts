@@ -8,7 +8,10 @@ import {
   toggleFavoriteTeam,
   type Preferences,
 } from "../app/preferences";
-import { getUniqueStandingTeams, normalizeStandings } from "../domain/standings";
+import {
+  getUniqueStandingTeams,
+  normalizeStandings,
+} from "../domain/standings";
 import type { LeagueId } from "../plugins/registry";
 
 type FavoriteTeamOption = ReturnType<typeof getUniqueStandingTeams>[number];
@@ -27,6 +30,9 @@ export function usePreferences(
   const favoriteLeague = ref<LeagueId>(selectedLeague.value);
   const favoriteSearch = ref("");
   const teamOptionsByLeague = ref<TeamOptionsByLeague>({});
+  const teamOptionsCachedAtByLeague = ref<Partial<Record<LeagueId, number>>>(
+    {},
+  );
   const teamOptionsLoading = ref(false);
   const teamOptionsError = ref("");
   let teamOptionsRequestId = 0;
@@ -34,9 +40,10 @@ export function usePreferences(
   const selectedFavoriteTeams = computed(
     () => preferences.value.favoriteTeams[favoriteLeague.value] || [],
   );
-  const favoriteTeamIds = computed(
-    () => (preferences.value.favoriteTeams[selectedLeague.value] || [])
-      .map((team) => team.id),
+  const favoriteTeamIds = computed(() =>
+    (preferences.value.favoriteTeams[selectedLeague.value] || []).map(
+      (team) => team.id,
+    ),
   );
   const filteredTeamOptions = computed(() => {
     const query = favoriteSearch.value.trim().toLocaleLowerCase();
@@ -70,20 +77,40 @@ export function usePreferences(
       return;
     }
     teamOptionsLoading.value = true;
+    let cachedAt: number | null = null;
+    const onCacheFallback = (_url: string, savedAt: number) => {
+      cachedAt = cachedAt === null ? savedAt : Math.min(cachedAt, savedAt);
+    };
     try {
-      const response = await fetchStandings(league.id, fetchImpl);
+      const response = await fetchStandings(league.id, fetchImpl, {
+        onCacheFallback,
+      });
       const teams = getUniqueStandingTeams(
         normalizeStandings(response, { league: league.id }),
       );
-      if (!teams.length) throw new Error("No teams were returned for this league.");
+      if (!teams.length)
+        throw new Error("No teams were returned for this league.");
       if (requestId !== teamOptionsRequestId) return;
       teamOptionsByLeague.value = {
         ...teamOptionsByLeague.value,
         [league.id]: teams,
       };
+      if (cachedAt === null) {
+        const nextCachedAt = { ...teamOptionsCachedAtByLeague.value };
+        delete nextCachedAt[league.id];
+        teamOptionsCachedAtByLeague.value = nextCachedAt;
+      } else {
+        teamOptionsCachedAtByLeague.value = {
+          ...teamOptionsCachedAtByLeague.value,
+          [league.id]: cachedAt,
+        };
+      }
     } catch (error) {
       if (requestId === teamOptionsRequestId) {
-        teamOptionsError.value = getErrorMessage(error, "Unable to load teams.");
+        teamOptionsError.value = getErrorMessage(
+          error,
+          "Unable to load teams.",
+        );
       }
     } finally {
       if (requestId === teamOptionsRequestId) teamOptionsLoading.value = false;
@@ -108,7 +135,10 @@ export function usePreferences(
     teamOptionsLoading.value = false;
   }
 
-  function setLeagueVisibility(leagueId: string, visible: boolean): LeagueId | null {
+  function setLeagueVisibility(
+    leagueId: string,
+    visible: boolean,
+  ): LeagueId | null {
     const nextPreferences = setLeagueVisibilityPreference(
       preferences.value,
       leagueId,
@@ -117,9 +147,11 @@ export function usePreferences(
     persistPreferences(nextPreferences);
     if (visible || selectedLeague.value !== leagueId) return null;
 
-    return nextPreferences.leagueOrder.find((league) =>
-      nextPreferences.visibleLeagues.includes(league),
-    ) ?? null;
+    return (
+      nextPreferences.leagueOrder.find((league) =>
+        nextPreferences.visibleLeagues.includes(league),
+      ) ?? null
+    );
   }
 
   function moveLeagueInOrder(leagueId: string, direction: number): void {
@@ -134,7 +166,9 @@ export function usePreferences(
 
   function isFavoriteTeam(teamId: string | number | null | undefined): boolean {
     if (teamId === null || teamId === undefined) return false;
-    return selectedFavoriteTeams.value.some((team) => team.id === String(teamId));
+    return selectedFavoriteTeams.value.some(
+      (team) => team.id === String(teamId),
+    );
   }
 
   return {
@@ -145,6 +179,7 @@ export function usePreferences(
     favoriteTeamIds,
     filteredTeamOptions,
     teamOptionsByLeague,
+    teamOptionsCachedAtByLeague,
     teamOptionsLoading,
     teamOptionsError,
     persistPreferences,

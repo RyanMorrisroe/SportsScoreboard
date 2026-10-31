@@ -5,7 +5,7 @@ type HomeAway = "away" | "home";
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -56,7 +56,10 @@ export function getSituation(game: unknown, selectedLeague: string): unknown {
     if (getGameState(game) === "in") return statusType.detail || "";
     return "";
   }
-  if (behavior?.linescore.situation === "football" || selectedLeague === "football") {
+  if (
+    behavior?.linescore.situation === "football" ||
+    selectedLeague === "football"
+  ) {
     return situation.downDistanceText || "";
   }
   if (getGameState(game) === "in") {
@@ -77,7 +80,9 @@ export function hasPossession(
   const gameObject = asObject(game);
   const comp = asObject(asArray(gameObject.competitions)[0]);
   const competitors = asArray(comp.competitors).map(asObject);
-  const teamId = competitors.find((competitor) => competitor.homeAway === homeAway)?.id;
+  const teamId = competitors.find(
+    (competitor) => competitor.homeAway === homeAway,
+  )?.id;
   const possession = asObject(comp.situation).possession;
   return Boolean(possession && possession === teamId);
 }
@@ -88,16 +93,25 @@ export function getLinescoreHeaders(
   homeLines: unknown[] = [],
 ): (number | string)[] {
   const behavior = resolveLeague(selectedLeague);
-  const defaultPeriods = behavior?.linescore.regulationPeriods ??
+  const defaultPeriods =
+    behavior?.linescore.regulationPeriods ??
     (selectedLeague === "football" ? 4 : 0);
-  const periodCount = Math.max(awayLines.length, homeLines.length, defaultPeriods);
+  const periodCount = Math.max(
+    awayLines.length,
+    homeLines.length,
+    defaultPeriods,
+  );
 
   return Array.from({ length: periodCount }, (_, index) => {
-    if (behavior?.linescore.kind === "inning" || selectedLeague === "mlb") return index + 1;
-    const regulationPeriods = behavior?.linescore.regulationPeriods ??
+    if (behavior?.linescore.kind === "inning" || selectedLeague === "mlb")
+      return index + 1;
+    const regulationPeriods =
+      behavior?.linescore.regulationPeriods ??
       (selectedLeague === "nhl" ? 3 : 4);
     if (index < regulationPeriods) return index + 1;
-    return index === regulationPeriods ? "OT" : `${index - regulationPeriods + 1}OT`;
+    return index === regulationPeriods
+      ? "OT"
+      : `${index - regulationPeriods + 1}OT`;
   });
 }
 
@@ -127,7 +141,8 @@ function getPlayerStatGroupTitle(
   league: string,
   labels: string[],
 ): string {
-  const sourceTitle = category.name || category.displayName || category.shortDisplayName;
+  const sourceTitle =
+    category.name || category.displayName || category.shortDisplayName;
   if (typeof sourceTitle === "string" && sourceTitle) {
     return sourceTitle
       .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -137,7 +152,8 @@ function getPlayerStatGroupTitle(
   if (resolveLeague(league)?.family === "baseball") {
     if (
       labels.includes("IP") ||
-      (Array.isArray(category.keys) && category.keys.includes("fullInnings.partInnings"))
+      (Array.isArray(category.keys) &&
+        category.keys.includes("fullInnings.partInnings"))
     ) {
       return "Pitching";
     }
@@ -180,14 +196,21 @@ export interface PlayerBoxScore {
 }
 
 function getId(value: unknown): string {
-  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+  return typeof value === "string" || typeof value === "number"
+    ? String(value)
+    : "";
 }
 
-export function getPlayerBoxScore(gameDetail: unknown, league = ""): PlayerBoxScore {
+export function getPlayerBoxScore(
+  gameDetail: unknown,
+  league = "",
+): PlayerBoxScore {
   const detail = asObject(gameDetail);
   const raw = asObject(detail.raw);
   const rawPlayers = asArray(asObject(raw.boxscore).players).map(asObject);
-  const headerCompetition = asObject(asArray(asObject(raw.header).competitions)[0]);
+  const headerCompetition = asObject(
+    asArray(asObject(raw.header).competitions)[0],
+  );
   const competitors = asArray(headerCompetition.competitors).map(asObject);
   const detailTeams = asObject(detail.teams);
   const teams = (["away", "home"] as const).map((side): PlayerBoxScoreTeam => {
@@ -204,41 +227,50 @@ export function getPlayerBoxScore(gameDetail: unknown, league = ""): PlayerBoxSc
       );
     });
     const statistics = asArray(teamBlock?.statistics).map(asObject);
-    const groups = statistics.flatMap((category, groupIndex): PlayerBoxScoreGroup[] => {
-      const athletes = asArray(category.athletes).map(asObject);
-      if (!athletes.length) return [];
-      const rawLabels = category.labels || category.names || category.keys || [];
-      const sourceLabels = Array.isArray(rawLabels) ? rawLabels : [];
-      const labelCount = Math.max(
-        sourceLabels.length,
-        ...athletes.map((row) => asArray(row.stats).length),
-      );
-      const labels = Array.from({ length: labelCount }, (_, index) =>
-        asString(sourceLabels[index], `STAT ${index + 1}`),
-      );
+    const groups = statistics.flatMap(
+      (category, groupIndex): PlayerBoxScoreGroup[] => {
+        const athletes = asArray(category.athletes).map(asObject);
+        if (!athletes.length) return [];
+        const rawLabels =
+          category.labels || category.names || category.keys || [];
+        const sourceLabels = Array.isArray(rawLabels) ? rawLabels : [];
+        const labelCount = Math.max(
+          sourceLabels.length,
+          ...athletes.map((row) => asArray(row.stats).length),
+        );
+        const labels = Array.from({ length: labelCount }, (_, index) =>
+          asString(sourceLabels[index], `STAT ${index + 1}`),
+        );
 
-      return [{
-        id: `${side}-${groupIndex}`,
-        title: getPlayerStatGroupTitle(category, league, labels),
-        labels,
-        players: athletes.map((row, playerIndex): PlayerBoxScorePlayer => {
-          const athlete = asObject(row.athlete);
-          const position = asObject(athlete.position);
-          const headshot = asObject(athlete.headshot);
-          return {
-          id: getId(athlete.id) || `${teamId}-${groupIndex}-${playerIndex}`,
-          name: asString(athlete.displayName, "Player"),
-          jersey: asString(athlete.jersey),
-          position: asString(position.abbreviation || position.displayName),
-          headshot: asString(headshot.href,
-            "https://a.espncdn.com/i/headshots/placeholder.png",
-          ),
-          starter: row.starter === true,
-          stats: asArray(row.stats).map((value) => value ?? ""),
-          };
-        }),
-      }];
-    });
+        return [
+          {
+            id: `${side}-${groupIndex}`,
+            title: getPlayerStatGroupTitle(category, league, labels),
+            labels,
+            players: athletes.map((row, playerIndex): PlayerBoxScorePlayer => {
+              const athlete = asObject(row.athlete);
+              const position = asObject(athlete.position);
+              const headshot = asObject(athlete.headshot);
+              return {
+                id:
+                  getId(athlete.id) || `${teamId}-${groupIndex}-${playerIndex}`,
+                name: asString(athlete.displayName, "Player"),
+                jersey: asString(athlete.jersey),
+                position: asString(
+                  position.abbreviation || position.displayName,
+                ),
+                headshot: asString(
+                  headshot.href,
+                  "https://a.espncdn.com/i/headshots/placeholder.png",
+                ),
+                starter: row.starter === true,
+                stats: asArray(row.stats).map((value) => value ?? ""),
+              };
+            }),
+          },
+        ];
+      },
+    );
 
     return {
       id: teamId,
@@ -337,14 +369,17 @@ export function getBaseballTeamStatComparisons(
   boxscoreTeams: unknown,
   groupName: string,
 ): TeamStatComparison[] {
-  const metrics = BASEBALL_STAT_GROUPS[groupName as keyof typeof BASEBALL_STAT_GROUPS];
+  const metrics =
+    BASEBALL_STAT_GROUPS[groupName as keyof typeof BASEBALL_STAT_GROUPS];
   const teams = asArray(boxscoreTeams).map(asObject);
   if (!metrics || !Array.isArray(boxscoreTeams)) return [];
 
   const getGroupStats = (homeAway: HomeAway): JsonObject[] => {
     const team = teams.find((entry) => entry.homeAway === homeAway);
     const groups = asArray(team?.statistics).map(asObject);
-    return asArray(groups.find((group) => group.name === groupName)?.stats).map(asObject);
+    return asArray(groups.find((group) => group.name === groupName)?.stats).map(
+      asObject,
+    );
   };
   const awayStats = getGroupStats("away");
   const homeStats = getGroupStats("home");
@@ -358,13 +393,15 @@ export function getBaseballTeamStatComparisons(
     const homeValue = getNumericStatValue(homeStat);
     const total = awayValue + homeValue;
 
-    return [{
-      label: metric.label,
-      awayDisplay: awayStat?.displayValue ?? awayStat?.value ?? "0",
-      homeDisplay: homeStat?.displayValue ?? homeStat?.value ?? "0",
-      awayPct: total > 0 ? (awayValue / total) * 100 : 0,
-      homePct: total > 0 ? (homeValue / total) * 100 : 0,
-    }];
+    return [
+      {
+        label: metric.label,
+        awayDisplay: awayStat?.displayValue ?? awayStat?.value ?? "0",
+        homeDisplay: homeStat?.displayValue ?? homeStat?.value ?? "0",
+        awayPct: total > 0 ? (awayValue / total) * 100 : 0,
+        homePct: total > 0 ? (homeValue / total) * 100 : 0,
+      },
+    ];
   });
 }
 
@@ -415,7 +452,10 @@ function getTeamStatBarColor(team: unknown, fallback: HexColor): HexColor {
   return primary;
 }
 
-export function getTeamStatBarColors(teams: unknown): { away: HexColor; home: HexColor } {
+export function getTeamStatBarColors(teams: unknown): {
+  away: HexColor;
+  home: HexColor;
+} {
   const teamObjects = asObject(teams);
   return {
     away: getTeamStatBarColor(teamObjects.away, "#2563eb"),
@@ -438,17 +478,25 @@ function getTeamFlowColor(team: unknown, fallback: HexColor): HexColor {
     : fallback;
 }
 
-export function getGameFlowColors(teams: unknown): { away: HexColor; home: HexColor } {
+export function getGameFlowColors(teams: unknown): {
+  away: HexColor;
+  home: HexColor;
+} {
   const teamObjects = asObject(teams);
   const teamColors = {
     away: getTeamFlowColor(teamObjects.away, "#2563eb"),
     home: getTeamFlowColor(teamObjects.home, "#059669"),
   };
-  const awayChannels = (teamColors.away.slice(1).match(/.{2}/g) ?? []).map((channel) => parseInt(channel, 16));
-  const homeChannels = (teamColors.home.slice(1).match(/.{2}/g) ?? []).map((channel) => parseInt(channel, 16));
+  const awayChannels = (teamColors.away.slice(1).match(/.{2}/g) ?? []).map(
+    (channel) => parseInt(channel, 16),
+  );
+  const homeChannels = (teamColors.home.slice(1).match(/.{2}/g) ?? []).map(
+    (channel) => parseInt(channel, 16),
+  );
   const colorDistance = Math.sqrt(
     awayChannels.reduce(
-      (distance, channel, index) => distance + (channel - homeChannels[index]) ** 2,
+      (distance, channel, index) =>
+        distance + (channel - homeChannels[index]) ** 2,
       0,
     ),
   );
@@ -463,7 +511,9 @@ export interface WinProbabilityChart {
   singlePoint: { x: number; y: number } | null;
 }
 
-export function getWinProbabilityChart(probabilities: unknown): WinProbabilityChart {
+export function getWinProbabilityChart(
+  probabilities: unknown,
+): WinProbabilityChart {
   if (!Array.isArray(probabilities) || probabilities.length === 0) {
     return { points: "", singlePoint: null };
   }
@@ -472,7 +522,11 @@ export function getWinProbabilityChart(probabilities: unknown): WinProbabilityCh
     .map((value: unknown) => {
       const entry = asObject(value);
       const rawProbability = entry.homeWinPercentage ?? entry.homeProbability;
-      if (rawProbability === null || rawProbability === undefined || rawProbability === "") {
+      if (
+        rawProbability === null ||
+        rawProbability === undefined ||
+        rawProbability === ""
+      ) {
         return null;
       }
       const probability = Number(rawProbability);
@@ -485,7 +539,10 @@ export function getWinProbabilityChart(probabilities: unknown): WinProbabilityCh
   if (values.length === 0) return { points: "", singlePoint: null };
 
   const coordinates = values.map((probability, index) => ({
-    x: values.length === 1 ? 50 : Number(((index / (values.length - 1)) * 100).toFixed(2)),
+    x:
+      values.length === 1
+        ? 50
+        : Number(((index / (values.length - 1)) * 100).toFixed(2)),
     y: Number((probability * 100).toFixed(2)),
   }));
 
@@ -505,9 +562,7 @@ export function getNetwork(game: unknown): string {
   const broadcastNames = asArray(firstBroadcast?.names);
   const media = asObject(firstGeoBroadcast?.media);
 
-  if (
-    broadcastNames.length > 0 && typeof broadcastNames[0] === "string"
-  ) {
+  if (broadcastNames.length > 0 && typeof broadcastNames[0] === "string") {
     return broadcastNames[0];
   }
   return asString(media.shortName);
@@ -522,7 +577,8 @@ export function getTvLineupDurationMinutes(
   selectedLeague: string,
   seasonType = 2,
 ): number {
-  const duration = resolveLeague(selectedLeague)?.tvLineup.duration ??
+  const duration =
+    resolveLeague(selectedLeague)?.tvLineup.duration ??
     DEFAULT_LEAGUE_BEHAVIOR.tvLineup.duration;
   if (duration.mode === "fixed") return duration.minutes;
   if (seasonType === duration.postseasonType) return duration.extendedMinutes;
@@ -547,7 +603,10 @@ export function getTvLineupDurationMinutes(
     : duration.regularMinutes;
 }
 
-export function getTvLineupStatus(game: unknown, selectedLeague: string): string {
+export function getTvLineupStatus(
+  game: unknown,
+  selectedLeague: string,
+): string {
   const gameObject = asObject(game);
   const state = getGameState(game);
   const status = asObject(gameObject.status);
@@ -574,14 +633,35 @@ export function getTvLineupStatus(game: unknown, selectedLeague: string): string
     clockSituation.displayValue ||
     "";
   const period =
-    status.period ||
-    competitionStatus.period ||
-    situation.period ||
-    "";
+    status.period || competitionStatus.period || situation.period || "";
   const periodLabel = shortDetail || (period ? `Period ${period}` : "");
   if (periodLabel && clock) return `LIVE · ${periodLabel} ${clock}`;
   const liveDetail = periodLabel || detail || shortDetail;
   return liveDetail ? `LIVE · ${liveDetail}` : "LIVE";
+}
+
+export function getGameClockStatus(
+  game: unknown,
+  selectedLeague: string,
+): string {
+  const gameObject = asObject(game);
+  const header = asObject(gameObject.header);
+  const summaryCompetition = asObject(asArray(header.competitions)[0]);
+  const scoreboardCompetition = asObject(asArray(gameObject.competitions)[0]);
+  const rootStatus = asObject(gameObject.status);
+  const status = Object.keys(rootStatus).length
+    ? rootStatus
+    : asObject(summaryCompetition.status);
+  if (getGameState({ status }) !== "in") return "";
+
+  const competition = Object.keys(scoreboardCompetition).length
+    ? scoreboardCompetition
+    : summaryCompetition;
+  const label = getTvLineupStatus(
+    { status, competitions: [competition] },
+    selectedLeague,
+  );
+  return label.startsWith("LIVE · ") ? label.slice("LIVE · ".length) : "";
 }
 
 export function getTvLineupTeamStyle(
@@ -665,9 +745,13 @@ function getLocalDateKey(date: Date): string {
 function roundToHalfHour(timestamp: number, roundUp = false): number {
   const date = new Date(timestamp);
   const minuteOffset =
-    (date.getMinutes() % 30) + date.getSeconds() / 60 + date.getMilliseconds() / 60000;
+    (date.getMinutes() % 30) +
+    date.getSeconds() / 60 +
+    date.getMilliseconds() / 60000;
   const adjustment = roundUp
-    ? minuteOffset === 0 ? 0 : 30 - minuteOffset
+    ? minuteOffset === 0
+      ? 0
+      : 30 - minuteOffset
     : -minuteOffset;
   return timestamp + adjustment * 60 * 1000;
 }
@@ -687,7 +771,9 @@ export function getTvLineupLayout(
     const channel = getNetwork(game) || "Other";
     const dateValue = game.date;
     const date = new Date(
-      typeof dateValue === "string" || typeof dateValue === "number" ? dateValue : NaN,
+      typeof dateValue === "string" || typeof dateValue === "number"
+        ? dateValue
+        : NaN,
     );
     const hasCalendarDate =
       typeof dateValue === "string" &&
@@ -714,7 +800,11 @@ export function getTvLineupLayout(
     }
 
     const start = date.getTime();
-    const durationMinutes = getTvLineupDurationMinutes(game, selectedLeague, seasonType);
+    const durationMinutes = getTvLineupDurationMinutes(
+      game,
+      selectedLeague,
+      seasonType,
+    );
     const channelGames = channelMap.get(channel) || [];
     channelGames.push({
       game,
@@ -740,17 +830,22 @@ export function getTvLineupLayout(
     };
   }
 
-  const rangeStart = roundToHalfHour(Math.min(...scheduledGames.map((game) => game.start)));
+  const rangeStart = roundToHalfHour(
+    Math.min(...scheduledGames.map((game) => game.start)),
+  );
   const rangeEnd = roundToHalfHour(
     Math.max(...scheduledGames.map((game) => game.end)),
     true,
   );
-  const tickCount =
-    (rangeEnd - rangeStart) / TV_LINEUP_HALF_HOUR_MS + 1;
+  const tickCount = (rangeEnd - rangeStart) / TV_LINEUP_HALF_HOUR_MS + 1;
   const timelineWidth = tickCount * TV_LINEUP_HALF_HOUR_WIDTH;
   const ticks: { timestamp: number; label: string }[] = [];
 
-  for (let timestamp = rangeStart; timestamp <= rangeEnd; timestamp += TV_LINEUP_HALF_HOUR_MS) {
+  for (
+    let timestamp = rangeStart;
+    timestamp <= rangeEnd;
+    timestamp += TV_LINEUP_HALF_HOUR_MS
+  ) {
     ticks.push({
       timestamp,
       label: new Date(timestamp).toLocaleTimeString("en-US", {
@@ -761,10 +856,7 @@ export function getTvLineupLayout(
   }
   const gridlines = Array.from({ length: ticks.length + 1 }, (_, index) => ({
     index,
-    left: Math.min(
-      index * TV_LINEUP_HALF_HOUR_WIDTH,
-      timelineWidth - 1,
-    ),
+    left: Math.min(index * TV_LINEUP_HALF_HOUR_WIDTH, timelineWidth - 1),
   }));
 
   const channels = [...channelMap.entries()]
@@ -779,9 +871,10 @@ export function getTvLineupLayout(
           return {
             ...entry,
             lane,
-            left: ((entry.start - rangeStart) / TV_LINEUP_HALF_HOUR_MS) * TV_LINEUP_HALF_HOUR_WIDTH,
-            width:
-              (entry.durationMinutes / 30) * TV_LINEUP_HALF_HOUR_WIDTH,
+            left:
+              ((entry.start - rangeStart) / TV_LINEUP_HALF_HOUR_MS) *
+              TV_LINEUP_HALF_HOUR_WIDTH,
+            width: (entry.durationMinutes / 30) * TV_LINEUP_HALF_HOUR_WIDTH,
           };
         });
 
@@ -792,8 +885,10 @@ export function getTvLineupLayout(
         firstStart: Math.min(...entries.map((entry) => entry.start)),
       };
     })
-    .sort((channelA, channelB) =>
-      channelA.firstStart - channelB.firstStart || channelA.name.localeCompare(channelB.name),
+    .sort(
+      (channelA, channelB) =>
+        channelA.firstStart - channelB.firstStart ||
+        channelA.name.localeCompare(channelB.name),
     );
 
   return {
@@ -889,13 +984,17 @@ export function getSeriesSummary(competitionValue: unknown): string {
     typeof series.type === "string" && series.type.toLowerCase() !== "playoff";
   const isComplete =
     series.completed === true ||
-    (isNonPlayoff && hasBestOf && first.wins + second.wins + tiedGames === bestOf);
-  const resultLabel = first.wins === second.wins
-    ? `Series tied ${first.wins}-${second.wins}`
-    : `${first.wins > second.wins ? first.name : second.name} ${isComplete ? "wins series" : "lead"} ${Math.max(first.wins, second.wins)}-${Math.min(first.wins, second.wins)}`;
-  const tiesLabel = tiedGames > 0
-    ? ` · ${tiedGames} tied game${tiedGames === 1 ? "" : "s"}`
-    : "";
+    (isNonPlayoff &&
+      hasBestOf &&
+      first.wins + second.wins + tiedGames === bestOf);
+  const resultLabel =
+    first.wins === second.wins
+      ? `Series tied ${first.wins}-${second.wins}`
+      : `${first.wins > second.wins ? first.name : second.name} ${isComplete ? "wins series" : "lead"} ${Math.max(first.wins, second.wins)}-${Math.min(first.wins, second.wins)}`;
+  const tiesLabel =
+    tiedGames > 0
+      ? ` · ${tiedGames} tied game${tiedGames === 1 ? "" : "s"}`
+      : "";
 
   return `${bestOfLabel}${resultLabel}${tiesLabel}`;
 }
@@ -908,12 +1007,17 @@ export function getTeamName(game: unknown, type: HomeAway): string {
 
 export function getTeamLogo(game: unknown, type: HomeAway): string {
   const team = asObject(getCompetitor(game, type).team);
-  return asString(team.logo, "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png");
+  return asString(
+    team.logo,
+    "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png",
+  );
 }
 
 export function getTeamScore(game: unknown, type: HomeAway): string | number {
   const score = getCompetitor(game, type).score;
-  return typeof score === "string" || typeof score === "number" ? score || "0" : "0";
+  return typeof score === "string" || typeof score === "number"
+    ? score || "0"
+    : "0";
 }
 
 export function getTeamRank(game: unknown, type: HomeAway): number | null {
@@ -926,52 +1030,63 @@ export function isWinner(game: unknown, type: HomeAway): boolean {
   return getCompetitor(game, type).winner === true;
 }
 
-export function isTeamHighlighted(teamId: unknown, favoriteTeamIds: string[] = []): boolean {
+export function isTeamHighlighted(
+  teamId: unknown,
+  favoriteTeamIds: string[] = [],
+): boolean {
   if (teamId === undefined || teamId === null) return false;
   const id = String(teamId);
   return favoriteTeamIds.some((favoriteId) => String(favoriteId) === id);
 }
 
-export function isGameHighlighted(game: unknown, favoriteTeamIds: string[] = []): boolean {
+export function isGameHighlighted(
+  game: unknown,
+  favoriteTeamIds: string[] = [],
+): boolean {
   return (
     isTeamHighlighted(getCompetitor(game, "home")?.id, favoriteTeamIds) ||
     isTeamHighlighted(getCompetitor(game, "away")?.id, favoriteTeamIds)
   );
 }
 
-export function sortGames(games: unknown, _selectedLeague: string): GameRecord[] {
-  return asArray(games).map(asGameRecord).sort((gameA, gameB) => {
-    const stateA = getGameState(gameA);
-    const stateB = getGameState(gameB);
+export function sortGames(
+  games: unknown,
+  _selectedLeague: string,
+): GameRecord[] {
+  return asArray(games)
+    .map(asGameRecord)
+    .sort((gameA, gameB) => {
+      const stateA = getGameState(gameA);
+      const stateB = getGameState(gameB);
 
-    const getBucketWeight = (state: string): number => {
-      if (state === "in") return 1;
-      if (state === "pre") return 2;
-      return 3;
-    };
+      const getBucketWeight = (state: string): number => {
+        if (state === "in") return 1;
+        if (state === "pre") return 2;
+        return 3;
+      };
 
-    const weightA = getBucketWeight(stateA);
-    const weightB = getBucketWeight(stateB);
+      const weightA = getBucketWeight(stateA);
+      const weightB = getBucketWeight(stateB);
 
-    if (weightA !== weightB) return weightA - weightB;
+      if (weightA !== weightB) return weightA - weightB;
 
-    if (
-      stateA === "pre" &&
-      stateB === "pre" &&
-      typeof gameA.date === "string" &&
-      typeof gameB.date === "string"
-    ) {
-      const dateA = new Date(gameA.date).getTime();
-      const dateB = new Date(gameB.date).getTime();
-      if (dateA !== dateB) return dateA - dateB;
-    }
+      if (
+        stateA === "pre" &&
+        stateB === "pre" &&
+        typeof gameA.date === "string" &&
+        typeof gameB.date === "string"
+      ) {
+        const dateA = new Date(gameA.date).getTime();
+        const dateB = new Date(gameB.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+      }
 
-    const getBestRank = (game: GameRecord): number => {
-      const rHome = getTeamRank(game, "home") || 99;
-      const rAway = getTeamRank(game, "away") || 99;
-      return Math.min(rHome, rAway);
-    };
+      const getBestRank = (game: GameRecord): number => {
+        const rHome = getTeamRank(game, "home") || 99;
+        const rAway = getTeamRank(game, "away") || 99;
+        return Math.min(rHome, rAway);
+      };
 
-    return getBestRank(gameA) - getBestRank(gameB);
-  });
+      return getBestRank(gameA) - getBestRank(gameB);
+    });
 }

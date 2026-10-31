@@ -6,6 +6,7 @@ import {
 } from "../api/espn";
 import { gameCache, type GameCache } from "../app/gameCache";
 import { isBeforeFootballWeekStart } from "../app/scoreboard";
+import { useCacheProvenance } from "./useCacheProvenance";
 import type { LeagueId } from "../plugins/registry";
 import { resolveLeague } from "../plugins/registry";
 
@@ -33,7 +34,7 @@ export interface ScoreboardEvent extends JsonObject {
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -44,7 +45,8 @@ function asFiniteNumber(value: unknown): number | undefined {
 }
 
 function normalizeEvent(value: unknown): ScoreboardEvent | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return null;
   const event = value as JsonObject;
   const id = event.id;
   const date = event.date;
@@ -65,10 +67,17 @@ export function useScoreboard(
   const refreshing = ref(false);
   const refreshFailed = ref(false);
   const lastSuccessfulRefreshAt = ref<number | null>(null);
-  const fetch = dependencies.fetchJson ?? requestJson;
   const cache = dependencies.cache ?? gameCache;
-  const isBeforeWeekStart = dependencies.isBeforeFootballWeekStart ??
-    isBeforeFootballWeekStart;
+  const provenance = useCacheProvenance();
+  const fetch = (
+    url: string,
+    onCacheFallback: (url: string, savedAt: number) => void,
+  ) =>
+    dependencies.fetchJson
+      ? dependencies.fetchJson(url)
+      : requestJson(url, undefined, { cache, onCacheFallback });
+  const isBeforeWeekStart =
+    dependencies.isBeforeFootballWeekStart ?? isBeforeFootballWeekStart;
   let requestId = 0;
   let hydratedRequestUrl: string | null = null;
 
@@ -77,32 +86,55 @@ export function useScoreboard(
     showLoading = isInitialBoot,
   ): Promise<void> {
     const currentRequestId = ++requestId;
+    let responseUsedCache = false;
+    const onCacheFallback = (url: string, savedAt: number) => {
+      if (currentRequestId !== requestId) return;
+      responseUsedCache = true;
+      provenance.onCacheFallback(url, savedAt);
+    };
     refreshing.value = true;
     refreshFailed.value = false;
     if (showLoading) loading.value = true;
     try {
-      const params = getScoreboardRequestParams(selection.selectedLeague.value, {
-        date: selection.selectedDate.value,
-        week: selection.week.value,
-        seasonType: selection.seasonType.value,
-        group: selection.selectedGroup.value,
-        initial: isInitialBoot,
-      });
+      const params = getScoreboardRequestParams(
+        selection.selectedLeague.value,
+        {
+          date: selection.selectedDate.value,
+          week: selection.week.value,
+          seasonType: selection.seasonType.value,
+          group: selection.selectedGroup.value,
+          initial: isInitialBoot,
+        },
+      );
       let requestUrl = getScoreboardUrl(selection.selectedLeague.value, params);
       if (requestUrl !== hydratedRequestUrl) {
+        provenance.clear();
         lastSuccessfulRefreshAt.value = null;
         let cachedEvents: unknown[] | null = null;
+        let hasCachedSnapshot = false;
         try {
-          cachedEvents = await cache.getScoreboard(
-            selection.selectedLeague.value,
-            requestUrl,
-          );
+          const cachedResponse = await cache.getResponse(requestUrl);
+          if (cachedResponse) {
+            hasCachedSnapshot = true;
+            provenance.markCached(cachedResponse.savedAt);
+            const cachedData = asObject(cachedResponse.value);
+            cachedEvents = Array.isArray(cachedData.events)
+              ? cachedData.events
+              : [];
+          } else {
+            cachedEvents = await cache.getScoreboard(
+              selection.selectedLeague.value,
+              requestUrl,
+            );
+            hasCachedSnapshot = Boolean(cachedEvents?.length);
+            if (hasCachedSnapshot) provenance.markCached();
+          }
         } catch {
           cachedEvents = null;
         }
         if (currentRequestId !== requestId) return;
         hydratedRequestUrl = requestUrl;
-        if (cachedEvents?.length) {
+        if (hasCachedSnapshot && cachedEvents) {
           games.value = cachedEvents.flatMap((event) => {
             const normalizedEvent = normalizeEvent(event);
             return normalizedEvent ? [normalizedEvent] : [];
@@ -111,14 +143,16 @@ export function useScoreboard(
         }
       }
 
-      let data = asObject(await fetch(requestUrl));
+      let data = asObject(await fetch(requestUrl, onCacheFallback));
+      let displayedResponseUsedCache = responseUsedCache;
       if (currentRequestId !== requestId) return;
 
       const responseWeek = asFiniteNumber(asObject(data.week).number);
       let initialWeek = responseWeek;
       if (
         isInitialBoot &&
-        resolveLeague(selection.selectedLeague.value)?.schedule.mode === "week" &&
+        resolveLeague(selection.selectedLeague.value)?.schedule.mode ===
+          "week" &&
         isBeforeWeekStart() &&
         Number(responseWeek) > 1
       ) {
@@ -127,13 +161,19 @@ export function useScoreboard(
           selection.selectedLeague.value,
           {
             week: initialWeek,
-            seasonType: asFiniteNumber(asObject(data.season).type) ??
+            seasonType:
+              asFiniteNumber(asObject(data.season).type) ??
               selection.seasonType.value,
             group: selection.selectedGroup.value,
           },
         );
-        requestUrl = getScoreboardUrl(selection.selectedLeague.value, previousWeekParams);
-        data = asObject(await fetch(requestUrl));
+        requestUrl = getScoreboardUrl(
+          selection.selectedLeague.value,
+          previousWeekParams,
+        );
+        responseUsedCache = false;
+        data = asObject(await fetch(requestUrl, onCacheFallback));
+        displayedResponseUsedCache = responseUsedCache;
         if (currentRequestId !== requestId) return;
       }
 
@@ -143,12 +183,12 @@ export function useScoreboard(
             return normalizedEvent ? [normalizedEvent] : [];
           })
         : [];
-      lastSuccessfulRefreshAt.value = Date.now();
-      void cache.saveScoreboard(
-        selection.selectedLeague.value,
-        requestUrl,
-        games.value,
-      ).catch(() => {});
+      if (displayedResponseUsedCache) {
+        refreshFailed.value = true;
+      } else {
+        provenance.clear();
+        lastSuccessfulRefreshAt.value = Date.now();
+      }
 
       const finalResponseWeek = asFiniteNumber(asObject(data.week).number);
       if (isInitialBoot && !selection.isDateLeague.value && finalResponseWeek) {
@@ -182,6 +222,8 @@ export function useScoreboard(
     refreshing,
     refreshFailed,
     lastSuccessfulRefreshAt,
+    showingCachedData: provenance.showingCachedData,
+    cachedAt: provenance.cachedAt,
     fetchScoreboard,
     invalidateScoreboard,
   };
