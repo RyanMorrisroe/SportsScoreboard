@@ -1,10 +1,12 @@
-const FALLBACK_LOGO = "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png";
+const FALLBACK_LOGO =
+  "https://a.espncdn.com/i/teamlogos/default-team-logo-500.png";
 
 type JsonObject = Record<string, unknown>;
 
 export interface NormalizedScheduleEntry {
   id: string | number;
   date: string;
+  startTime: number | null;
   week: string;
   opponent: string;
   opponentLogo: string;
@@ -12,13 +14,15 @@ export interface NormalizedScheduleEntry {
   homeAway: string | undefined;
   score: string;
   result: "W" | "L" | "";
+  state: string;
   status: string;
   venue: string;
+  rawEvent: unknown;
 }
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -44,11 +48,19 @@ function getTeamLogo(team: JsonObject): string {
 }
 
 export function formatScheduleDate(date: unknown, locale?: string): string {
-  if (!date || !(typeof date === "string" || typeof date === "number" || date instanceof Date)) {
+  if (
+    !date ||
+    !(
+      typeof date === "string" ||
+      typeof date === "number" ||
+      date instanceof Date
+    )
+  ) {
     return "Date TBD";
   }
   try {
-    const timezone = locale && locale.toUpperCase() === "UTC" ? "UTC" : undefined;
+    const timezone =
+      locale && locale.toUpperCase() === "UTC" ? "UTC" : undefined;
     const formatterLocale = timezone ? "en-US" : locale || "en-US";
 
     return new Intl.DateTimeFormat(formatterLocale, {
@@ -83,17 +95,27 @@ export function normalizeSchedule(
 
   return asArray(asObject(payload).events).map((eventValue) => {
     const event = asObject(eventValue);
+    const rawDate = event.date;
     const competition = asObject(asArray(event.competitions)[0]);
     const competitors = asArray(competition.competitors).map(asObject);
-    const opponent = competitors.find((competitor) => !isSelectedTeam(competitor)) || {};
+    const opponent =
+      competitors.find((competitor) => !isSelectedTeam(competitor)) || {};
     const own = competitors.find(isSelectedTeam) || {};
     const competitionStatus = asObject(competition.status);
     const statusType = asObject(competitionStatus.type);
-    const rawStatus = getString(statusType.shortDetail, getString(statusType.description, "Scheduled"));
+    const rawStatus = getString(
+      statusType.shortDetail,
+      getString(statusType.description, "Scheduled"),
+    );
     const timeIsTBD =
       rawStatus.toUpperCase().includes("TBD") ||
       event.timeValid === false ||
       competition.timeValid === false;
+    const parsedStartTime = new Date(
+      typeof rawDate === "string" || typeof rawDate === "number"
+        ? rawDate
+        : NaN,
+    ).getTime();
     const ownTeam = getTeam(own);
     const opponentTeam = getTeam(opponent);
     const ownScore = own.score;
@@ -103,7 +125,9 @@ export function normalizeSchedule(
 
     return {
       id: getId(event.id),
-      date: timeIsTBD ? "TBD" : formatScheduleDate(event.date, locale),
+      date: timeIsTBD ? "TBD" : formatScheduleDate(rawDate, locale),
+      startTime:
+        !timeIsTBD && Number.isFinite(parsedStartTime) ? parsedStartTime : null,
       week: getString(asObject(event.week).text),
       opponent: getString(opponentTeam.displayName, "Opponent"),
       opponentLogo: getTeamLogo(opponentTeam),
@@ -114,12 +138,52 @@ export function normalizeSchedule(
           ? `${getScore(own)}-${getScore(opponent)}`
           : "--",
       result: own.winner === true ? "W" : opponent.winner === true ? "L" : "",
+      state: getString(statusType.state).toLowerCase(),
       status: timeIsTBD
         ? "TBD"
         : status.state === "pre"
           ? "Scheduled"
           : rawStatus,
       venue: getString(venue.fullName),
+      rawEvent: eventValue,
     };
   });
+}
+
+export function filterMyTeamsScheduleEntries<
+  T extends Pick<NormalizedScheduleEntry, "startTime" | "state">,
+>(entries: T[], now = Date.now(), days = 7): T[] {
+  const startOfRecentWindow = now - days * 24 * 60 * 60 * 1000;
+  const endTime = now + days * 24 * 60 * 60 * 1000;
+  const liveAndUpcoming = entries.filter(
+    (entry) =>
+      entry.state === "in" ||
+      (entry.state === "pre" &&
+        entry.startTime !== null &&
+        entry.startTime >= now &&
+        entry.startTime <= endTime),
+  );
+  const recentFinals = entries.filter(
+    (entry) =>
+      entry.state === "post" &&
+      entry.startTime !== null &&
+      entry.startTime >= startOfRecentWindow &&
+      entry.startTime <= now,
+  );
+  const lastFinal = recentFinals.reduce<T | null>(
+    (latest, entry) =>
+      latest === null || entry.startTime! > latest.startTime! ? entry : latest,
+    null,
+  );
+  const laterGameHasStarted =
+    lastFinal !== null &&
+    entries.some(
+      (entry) =>
+        entry !== lastFinal &&
+        (entry.state === "in" || entry.state === "post") &&
+        (entry.startTime === null || entry.startTime >= lastFinal.startTime!),
+    );
+
+  if (lastFinal && !laterGameHasStarted) liveAndUpcoming.push(lastFinal);
+  return liveAndUpcoming;
 }

@@ -26,8 +26,16 @@
       <div
         class="flex min-w-0 flex-1 items-center overflow-x-auto border-b border-zinc-800 rounded-xl bg-zinc-900/50 p-1 max-w-md"
         role="tablist" aria-label="Sports">
+        <button v-if="showMyTeamsTab" type="button" role="tab"
+          :aria-selected="viewMode === 'my-teams'" @click="setDashboardView('my-teams')"
+          :class="viewMode === 'my-teams'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-zinc-400 hover:text-zinc-200'"
+          class="flex-1 whitespace-nowrap text-center py-2.5 px-3 rounded-lg text-sm font-bold tracking-wide transition-all duration-150">
+          My Teams
+        </button>
         <button v-for="league in visibleLeagues" :key="league.id" type="button" role="tab"
-          :aria-selected="selectedLeague === league.id" @click="switchTab(league.id)" :class="selectedLeague === league.id
+          :aria-selected="viewMode !== 'my-teams' && selectedLeague === league.id" @click="selectLeagueTab(league.id)" :class="viewMode !== 'my-teams' && selectedLeague === league.id
             ? 'bg-blue-600 text-white shadow-md'
             : 'text-zinc-400 hover:text-zinc-200'
             "
@@ -80,6 +88,12 @@
                 </button>
               </div>
             </div>
+            <label class="mt-3 flex items-center gap-3 text-sm font-semibold text-zinc-200">
+              <input type="checkbox" :checked="preferences.showMyTeams"
+                @change="handleMyTeamsVisibilityChange(($event.target as HTMLInputElement).checked)"
+                class="h-4 w-4 accent-blue-500" />
+              <span>Show My Teams in sports selector</span>
+            </label>
           </section>
 
           <section v-if="isNativeApp" aria-labelledby="updates-settings-title" class="border-t border-zinc-800 pt-5">
@@ -141,7 +155,7 @@
                   class="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 py-1 pl-2 pr-1 text-xs text-amber-200">
                   <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`" class="h-5 w-5 object-contain" />
                   <span>{{ team.name }}</span>
-                  <button type="button" :aria-label="`Remove ${team.name} from favorites`" @click="toggleFavorite(team)"
+                  <button type="button" :aria-label="`Remove ${team.name} from favorites`" @click="handleFavoriteToggle(team)"
                     class="rounded px-1.5 py-1 text-amber-100 hover:bg-amber-500/20">
                     Remove
                   </button>
@@ -177,7 +191,7 @@
               class="max-h-64 divide-y divide-zinc-800 overflow-y-auto rounded-xl border border-zinc-800">
               <label v-for="team in filteredTeamOptions" :key="team.id"
                 class="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800/60">
-                <input type="checkbox" :checked="isFavoriteTeam(team.id)" @change="toggleFavorite(team)"
+                <input type="checkbox" :checked="isFavoriteTeam(team.id)" @change="handleFavoriteToggle(team)"
                   class="h-4 w-4 accent-amber-500" />
                 <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`"
                   class="h-6 w-6 shrink-0 object-contain" loading="lazy" />
@@ -194,7 +208,8 @@
     </div>
 
     <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
-    <div class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-1">
+    <div v-if="viewMode !== 'my-teams'"
+      class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-1">
       <div class="flex flex-wrap items-center gap-3 justify-start w-full">
         <!-- CFB CONFERENCE DROPDOWN -->
         <span v-if="leagueBehavior?.schedule.supportsGroupFilter" class="relative inline-block">
@@ -274,7 +289,7 @@
       </div>
     </div>
 
-    <div role="status" :aria-label="refreshIndicatorFailed ? 'Refresh failed' : 'Refreshing data'"
+    <div v-if="viewMode !== 'my-teams'" role="status" :aria-label="refreshIndicatorFailed ? 'Refresh failed' : 'Refreshing data'"
       :aria-hidden="!refreshIndicatorActive && !refreshIndicatorFailed"
       class="relative mb-5 h-px w-full overflow-hidden">
       <div v-if="refreshIndicatorActive || refreshIndicatorFailed" class="absolute inset-0" :class="[
@@ -285,11 +300,11 @@
       ]"></div>
     </div>
 
-    <p v-if="viewMode !== 'standings' && scoreboardRefreshStale && lastSuccessfulRefreshAt !== null" role="status"
+    <p v-if="viewMode !== 'standings' && viewMode !== 'my-teams' && scoreboardRefreshStale && lastSuccessfulRefreshAt !== null" role="status"
       class="mb-4 text-xs text-zinc-500">
       Last updated at {{ formatLastUpdatedAt(lastSuccessfulRefreshAt) }}
     </p>
-    <p v-if="viewMode !== 'standings' && scoreboardShowingCachedData" role="status" class="mb-4 text-xs text-amber-300">
+    <p v-if="viewMode !== 'standings' && viewMode !== 'my-teams' && scoreboardShowingCachedData" role="status" class="mb-4 text-xs text-amber-300">
       Showing saved scoreboard data<span v-if="scoreboardCachedAt">
         · saved {{ formatLastUpdatedAt(scoreboardCachedAt) }}</span>
     </p>
@@ -373,6 +388,88 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+    </section>
+    <section v-else-if="viewMode === 'my-teams'" class="space-y-5">
+      <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+        <div>
+          <h2 class="text-base font-black text-white">My Teams</h2>
+          <p class="mt-1 text-xs text-zinc-500">Live games and games in the next seven days</p>
+        </div>
+      </header>
+
+      <p v-if="myTeamSchedulesLoading" role="status" class="text-xs text-zinc-400">
+        Loading favorite team schedules...
+      </p>
+
+      <div v-if="myTeamSchedules.length === 0"
+        class="rounded-lg border border-dashed border-zinc-800 p-8 text-center">
+        <p class="text-sm font-semibold text-zinc-300">No favorite teams selected.</p>
+        <button type="button" @click="openSettings"
+          class="mt-3 rounded-md border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 hover:bg-zinc-800">
+          Manage favorites
+        </button>
+      </div>
+
+      <div v-if="myTeamFailedSchedules.length" role="status"
+        class="space-y-2 rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-xs text-amber-200">
+        <p>Some favorite team schedules could not be loaded. Available schedules are still shown.</p>
+        <p v-if="!isNativeApp" class="text-amber-100/70">
+          Your browser may block ESPN schedule requests; cached schedules may still be available.
+        </p>
+        <p v-for="schedule in myTeamFailedSchedules" :key="schedule.key" class="text-amber-100/80">
+          {{ getLeague(schedule.league)?.label }} · {{ schedule.team.name }}: {{ schedule.error }}
+        </p>
+      </div>
+      <p v-for="schedule in myTeamCachedSchedules" :key="`cached:${schedule.key}`" role="status"
+        class="text-xs text-amber-300">
+        Showing saved schedule for {{ schedule.team.name }}<span v-if="schedule.cachedAt">
+          · saved {{ formatLastUpdatedAt(schedule.cachedAt) }}</span>
+      </p>
+
+      <div v-if="myTeamSchedules.length && !myTeamGames.length && !myTeamSchedulesLoading"
+        class="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-sm text-zinc-400">
+        {{ myTeamFailedSchedules.length
+          ? 'No live or upcoming games could be confirmed from the available schedules.'
+          : 'No live or upcoming games for your favorite teams in the next seven days.' }}
+      </div>
+
+      <section v-for="group in myTeamsGroups" :key="group.key" class="space-y-2">
+        <h3 class="text-xs font-bold uppercase text-zinc-500">{{ group.label }}</h3>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <button v-for="game in group.games" :key="`${game.league}:${game.id}`" type="button"
+            :aria-label="`${game.favoriteTeams.map((team) => team.name).join(' and ')}, ${game.status}, ${game.opponent}, ${game.score}`"
+            @click="openMyTeamsGame(game)"
+            class="flex min-h-[88px] items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/70 p-3 text-left hover:bg-zinc-800">
+            <div class="min-w-0">
+              <div class="mb-1 flex flex-wrap items-center gap-1.5">
+                <span v-for="team in game.favoriteTeams" :key="`${game.league}:${team.id}`"
+                  class="inline-flex min-w-0 items-center gap-1 text-xs font-bold text-white">
+                  <img v-if="team.logo" :src="team.logo" :alt="`${team.name} logo`"
+                    class="h-4 w-4 shrink-0 object-contain" loading="lazy" />
+                  <span class="max-w-[150px] truncate">{{ team.name }}</span>
+                </span>
+              </div>
+              <p class="truncate text-xs text-zinc-300">
+                {{ game.homeAway === 'home' ? 'vs' : 'at' }} {{ game.opponent }}
+              </p>
+              <p class="mt-1 truncate text-[10px] text-zinc-500">
+                {{ getLeague(game.league)?.label }} · {{ game.date }}
+              </p>
+            </div>
+            <div class="shrink-0 text-right">
+              <span v-if="game.state === 'in'"
+                class="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-black text-white">LIVE</span>
+              <span v-else-if="game.state === 'post'" class="text-[10px] font-bold uppercase text-zinc-300">
+                {{ game.result ? `${game.result} · ${game.status}` : game.status }}
+              </span>
+              <span v-else class="text-[10px] font-bold uppercase text-zinc-400">{{ game.status }}</span>
+              <p v-if="game.state !== 'pre'" class="mt-1 font-mono text-sm font-black text-white">
+                {{ game.score }}
+              </p>
+            </div>
+          </button>
         </div>
       </section>
     </section>
@@ -1268,6 +1365,7 @@ import { useAppNavigation } from "./composables/useAppNavigation";
 import { useScoreboard } from "./composables/useScoreboard";
 import { useGameDetails } from "./composables/useGameDetails";
 import { useTeamDetails } from "./composables/useTeamDetails";
+import { useMyTeams } from "./composables/useMyTeams";
 import {
   formatGameTime as formatGameTimeUtil,
   formatLastUpdatedAt as formatLastUpdatedAtUtil,
@@ -1319,6 +1417,7 @@ import type { AppHistoryEntry, AppView } from "./app/navigation";
 import type { GameDetailTeam } from "./domain/game";
 import type { LeagueId } from "./plugins/registry";
 import type { NormalizedPlayEvent } from "./domain/playByPlay";
+import type { MyTeamsGame } from "./composables/useMyTeams";
 
 type HomeAway = "away" | "home";
 
@@ -1368,6 +1467,10 @@ export default {
       orderedLeagues.value.filter((league) =>
         preferences.value.visibleLeagues.includes(league.id),
       ),
+    );
+    const showMyTeamsTab = computed(() =>
+      preferences.value.showMyTeams &&
+      LEAGUES.some((league) => preferences.value.favoriteTeams[league.id].length > 0),
     );
     const firstVisibleLeague = (): LeagueId => visibleLeagues.value[0]?.id || LEAGUES[0].id;
     const selectedLeague = ref<LeagueId>(firstVisibleLeague());
@@ -1509,10 +1612,45 @@ export default {
       closeSettings,
       setAutoCheckForUpdates,
       setLeagueVisibility: updateLeagueVisibility,
+      setMyTeamsVisibility,
       moveLeagueInOrder,
       toggleFavorite,
       isFavoriteTeam,
     } = usePreferences(preferences, selectedLeague);
+    const {
+      games: myTeamGames,
+      teamSchedules: myTeamSchedules,
+      failedSchedules: myTeamFailedSchedules,
+      loading: myTeamSchedulesLoading,
+      now: myTeamsNow,
+      load: loadMyTeams,
+    } = useMyTeams(preferences);
+    const myTeamCachedSchedules = computed(() =>
+      myTeamSchedules.value.filter((schedule) => schedule.cachedAt !== null),
+    );
+    const myTeamsGroups = computed(() => {
+      const groups = new Map<string, { key: string; label: string; games: MyTeamsGame[] }>();
+      for (const game of myTeamGames.value) {
+        const date = new Date(game.startTime ?? myTeamsNow.value);
+        const dateKey = [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+        ].join("-");
+        const key = game.state === "in" ? "live" : dateKey;
+        const label = key === "live"
+          ? "Live now"
+          : date.toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          });
+        const group = groups.get(key) ?? { key, label, games: [] };
+        group.games.push(game);
+        groups.set(key, group);
+      }
+      return [...groups.values()];
+    });
     const {
       update,
       checking: updateChecking,
@@ -1525,16 +1663,48 @@ export default {
     } = useAppUpdates(preferences);
 
     const handleGameClick = (game: ScoreboardEvent) => openModal(game);
+    const handleFavoriteToggle = (team: unknown) => {
+      toggleFavorite(team);
+      if (viewMode.value === "my-teams") {
+        if (showMyTeamsTab.value) {
+          void loadMyTeams();
+        } else {
+          viewMode.value = "scoreboard";
+          pushNavigationEntry();
+        }
+      }
+    };
+
+    const handleMyTeamsVisibilityChange = (visible: boolean) => {
+      setMyTeamsVisibility(visible);
+      if (!visible && viewMode.value === "my-teams") {
+        viewMode.value = "scoreboard";
+        pushNavigationEntry();
+      }
+    };
 
     const setLeagueVisibility = (leagueId: LeagueId, visible: boolean) => {
       const nextLeague = updateLeagueVisibility(leagueId, visible);
       if (nextLeague) switchTab(nextLeague);
     };
     const setDashboardView = async (view: AppView) => {
+      if (view === "my-teams" && !showMyTeamsTab.value) return;
       if (viewMode.value === view) return;
       viewMode.value = view;
       pushNavigationEntry();
       if (view === "standings") await fetchStandings();
+      if (view === "my-teams") await loadMyTeams();
+    };
+
+    const selectLeagueTab = async (league: LeagueId) => {
+      if (viewMode.value === "my-teams") {
+        if (selectedLeague.value === league) {
+          await setDashboardView("scoreboard");
+          return;
+        }
+        viewMode.value = "scoreboard";
+      }
+      await switchTab(league);
     };
     const handleGroupChange = () => {
       pushNavigationEntry();
@@ -1684,6 +1854,9 @@ export default {
         preferences.value.visibleLeagues,
         firstVisibleLeague(),
       );
+      if (snapshot.view === "my-teams" && !showMyTeamsTab.value) {
+        snapshot = { ...snapshot, view: "scoreboard", modal: null };
+      }
       if (snapshot !== entry.snapshot) {
         replaceAppHistoryEntry(window.history, snapshot);
       }
@@ -1710,6 +1883,7 @@ export default {
         fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
       ];
       if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
+      if (snapshot.view === "my-teams") pendingRequests.push(loadMyTeams());
       if (snapshot.modal?.type === "game") {
         openModal({ id: snapshot.modal.eventId }, { pushHistory: false });
       } else if (snapshot.modal?.type === "team") {
@@ -1865,6 +2039,9 @@ export default {
       if (pollingInterval !== null) clearInterval(pollingInterval);
       pollingInterval = setInterval(() => {
         fetchScoreboard(false);
+        if (viewMode.value === "my-teams" && !myTeamSchedulesLoading.value) {
+          void loadMyTeams(true);
+        }
         if (
           showModal.value &&
           modalView.value === "game" &&
@@ -1875,8 +2052,12 @@ export default {
       }, 15000);
     };
 
-    const switchTab = async (league: LeagueId) => {
-      if (!preferences.value.visibleLeagues.includes(league)) return;
+    const switchTab = async (
+      league: LeagueId,
+      allowHidden = false,
+      pushHistory = true,
+    ) => {
+      if (!allowHidden && !preferences.value.visibleLeagues.includes(league)) return;
       if (selectedLeague.value === league) return;
       resetTeamView();
       selectedLeague.value = league;
@@ -1885,11 +2066,18 @@ export default {
       if (resolveLeague(league)?.schedule.mode === "date") {
         selectedDate.value = new Date().toLocaleDateString("en-CA");
       }
-      pushNavigationEntry();
-      if (pollingInterval !== null) clearInterval(pollingInterval);
-      await fetchScoreboard(true);
-      startPoller();
+      if (pushHistory) {
+        pushNavigationEntry();
+        if (pollingInterval !== null) clearInterval(pollingInterval);
+        await fetchScoreboard(true);
+        startPoller();
+      }
       if (viewMode.value === "standings") await fetchStandings();
+    };
+
+    const openMyTeamsGame = async (game: MyTeamsGame) => {
+      await switchTab(game.league, true, false);
+      openModal(asObject(game.rawEvent) as ScoreboardEvent);
     };
 
     const adjustWeek = (amount: number) => {
@@ -1962,6 +2150,8 @@ export default {
     return {
       isNativeApp,
       LEAGUES,
+      getLeague,
+      showMyTeamsTab,
       preferences,
       orderedLeagues,
       visibleLeagues,
@@ -1978,6 +2168,7 @@ export default {
       openUpdateDownload,
       dismissUpdateNotice,
       setLeagueVisibility,
+      handleMyTeamsVisibilityChange,
       moveLeagueInOrder,
       favoriteLeague,
       handleFavoriteLeagueChange,
@@ -1990,6 +2181,7 @@ export default {
       teamOptionsError,
       loadFavoriteTeamOptions,
       toggleFavorite,
+      handleFavoriteToggle,
       isFavoriteTeam,
       selectedLeague,
       leagueBehavior,
@@ -2020,6 +2212,15 @@ export default {
       standingsShowingCachedData,
       standingsCachedAt,
       setDashboardView,
+      selectLeagueTab,
+      myTeamGames,
+      myTeamSchedules,
+      myTeamCachedSchedules,
+      myTeamFailedSchedules,
+      myTeamSchedulesLoading,
+      myTeamsGroups,
+      loadMyTeams,
+      openMyTeamsGame,
       getStandingStat,
       getStandingSortDirection,
       toggleStandingsSort,

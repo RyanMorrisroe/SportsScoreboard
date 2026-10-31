@@ -5,7 +5,7 @@ const HISTORY_STATE_KEY = "__sportsScoreboard";
 const HISTORY_STATE_VERSION = 1;
 const SUPPORTED_LEAGUES = new Set<string>(LEAGUE_IDS);
 
-export type AppView = "scoreboard" | "standings" | "tv-lineup";
+export type AppView = "scoreboard" | "standings" | "tv-lineup" | "my-teams";
 
 export type AppModalSnapshot =
   | { type: "game"; eventId: string }
@@ -56,19 +56,29 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function isValidModal(modal: unknown): modal is AppModalSnapshot {
   if (modal === null) return true;
   if (!isObject(modal)) return false;
-  if (modal.type === "game") return typeof modal.eventId === "string" && modal.eventId.length > 0;
+  if (modal.type === "game")
+    return typeof modal.eventId === "string" && modal.eventId.length > 0;
   if (modal.type === "team") {
     const team = modal.team;
-    const validTeam = team === undefined ||
-      (isObject(team) && typeof team.id === "string" &&
+    const validTeam =
+      team === undefined ||
+      (isObject(team) &&
+        typeof team.id === "string" &&
         ["name", "abbrev", "abbreviation", "logo"].every(
           (key) => team[key] === undefined || typeof team[key] === "string",
         ));
-    return typeof modal.teamId === "string" && modal.teamId.length > 0 &&
+    return (
+      typeof modal.teamId === "string" &&
+      modal.teamId.length > 0 &&
       validTeam &&
-      (modal.source === undefined || modal.source === "game" || modal.source === "standings") &&
+      (modal.source === undefined ||
+        modal.source === "game" ||
+        modal.source === "standings") &&
       (modal.gameId === undefined || typeof modal.gameId === "string") &&
-      (modal.side === undefined || modal.side === "away" || modal.side === "home");
+      (modal.side === undefined ||
+        modal.side === "away" ||
+        modal.side === "home")
+    );
   }
   return false;
 }
@@ -76,9 +86,13 @@ function isValidModal(modal: unknown): modal is AppModalSnapshot {
 function isValidSnapshot(snapshot: unknown): snapshot is AppSnapshot {
   if (!isObject(snapshot)) return false;
   return (
-    typeof snapshot.league === "string" && SUPPORTED_LEAGUES.has(snapshot.league) &&
-    ["scoreboard", "standings", "tv-lineup"].includes(String(snapshot.view)) &&
-    Number.isInteger(snapshot.week) && Number(snapshot.week) >= 1 &&
+    typeof snapshot.league === "string" &&
+    SUPPORTED_LEAGUES.has(snapshot.league) &&
+    ["scoreboard", "standings", "tv-lineup", "my-teams"].includes(
+      String(snapshot.view),
+    ) &&
+    Number.isInteger(snapshot.week) &&
+    Number(snapshot.week) >= 1 &&
     Number.isInteger(snapshot.seasonType) &&
     typeof snapshot.selectedGroup === "string" &&
     typeof snapshot.selectedDate === "string" &&
@@ -101,7 +115,10 @@ function isValidEntry(entry: unknown): entry is AppHistoryEntry {
   );
 }
 
-function mergeHistoryState(history: AppHistory, entry: AppHistoryEntry): Record<string, unknown> {
+function mergeHistoryState(
+  history: AppHistory,
+  entry: AppHistoryEntry,
+): Record<string, unknown> {
   const state = isObject(history.state) ? history.state : {};
   return { ...state, [HISTORY_STATE_KEY]: entry };
 }
@@ -139,7 +156,7 @@ export function pushAppHistoryEntry(
   const modalBaseIndex = snapshot.modal
     ? current?.snapshot.modal
       ? current.modalBaseIndex
-      : current?.index ?? rootIndex
+      : (current?.index ?? rootIndex)
     : null;
   const entry: AppHistoryEntry = {
     version: HISTORY_STATE_VERSION,
@@ -163,9 +180,7 @@ export function replaceAppHistoryEntry(
     version: HISTORY_STATE_VERSION,
     index,
     rootIndex,
-    modalBaseIndex: snapshot.modal
-      ? current?.modalBaseIndex ?? index
-      : null,
+    modalBaseIndex: snapshot.modal ? (current?.modalBaseIndex ?? index) : null,
     snapshot,
   };
   history.replaceState(mergeHistoryState(history, entry), "");
@@ -181,6 +196,7 @@ export function reconcileAppSnapshot(
   visibleLeagues: readonly string[],
   fallbackLeague: LeagueId,
 ): AppSnapshot {
-  if (visibleLeagues.includes(snapshot.league)) return snapshot;
+  if (visibleLeagues.includes(snapshot.league) || snapshot.view === "my-teams")
+    return snapshot;
   return { ...snapshot, league: fallbackLeague, modal: null };
 }

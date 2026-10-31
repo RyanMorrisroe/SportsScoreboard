@@ -5,6 +5,7 @@ import {
   moveLeague,
   savePreferences,
   setLeagueVisibility as setLeagueVisibilityPreference,
+  setMyTeamsVisibility as setMyTeamsVisibilityPreference,
   toggleFavoriteTeam,
   type Preferences,
 } from "../app/preferences";
@@ -61,6 +62,12 @@ export function usePreferences(
 
   function setAutoCheckForUpdates(enabled: boolean): void {
     persistPreferences({ ...preferences.value, autoCheckForUpdates: enabled });
+  }
+
+  function setMyTeamsVisibility(visible: boolean): void {
+    persistPreferences(
+      setMyTeamsVisibilityPreference(preferences.value, visible),
+    );
   }
 
   async function loadFavoriteTeamOptions(
@@ -184,6 +191,7 @@ export function usePreferences(
     teamOptionsError,
     persistPreferences,
     setAutoCheckForUpdates,
+    setMyTeamsVisibility,
     loadFavoriteTeamOptions,
     handleFavoriteLeagueChange,
     openSettings,
