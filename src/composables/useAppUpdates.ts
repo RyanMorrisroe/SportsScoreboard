@@ -18,7 +18,11 @@ export function useAppUpdates(preferences: Ref<Preferences>) {
   const noticeDismissed = ref(false);
 
   async function checkForUpdates(automatic = false): Promise<void> {
-    if (!isTauri() || (automatic && !preferences.value.autoCheckForUpdates) || checking.value) {
+    if (
+      !isTauri() ||
+      (automatic && !preferences.value.autoCheckForUpdates) ||
+      checking.value
+    ) {
       return;
     }
 
@@ -45,7 +49,9 @@ export function useAppUpdates(preferences: Ref<Preferences>) {
     try {
       await openUrl(update.value.downloadUrl);
     } catch (reason) {
-      const message = (reason instanceof Error ? reason.message : String(reason))
+      const message = (
+        reason instanceof Error ? reason.message : String(reason)
+      )
         .replace(/\s+/g, " ")
         .slice(0, 240);
       error.value = "Unable to open the update download.";
