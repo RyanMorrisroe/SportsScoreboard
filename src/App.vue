@@ -123,6 +123,9 @@
                     ? 'Automatic checks are enabled.'
                     : 'Automatic checks are off. You can check manually.') }}
             </p>
+            <p v-if="updateDownloadErrorDetails" class="mt-1 break-all whitespace-pre-wrap text-xs text-zinc-500">
+              {{ updateDownloadErrorDetails }}
+            </p>
             <div v-if="update?.notes"
               class="mt-3 max-h-40 overflow-y-auto whitespace-pre-line rounded-md border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-300">
               {{ update.notes }}
@@ -1656,6 +1659,7 @@ export default {
       checking: updateChecking,
       checked: updateChecked,
       error: updateError,
+      downloadErrorDetails: updateDownloadErrorDetails,
       noticeDismissed: updateNoticeDismissed,
       checkForUpdates,
       openUpdateDownload,
@@ -2163,6 +2167,7 @@ export default {
       updateChecking,
       updateChecked,
       updateError,
+      updateDownloadErrorDetails,
       updateNoticeDismissed,
       checkForUpdates,
       openUpdateDownload,

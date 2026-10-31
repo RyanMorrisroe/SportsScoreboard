@@ -71,4 +71,21 @@ describe("app update checks", () => {
       "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk",
     );
   });
+
+  it("shows opener rejection details and the attempted asset URL", async () => {
+    const downloadUrl = "https://github.com/RyanMorrisroe/SportsScoreboard-Native/releases/download/v1.8.0-wrapper.0.1.0/app.apk";
+    vi.mocked(invoke).mockResolvedValue({
+      version: "1.8.0-wrapper.0.1.0",
+      notes: "Release notes",
+      downloadUrl,
+    });
+    vi.mocked(openUrl).mockRejectedValue(new Error("No activity found"));
+    const updates = useAppUpdates(ref(createDefaultPreferences()));
+
+    await updates.checkForUpdates();
+    await updates.openUpdateDownload();
+
+    expect(updates.error.value).toBe("Unable to open the update download.");
+    expect(updates.downloadErrorDetails.value).toBe(`No activity found\nURL: ${downloadUrl}`);
+  });
 });
