@@ -382,15 +382,15 @@
         {{ standingsError }}
       </div>
       <div
-        v-else-if="standings.length === 0"
+        v-else-if="visibleStandings.length === 0"
         class="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10"
       >
         <p class="text-zinc-400 font-semibold text-base">
-          No standings are available for this league.
+          {{ standings.length ? 'No standings are available for this conference.' : 'No standings are available for this league.' }}
         </p>
       </div>
       <section
-        v-for="group in standings"
+        v-for="group in visibleStandings"
         :key="group.id"
         class="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-4 sm:p-5"
         :style="{ marginLeft: `${Math.min(group.depth, 3) * 1}rem` }"
@@ -1778,6 +1778,7 @@ import {
   isWinner as isWinnerUtil,
   sortGames as sortGamesUtil,
 } from "./app/scoreboard";
+import { filterStandingGroups } from "./domain/standings";
 import { normalizeMatchup } from "./domain/matchup.js";
 import { normalizePlayByPlay } from "./domain/playByPlay";
 import { buildGameFlow } from "./app/gameFlow.js";
@@ -1870,6 +1871,9 @@ export default {
       toggleStandingsSort,
       getSortedStandingTeams,
     } = useStandings(selectedLeague);
+    const visibleStandings = computed(() =>
+      filterStandingGroups(standings.value, selectedLeague.value, selectedGroup.value),
+    );
     const showModal = ref(false);
     const selectedGame = ref<ScoreboardEvent | null>(null);
     const modalTab = ref("timeline");
@@ -1992,7 +1996,7 @@ export default {
     };
     const handleGroupChange = () => {
       pushNavigationEntry();
-      triggerImmediateFetch();
+      if (viewMode.value !== "standings") triggerImmediateFetch();
     };
     const handleDateChange = () => {
       pushNavigationEntry();
@@ -2335,7 +2339,7 @@ export default {
       resetTeamView();
       selectedLeague.value = league;
       resetStandings();
-      selectedGroup.value = "";
+      selectedGroup.value = "80";
       if (resolveLeague(league)?.schedule.mode === "date") {
         selectedDate.value = new Date().toLocaleDateString("en-CA");
       }
@@ -2452,6 +2456,7 @@ export default {
       formatLastUpdatedAt: formatLastUpdatedAtUtil,
       viewMode,
       standings,
+      visibleStandings,
       standingsLoading,
       standingsError,
       setDashboardView,
