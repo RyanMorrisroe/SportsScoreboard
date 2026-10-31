@@ -76,6 +76,19 @@ const STANDINGS_STAT_ORDER_INDEX = new Map(
   STANDINGS_STAT_ORDER.map((key, index) => [key, index]),
 );
 
+const COLLEGE_FOOTBALL_CONFERENCE_NAMES: Record<string, readonly string[]> = {
+  "1": ["acc", "atlantic coast conference"],
+  "4": ["big 12", "big 12 conference"],
+  "5": ["big ten", "big ten conference", "b1g"],
+  "12": ["c-usa", "conference usa"],
+  "18": ["independent", "independents", "fbs independents"],
+  "15": ["mac", "mid-american", "mid-american conference"],
+  "17": ["mountain west", "mountain west conference"],
+  "9": ["pac-12", "pacific-12", "pac-12 conference"],
+  "8": ["sec", "southeastern conference"],
+  "37": ["sun belt", "sun belt conference"],
+};
+
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as JsonObject
@@ -198,6 +211,32 @@ export function normalizeStandings(
     collectGroups(payload, [], groups, hiddenStats);
   }
   return groups;
+}
+
+export function filterStandingGroups(
+  groups: StandingGroup[],
+  league: string,
+  selectedGroup: string,
+): StandingGroup[] {
+  if (
+    league !== "college-football" ||
+    selectedGroup === "80" ||
+    selectedGroup === ""
+  ) return groups;
+
+  const conferenceNames = COLLEGE_FOOTBALL_CONFERENCE_NAMES[selectedGroup];
+  if (!conferenceNames) return groups;
+  const normalizedNames = conferenceNames.map((name) =>
+    name.toLowerCase().replace(/[^a-z0-9]/g, ""),
+  );
+
+  return groups.filter((group) => {
+    const name = group.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const id = group.id.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return normalizedNames.some((conference) =>
+      name === conference || id === conference || id.endsWith(conference),
+    );
+  });
 }
 
 export function getUniqueStandingTeams(groups: unknown): Array<{

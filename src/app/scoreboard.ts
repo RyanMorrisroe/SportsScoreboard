@@ -37,6 +37,15 @@ export function getGameState(game: unknown): string {
   return asString(statusType.state).toLowerCase();
 }
 
+export function formatLastUpdatedAt(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(timestamp));
+}
+
 export function getSituation(game: unknown, selectedLeague: string): unknown {
   const behavior = resolveLeague(selectedLeague);
   const gameObject = asObject(game);

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   formatGameTime,
+  formatLastUpdatedAt,
   getCompetitor,
   getGameState,
   isBeforeFootballWeekStart,
@@ -65,6 +66,13 @@ const makeGame = (overrides: TestObject = {}) => ({
 });
 
 describe("scoreboard helpers", () => {
+  it("formats last-update timestamps with local AM/PM time", () => {
+    const formatted = formatLastUpdatedAt(new Date("2026-10-31T19:05:00").getTime());
+
+    expect(formatted).toMatch(/^\d{1,2}:05 [AP]M$/);
+    expect(formatLastUpdatedAt(Number.NaN)).toBe("");
+  });
+
   it("starts football weeks at 3 a.m. in the viewer's local timezone", () => {
     expect(isBeforeFootballWeekStart(
       new Date("2026-10-18T08:00:00Z"),

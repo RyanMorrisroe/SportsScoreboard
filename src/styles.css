@@ -37,6 +37,28 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.scoreboard-refresh-sweep {
+  transform-origin: left center;
+  animation: scoreboard-refresh-draw 600ms ease-out forwards;
+}
+
+@keyframes scoreboard-refresh-draw {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scoreboard-refresh-sweep {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
 @keyframes pulse {
   0%,
   100% {

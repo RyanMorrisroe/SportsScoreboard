@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from "vue";
 import { fetchJson as requestJson, getGameSummaryUrl, getTeamUrls } from "../api/espn";
+import { gameCache, type GameCache } from "../app/gameCache";
 import { getGameState } from "../app/scoreboard.js";
 import { buildGameDetail, type GameDetail } from "../domain/game";
 import type { LeagueId } from "../plugins/registry";
@@ -22,6 +23,7 @@ interface GameDetailsSelection {
 interface GameDetailsDependencies {
   fetchJson: (url: string, fetchImpl?: typeof fetch) => Promise<unknown>;
   fetchImpl: typeof fetch;
+  cache: GameCache;
 }
 
 function asObject(value: unknown): JsonObject {
@@ -46,11 +48,16 @@ export function useGameDetails(
 ) {
   const modalLoading = ref(false);
   const modalData = ref<GameDetail | null>(null);
+  const refreshing = ref(false);
+  const refreshFailed = ref(false);
+  const lastSuccessfulRefreshAt = ref<number | null>(null);
   const matchupSchedules = ref<Record<string, unknown>>({});
   const matchupLoading = ref(false);
   const fetch = dependencies.fetchJson ?? requestJson;
+  const cache = dependencies.cache ?? gameCache;
   const fetchImpl = dependencies.fetchImpl ?? globalThis.fetch;
   let requestId = 0;
+  let activeGameKey = "";
 
   const modalGameStatus = computed(() => {
     const raw = asObject(modalData.value?.raw);
@@ -109,19 +116,51 @@ export function useGameDetails(
 
   async function fetchGameDetail(eventId: string | number): Promise<void> {
     const currentRequestId = ++requestId;
-    modalLoading.value = true;
+    refreshing.value = true;
+    refreshFailed.value = false;
+    const league = selection.selectedLeague.value;
+    const eventKey = `${league}:${String(eventId)}`;
+    if (eventKey !== activeGameKey) {
+      activeGameKey = eventKey;
+      lastSuccessfulRefreshAt.value = null;
+    }
+    const hasCurrentData = String(modalData.value?.id) === String(eventId);
+    modalLoading.value = !hasCurrentData;
+    const isCurrentRequest = () =>
+      currentRequestId === requestId &&
+      selection.showModal.value &&
+      selection.modalView.value === "game" &&
+      String(selection.selectedGame.value?.id) === String(eventId);
+
     try {
-      const endpoint = getGameSummaryUrl(selection.selectedLeague.value, String(eventId));
+      if (!hasCurrentData) {
+        let cachedSummary: unknown | null = null;
+        try {
+          cachedSummary = await cache.getSummary(league, String(eventId));
+        } catch {
+          cachedSummary = null;
+        }
+        if (!isCurrentRequest()) return;
+        if (cachedSummary !== null) {
+          const previousStatus = modalGameStatus.value;
+          modalData.value = buildGameDetail(cachedSummary, eventId);
+          const isPregame = modalGameStatus.value === "pre";
+          if ((previousStatus === "pre") !== isPregame) {
+            selection.modalTab.value = isPregame ? "matchup" : "stats";
+          }
+          modalLoading.value = false;
+          void fetchMatchupSchedules(cachedSummary, eventId, currentRequestId);
+        }
+      }
+
+      const endpoint = getGameSummaryUrl(league, String(eventId));
       const data = await fetch(endpoint);
-      if (
-        currentRequestId !== requestId ||
-        !selection.showModal.value ||
-        selection.modalView.value !== "game" ||
-        String(selection.selectedGame.value?.id) !== String(eventId)
-      ) return;
+      if (!isCurrentRequest()) return;
 
       const previousStatus = modalGameStatus.value;
       modalData.value = buildGameDetail(data, eventId);
+      lastSuccessfulRefreshAt.value = Date.now();
+      void cache.saveSummary(league, String(eventId), data).catch(() => {});
       const isPregame = modalGameStatus.value === "pre";
       if ((previousStatus === "pre") !== isPregame) {
         selection.modalTab.value = isPregame ? "matchup" : "stats";
@@ -129,16 +168,22 @@ export function useGameDetails(
       void fetchMatchupSchedules(data, eventId, currentRequestId);
     } catch (error) {
       if (currentRequestId === requestId) {
+        refreshFailed.value = true;
         console.error("Summary payload details parse error:", error);
-        modalData.value = null;
       }
     } finally {
-      if (currentRequestId === requestId) modalLoading.value = false;
+      if (currentRequestId === requestId) {
+        refreshing.value = false;
+        modalLoading.value = false;
+      }
     }
   }
 
   function invalidateGameDetails(): void {
     requestId++;
+    refreshing.value = false;
+    refreshFailed.value = false;
+    modalLoading.value = false;
   }
 
   function resetMatchupSchedules(): void {
@@ -150,6 +195,9 @@ export function useGameDetails(
     modalLoading,
     modalData,
     modalGameStatus,
+    refreshing,
+    refreshFailed,
+    lastSuccessfulRefreshAt,
     matchupSchedules,
     matchupLoading,
     fetchGameDetail,

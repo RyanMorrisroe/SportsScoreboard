@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/espn/standings.json";
 import collegeFootballFixture from "../fixtures/espn/college-football-standings.json";
 import {
+  filterStandingGroups,
   getUniqueStandingTeams,
   getStandingPositionKey,
   normalizeStandings,
@@ -169,6 +170,18 @@ describe("standings normalization", () => {
     expect(getStandingPositionKey(group)).toBe("playoffSeed");
     expect(sortStandingTeams(group?.teams ?? [], getStandingPositionKey(group), "asc")
       .map((team) => team.name)).toEqual(["Team One", "Team Two"]);
+  });
+
+  it("filters college-football standings by the selected conference", () => {
+    const groups = [
+      { id: "fbs-acc", name: "Atlantic Coast Conference", depth: 0, columns: [], teams: [] },
+      { id: "fbs-sec", name: "Southeastern Conference", depth: 0, columns: [], teams: [] },
+    ];
+
+    expect(filterStandingGroups(groups, "college-football", "8").map((group) => group.id))
+      .toEqual(["fbs-sec"]);
+    expect(filterStandingGroups(groups, "college-football", "80")).toBe(groups);
+    expect(filterStandingGroups(groups, "nba", "8")).toBe(groups);
   });
 
   it("hides locked division rank globally and CFB-only stats only for college football", () => {
