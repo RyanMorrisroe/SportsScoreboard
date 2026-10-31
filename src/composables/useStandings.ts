@@ -8,6 +8,7 @@ import {
   type StandingTeam,
 } from "../domain/standings";
 import type { LeagueId } from "../plugins/registry";
+import { useCacheProvenance } from "./useCacheProvenance";
 
 type SortDirection = "asc" | "desc";
 
@@ -32,18 +33,34 @@ export function useStandings(
   const standingsLoading = ref(false);
   const standingsError = ref("");
   const standingsSort = ref<StandingSortByGroup>({});
+  const provenance = useCacheProvenance();
   let requestId = 0;
+  let activeLeague = selectedLeague.value;
 
   async function fetchStandings(): Promise<void> {
     const currentRequestId = ++requestId;
+    const league = selectedLeague.value;
+    if (league !== activeLeague) {
+      activeLeague = league;
+      provenance.clear();
+    }
+    let responseUsedCache = false;
+    const onCacheFallback = (url: string, savedAt: number) => {
+      if (currentRequestId !== requestId) return;
+      responseUsedCache = true;
+      provenance.onCacheFallback(url, savedAt);
+    };
     standingsLoading.value = true;
     standingsError.value = "";
     try {
-      const response = await requestStandings(selectedLeague.value, fetchImpl);
+      const response = await requestStandings(league, fetchImpl, {
+        onCacheFallback,
+      });
       if (currentRequestId !== requestId) return;
       standings.value = normalizeStandings(response, {
-        league: selectedLeague.value,
+        league,
       });
+      if (!responseUsedCache) provenance.clear();
       const initialSort: StandingSortByGroup = {};
       for (const group of standings.value) {
         const key = getStandingPositionKey(group);
@@ -65,13 +82,17 @@ export function useStandings(
     standings.value = [];
     standingsLoading.value = false;
     standingsError.value = "";
+    provenance.clear();
   }
 
   function getStandingStat(team: StandingTeam, key: string): unknown {
     return team.stats.find((stat) => stat.key === key)?.value ?? "--";
   }
 
-  function getStandingSortDirection(groupId: string, key: string): SortDirection | null {
+  function getStandingSortDirection(
+    groupId: string,
+    key: string,
+  ): SortDirection | null {
     return standingsSort.value[groupId]?.key === key
       ? standingsSort.value[groupId]!.direction
       : null;
@@ -107,6 +128,8 @@ export function useStandings(
     standings,
     standingsLoading,
     standingsError,
+    showingCachedData: provenance.showingCachedData,
+    cachedAt: provenance.cachedAt,
     fetchStandings,
     resetStandings,
     getStandingStat,

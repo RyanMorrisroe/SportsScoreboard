@@ -21,18 +21,52 @@ describe("useTeamDetails", () => {
 
     await team.loadTeamDetails("team 1");
 
-    expect(fetchTeamDetails).toHaveBeenCalledWith("nhl", "team 1", globalThis.fetch);
+    expect(fetchTeamDetails).toHaveBeenCalledWith(
+      "nhl",
+      "team 1",
+      globalThis.fetch,
+      { cache: expect.any(Object), onCacheFallback: expect.any(Function) },
+    );
     expect(team.teamData.value).toEqual({ team: "details" });
     expect(team.teamScheduleData.value).toEqual({ events: [] });
     expect(team.teamLoading.value).toBe(false);
   });
 
+  it("marks cached team and schedule data, then clears the notice on a fresh load", async () => {
+    const selection = createSelection();
+    const fetchTeamDetails = vi
+      .fn()
+      .mockImplementationOnce(async (_league, _teamId, _fetchImpl, options) => {
+        options.onCacheFallback("https://espn.test/team/1", 100);
+        return { details: { team: "cached" }, schedule: { events: [] } };
+      })
+      .mockResolvedValueOnce({
+        details: { team: "fresh" },
+        schedule: { events: [] },
+      });
+    const team = useTeamDetails(selection, { fetchTeamDetails });
+
+    await team.loadTeamDetails("team-1");
+    expect(team.showingCachedData.value).toBe(true);
+    expect(team.cachedAt.value).toBe(100);
+
+    await team.loadTeamDetails("team-1");
+    expect(team.showingCachedData.value).toBe(false);
+    expect(team.cachedAt.value).toBeNull();
+  });
+
   it("ignores results invalidated by a team-view change", async () => {
     const selection = createSelection();
-    let resolveRequest: (value: { details: unknown; schedule: unknown }) => void = () => {};
-    const fetchTeamDetails = vi.fn(() => new Promise<{ details: unknown; schedule: unknown }>((resolve) => {
-      resolveRequest = resolve;
-    }));
+    let resolveRequest: (value: {
+      details: unknown;
+      schedule: unknown;
+    }) => void = () => {};
+    const fetchTeamDetails = vi.fn(
+      () =>
+        new Promise<{ details: unknown; schedule: unknown }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
     const team = useTeamDetails(selection, { fetchTeamDetails });
     const pendingRequest = team.loadTeamDetails("team-1");
 
@@ -47,7 +81,9 @@ describe("useTeamDetails", () => {
 
   it("exposes both detail and schedule errors on request failure", async () => {
     const team = useTeamDetails(createSelection(), {
-      fetchTeamDetails: async () => { throw new Error("Offline"); },
+      fetchTeamDetails: async () => {
+        throw new Error("Offline");
+      },
     });
 
     await team.loadTeamDetails("team-1");

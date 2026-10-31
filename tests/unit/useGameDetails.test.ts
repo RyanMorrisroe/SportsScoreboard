@@ -19,6 +19,8 @@ function createSelection() {
 
 function createCache(overrides: Partial<GameCache> = {}): GameCache {
   return {
+    getResponse: vi.fn(async () => null),
+    saveResponse: vi.fn(async () => {}),
     getScoreboard: vi.fn(async () => null),
     saveScoreboard: vi.fn(async () => {}),
     getSummary: vi.fn(async () => null),
@@ -29,10 +31,12 @@ function createCache(overrides: Partial<GameCache> = {}): GameCache {
 
 const completedSummary = {
   header: {
-    competitions: [{
-      status: { type: { state: "post" } },
-      competitors: [],
-    }],
+    competitions: [
+      {
+        status: { type: { state: "post" } },
+        competitors: [],
+      },
+    ],
   },
   boxscore: { teams: [] },
 };
@@ -44,10 +48,12 @@ describe("useGameDetails", () => {
       if (url.includes("/summary")) {
         return {
           header: {
-            competitions: [{
-              status: { type: { state: "in" } },
-              competitors: [{ id: "away" }, { id: "home" }],
-            }],
+            competitions: [
+              {
+                status: { type: { state: "in" } },
+                competitors: [{ id: "away" }, { id: "home" }],
+              },
+            ],
           },
           boxscore: { teams: [] },
         };
@@ -57,10 +63,12 @@ describe("useGameDetails", () => {
     const details = useGameDetails(selection, { fetchJson });
 
     await details.fetchGameDetail("event-1");
-    await vi.waitFor(() => expect(details.matchupSchedules.value).toEqual({
-      away: { events: [] },
-      home: { events: [] },
-    }));
+    await vi.waitFor(() =>
+      expect(details.matchupSchedules.value).toEqual({
+        away: { events: [] },
+        home: { events: [] },
+      }),
+    );
 
     expect(details.modalData.value?.id).toBe("event-1");
     expect(details.modalGameStatus.value).toBe("in");
@@ -75,9 +83,12 @@ describe("useGameDetails", () => {
   it("does not commit a summary after its event is no longer active", async () => {
     const selection = createSelection();
     let resolveSummary: (value: unknown) => void = () => {};
-    const fetchJson = vi.fn(() => new Promise<unknown>((resolve) => {
-      resolveSummary = resolve;
-    }));
+    const fetchJson = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveSummary = resolve;
+        }),
+    );
     const details = useGameDetails(selection, { fetchJson });
     const pendingRequest = details.fetchGameDetail("event-1");
 
@@ -92,7 +103,9 @@ describe("useGameDetails", () => {
   it("does not fetch schedules for teams already present in matchup data", async () => {
     const selection = createSelection();
     const fetchJson = vi.fn(async () => ({
-      header: { competitions: [{ competitors: [{ id: "away" }, { id: "home" }] }] },
+      header: {
+        competitions: [{ competitors: [{ id: "away" }, { id: "home" }] }],
+      },
       lastFiveGames: [
         { team: { id: "away" }, events: [{ id: "recent-1" }] },
         { team: { id: "home" }, events: [{ id: "recent-2" }] },
@@ -108,14 +121,18 @@ describe("useGameDetails", () => {
 
   it("keeps existing summary visible when a background refresh fails", async () => {
     const selection = createSelection();
-    const fetchJson = vi.fn()
+    const fetchJson = vi
+      .fn()
       .mockResolvedValueOnce({
         header: { competitions: [{ status: { type: { state: "in" } } }] },
         boxscore: { teams: [] },
       })
       .mockRejectedValueOnce(new Error("offline"));
     const logError = vi.spyOn(console, "error").mockImplementation(() => {});
-    const details = useGameDetails(selection, { fetchJson, cache: createCache() });
+    const details = useGameDetails(selection, {
+      fetchJson,
+      cache: createCache(),
+    });
 
     await details.fetchGameDetail("event-1");
     const currentData = details.modalData.value;
@@ -126,12 +143,14 @@ describe("useGameDetails", () => {
     logError.mockRestore();
   });
 
-  it("shows a cached completed summary while revalidating and preserves it offline", async () => {
+  it("shows cached summaries while revalidating and preserves them offline", async () => {
     const selection = createSelection();
     const cache = createCache({
       getSummary: vi.fn(async () => completedSummary),
     });
-    const fetchJson = vi.fn(async () => { throw new Error("offline"); });
+    const fetchJson = vi.fn(async () => {
+      throw new Error("offline");
+    });
     const logError = vi.spyOn(console, "error").mockImplementation(() => {});
     const details = useGameDetails(selection, { fetchJson, cache });
 
@@ -140,11 +159,42 @@ describe("useGameDetails", () => {
     expect(details.modalData.value?.id).toBe("event-1");
     expect(details.modalGameStatus.value).toBe("post");
     expect(details.modalLoading.value).toBe(false);
+    expect(details.showingCachedData.value).toBe(true);
     expect(cache.getSummary).toHaveBeenCalledWith("nba", "event-1");
     logError.mockRestore();
   });
 
-  it("records successful summary refreshes and caches completed payloads", async () => {
+  it("hydrates scheduled summaries and clears cache provenance after a fresh response", async () => {
+    const selection = createSelection();
+    const cachedSummary = {
+      header: {
+        competitions: [{ status: { type: { state: "pre" } }, competitors: [] }],
+      },
+      boxscore: { teams: [] },
+    };
+    const cache = createCache({
+      getResponse: vi.fn(async () => ({ value: cachedSummary, savedAt: 3456 })),
+    });
+    const fetchJson = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(completedSummary);
+    const logError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const details = useGameDetails(selection, { fetchJson, cache });
+
+    await details.fetchGameDetail("event-1");
+    expect(details.showingCachedData.value).toBe(true);
+    expect(details.cachedAt.value).toBe(3456);
+    expect(details.modalGameStatus.value).toBe("pre");
+
+    await details.fetchGameDetail("event-1");
+    expect(details.showingCachedData.value).toBe(false);
+    expect(details.cachedAt.value).toBeNull();
+    expect(details.modalGameStatus.value).toBe("post");
+    logError.mockRestore();
+  });
+
+  it("records successful summary refreshes", async () => {
     const selection = createSelection();
     const cache = createCache();
     const details = useGameDetails(selection, {
@@ -156,13 +206,14 @@ describe("useGameDetails", () => {
     await details.fetchGameDetail("event-1");
 
     expect(details.lastSuccessfulRefreshAt.value).toBe(5678);
-    expect(cache.saveSummary).toHaveBeenCalledWith("nba", "event-1", completedSummary);
+    expect(details.showingCachedData.value).toBe(false);
     now.mockRestore();
   });
 
   it("reports summary refresh failures and clears them on retry", async () => {
     const selection = createSelection();
-    const fetchJson = vi.fn()
+    const fetchJson = vi
+      .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce(completedSummary);
     const logError = vi.spyOn(console, "error").mockImplementation(() => {});

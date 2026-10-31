@@ -12,15 +12,30 @@ export interface GameCacheStorage {
   delete(key: string): Promise<void>;
 }
 
+export interface CachedGameData {
+  value: unknown;
+  savedAt: number;
+}
+
 export interface GameCache {
-  getScoreboard(league: string, requestUrl: string, now?: number): Promise<unknown[] | null>;
+  getResponse(url: string, now?: number): Promise<CachedGameData | null>;
+  saveResponse(url: string, value: unknown, now?: number): Promise<void>;
+  getScoreboard(
+    league: string,
+    requestUrl: string,
+    now?: number,
+  ): Promise<unknown[] | null>;
   saveScoreboard(
     league: string,
     requestUrl: string,
     events: unknown[],
     now?: number,
   ): Promise<void>;
-  getSummary(league: string, eventId: string, now?: number): Promise<unknown | null>;
+  getSummary(
+    league: string,
+    eventId: string,
+    now?: number,
+  ): Promise<unknown | null>;
   saveSummary(
     league: string,
     eventId: string,
@@ -33,12 +48,16 @@ type JsonObject = Record<string, unknown>;
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
 function isFinalEvent(value: unknown): boolean {
-  return String(asObject(asObject(asObject(value).status).type).state).toLowerCase() === "post";
+  return (
+    String(
+      asObject(asObject(asObject(value).status).type).state,
+    ).toLowerCase() === "post"
+  );
 }
 
 function isFinalSummary(value: unknown): boolean {
@@ -59,15 +78,25 @@ function summaryKey(league: string, eventId: string): string {
   return `summary:${encodeURIComponent(league)}:${encodeURIComponent(eventId)}`;
 }
 
+function responseKey(url: string): string {
+  return `response:${encodeURIComponent(url)}`;
+}
+
 function isValidRecord(value: unknown, key: string): value is GameCacheRecord {
   const record = asObject(value);
-  return record.key === key &&
-    typeof record.savedAt === "number" && Number.isFinite(record.savedAt) &&
-    "value" in record;
+  return (
+    record.key === key &&
+    typeof record.savedAt === "number" &&
+    Number.isFinite(record.savedAt) &&
+    "value" in record
+  );
 }
 
 export function createGameCache(storage: GameCacheStorage | null): GameCache {
-  async function read(key: string, now: number): Promise<unknown | null> {
+  async function readRecord(
+    key: string,
+    now: number,
+  ): Promise<GameCacheRecord | null> {
     if (!storage) return null;
     try {
       const record = await storage.get(key);
@@ -76,13 +105,21 @@ export function createGameCache(storage: GameCacheStorage | null): GameCache {
         await storage.delete(key).catch(() => {});
         return null;
       }
-      return record.value;
+      return record;
     } catch {
       return null;
     }
   }
 
-  async function write(key: string, value: unknown, now: number): Promise<void> {
+  async function read(key: string, now: number): Promise<unknown | null> {
+    return (await readRecord(key, now))?.value ?? null;
+  }
+
+  async function write(
+    key: string,
+    value: unknown,
+    now: number,
+  ): Promise<void> {
     if (!storage) return;
     try {
       await storage.put({ key, savedAt: now, value });
@@ -92,6 +129,13 @@ export function createGameCache(storage: GameCacheStorage | null): GameCache {
   }
 
   return {
+    async getResponse(url, now = Date.now()) {
+      const record = await readRecord(responseKey(url), now);
+      return record ? { value: record.value, savedAt: record.savedAt } : null;
+    },
+    async saveResponse(url, value, now = Date.now()) {
+      await write(responseKey(url), value, now);
+    },
     async getScoreboard(league, requestUrl, now = Date.now()) {
       const value = await read(scoreboardKey(league, requestUrl), now);
       return Array.isArray(value) ? value.filter(isFinalEvent) : null;
@@ -163,7 +207,8 @@ function createIndexedDbStorage(): GameCacheStorage {
       return await new Promise((resolve) => {
         const transaction = database.transaction(STORE_NAME, "readonly");
         const request = transaction.objectStore(STORE_NAME).get(key);
-        request.onsuccess = () => resolve(isValidRecord(request.result, key) ? request.result : null);
+        request.onsuccess = () =>
+          resolve(isValidRecord(request.result, key) ? request.result : null);
         request.onerror = () => resolve(null);
         transaction.onabort = () => resolve(null);
       });
@@ -205,8 +250,14 @@ function createIndexedDbStorage(): GameCacheStorage {
 
   return {
     get,
-    put: (record) => mutate("readwrite", (store) => { store.put(record); }),
-    delete: (key) => mutate("readwrite", (store) => { store.delete(key); }),
+    put: (record) =>
+      mutate("readwrite", (store) => {
+        store.put(record);
+      }),
+    delete: (key) =>
+      mutate("readwrite", (store) => {
+        store.delete(key);
+      }),
   };
 }
 

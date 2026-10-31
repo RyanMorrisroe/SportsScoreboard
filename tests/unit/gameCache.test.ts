@@ -10,8 +10,12 @@ function makeStorage(initial: GameCacheRecord[] = []) {
   const records = new Map(initial.map((record) => [record.key, record]));
   const storage: GameCacheStorage = {
     get: vi.fn(async (key) => records.get(key) ?? null),
-    put: vi.fn(async (record) => { records.set(record.key, record); }),
-    delete: vi.fn(async (key) => { records.delete(key); }),
+    put: vi.fn(async (record) => {
+      records.set(record.key, record);
+    }),
+    delete: vi.fn(async (key) => {
+      records.delete(key);
+    }),
   };
   return { storage, records };
 }
@@ -26,6 +30,32 @@ const liveSummary = {
 };
 
 describe("completed game cache", () => {
+  it("persists arbitrary URL responses across cache instances with a saved timestamp", async () => {
+    const { storage } = makeStorage();
+    const requestUrl = "https://espn.test/scoreboard?dates=20261031";
+    const snapshot = {
+      events: [{ id: "scheduled-1", status: { type: { state: "pre" } } }],
+    };
+
+    await createGameCache(storage).saveResponse(requestUrl, snapshot, 100);
+
+    expect(await createGameCache(storage).getResponse(requestUrl, 101)).toEqual(
+      {
+        value: snapshot,
+        savedAt: 100,
+      },
+    );
+    expect(
+      await createGameCache(storage).getResponse(`${requestUrl}&group=1`, 101),
+    ).toBeNull();
+    expect(
+      await createGameCache(storage).getResponse(
+        requestUrl,
+        100 + GAME_CACHE_TTL_MS,
+      ),
+    ).toBeNull();
+  });
+
   it("persists only completed events and isolates league/request keys", async () => {
     const { storage } = makeStorage();
     const cache = createGameCache(storage);
@@ -33,9 +63,13 @@ describe("completed game cache", () => {
 
     await cache.saveScoreboard("nba", requestUrl, [liveEvent, finalEvent], 100);
 
-    expect(await cache.getScoreboard("nba", requestUrl, 101)).toEqual([finalEvent]);
+    expect(await cache.getScoreboard("nba", requestUrl, 101)).toEqual([
+      finalEvent,
+    ]);
     expect(await cache.getScoreboard("nhl", requestUrl, 101)).toBeNull();
-    expect(await cache.getScoreboard("nba", `${requestUrl}&group=1`, 101)).toBeNull();
+    expect(
+      await cache.getScoreboard("nba", `${requestUrl}&group=1`, 101),
+    ).toBeNull();
     expect(storage.put).toHaveBeenCalledOnce();
   });
 
@@ -57,33 +91,49 @@ describe("completed game cache", () => {
     const cache = createGameCache(storage);
     await cache.saveScoreboard("nba", "url", [finalEvent], 100);
 
-    expect(await cache.getScoreboard("nba", "url", 100 + GAME_CACHE_TTL_MS - 1))
-      .toEqual([finalEvent]);
-    expect(await cache.getScoreboard("nba", "url", 100 + GAME_CACHE_TTL_MS))
-      .toBeNull();
+    expect(
+      await cache.getScoreboard("nba", "url", 100 + GAME_CACHE_TTL_MS - 1),
+    ).toEqual([finalEvent]);
+    expect(
+      await cache.getScoreboard("nba", "url", 100 + GAME_CACHE_TTL_MS),
+    ).toBeNull();
     expect(storage.delete).toHaveBeenCalledOnce();
   });
 
   it("ignores malformed records and tolerates unavailable or failing storage", async () => {
-    const malformedStorage = makeStorage([{
-      key: "scoreboard:nba:url",
-      savedAt: Number.NaN,
-      value: [finalEvent],
-    }]);
+    const malformedStorage = makeStorage([
+      {
+        key: "scoreboard:nba:url",
+        savedAt: Number.NaN,
+        value: [finalEvent],
+      },
+    ]);
     const cache = createGameCache(malformedStorage.storage);
     expect(await cache.getScoreboard("nba", "url", 100)).toBeNull();
 
     const failingStorage: GameCacheStorage = {
-      get: vi.fn(async () => { throw new Error("blocked"); }),
-      put: vi.fn(async () => { throw new Error("quota"); }),
-      delete: vi.fn(async () => { throw new Error("blocked"); }),
+      get: vi.fn(async () => {
+        throw new Error("blocked");
+      }),
+      put: vi.fn(async () => {
+        throw new Error("quota");
+      }),
+      delete: vi.fn(async () => {
+        throw new Error("blocked");
+      }),
     };
     const unavailableCache = createGameCache(null);
     const failingCache = createGameCache(failingStorage);
 
-    await expect(unavailableCache.getScoreboard("nba", "url")).resolves.toBeNull();
-    await expect(unavailableCache.saveScoreboard("nba", "url", [finalEvent])).resolves.toBeUndefined();
+    await expect(
+      unavailableCache.getScoreboard("nba", "url"),
+    ).resolves.toBeNull();
+    await expect(
+      unavailableCache.saveScoreboard("nba", "url", [finalEvent]),
+    ).resolves.toBeUndefined();
     await expect(failingCache.getScoreboard("nba", "url")).resolves.toBeNull();
-    await expect(failingCache.saveScoreboard("nba", "url", [finalEvent])).resolves.toBeUndefined();
+    await expect(
+      failingCache.saveScoreboard("nba", "url", [finalEvent]),
+    ).resolves.toBeUndefined();
   });
 });
