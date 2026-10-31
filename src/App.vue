@@ -200,7 +200,7 @@
 
     <!-- DYNAMIC CONTROLS BAR (LEFT-ALIGNED, HEADERS REMOVED) -->
     <div
-      class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-6"
+      class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-1"
     >
       <div class="flex flex-wrap items-center gap-3 justify-start w-full">
         <!-- CFB CONFERENCE DROPDOWN -->
@@ -337,6 +337,32 @@
         </button>
       </div>
     </div>
+
+    <div
+      role="status"
+      :aria-label="refreshIndicatorFailed ? 'Refresh failed' : 'Refreshing data'"
+      :aria-hidden="!refreshIndicatorActive && !refreshIndicatorFailed"
+      class="relative mb-5 h-px w-full overflow-hidden"
+    >
+      <div
+        v-if="refreshIndicatorActive || refreshIndicatorFailed"
+        class="absolute inset-0"
+        :class="[
+          refreshIndicatorFailed ? 'bg-orange-400' : 'bg-green-400',
+          refreshIndicatorActive && !refreshIndicatorFailed
+            ? 'scoreboard-refresh-sweep'
+            : '',
+        ]"
+      ></div>
+    </div>
+
+    <p
+      v-if="viewMode !== 'standings' && scoreboardRefreshStale && lastSuccessfulRefreshAt !== null"
+      role="status"
+      class="mb-4 text-xs text-zinc-500"
+    >
+      Last updated at {{ formatLastUpdatedAt(lastSuccessfulRefreshAt) }}
+    </p>
 
     <!-- MAIN SCORE CARD GRID -->
     <section v-if="viewMode === 'standings'" class="space-y-6">
@@ -874,6 +900,13 @@
             v-if="modalView === 'game' && modalData"
             class="p-6 border-b border-zinc-800 bg-zinc-950/40"
           >
+            <p
+              v-if="summaryRefreshStale && lastSuccessfulSummaryRefreshAt !== null"
+              role="status"
+              class="mb-3 text-xs text-zinc-500"
+            >
+              Last updated at {{ formatLastUpdatedAt(lastSuccessfulSummaryRefreshAt) }}
+            </p>
             <div
               class="grid grid-cols-7 items-center justify-items-center gap-1 w-full mb-5 pb-3 border-b border-zinc-800/40"
             >
@@ -1720,6 +1753,7 @@ import { useGameDetails } from "./composables/useGameDetails";
 import { useTeamDetails } from "./composables/useTeamDetails";
 import {
   formatGameTime as formatGameTimeUtil,
+  formatLastUpdatedAt as formatLastUpdatedAtUtil,
   getCompetitor as getCompetitorUtil,
   getGameState as getGameStateUtil,
   getSeriesSummary as getSeriesSummaryUtil,
@@ -1761,6 +1795,7 @@ import {
 } from "./domain/team.js";
 import { resolveLeague } from "./plugins/registry";
 import { useStandings } from "./composables/useStandings";
+import { useRefreshNotice } from "./composables/useRefreshNotice";
 import type { AppHistoryEntry, AppView } from "./app/navigation";
 import type { GameDetailTeam } from "./domain/game";
 import type { LeagueId } from "./plugins/registry";
@@ -1849,6 +1884,9 @@ export default {
       modalLoading,
       modalData,
       modalGameStatus,
+      refreshing: summaryRefreshing,
+      refreshFailed: summaryRefreshFailed,
+      lastSuccessfulRefreshAt: lastSuccessfulSummaryRefreshAt,
       matchupSchedules,
       matchupLoading,
       fetchGameDetail,
@@ -1885,11 +1923,40 @@ export default {
     const {
       games,
       loading,
+      refreshing: scoreboardRefreshing,
+      refreshFailed: scoreboardRefreshFailed,
+      lastSuccessfulRefreshAt,
       fetchScoreboard,
       invalidateScoreboard,
     } = useScoreboard(
       { selectedLeague, selectedDate, week, seasonType, selectedGroup, isDateLeague },
       replaceCurrentNavigationEntry,
+    );
+    const hasLiveScoreboardGame = computed(() =>
+      games.value.some((game) => getGameStateUtil(game) === "in"),
+    );
+    const scoreboardRefreshStale = useRefreshNotice(
+      lastSuccessfulRefreshAt,
+      hasLiveScoreboardGame,
+    );
+    const summaryRefreshStale = useRefreshNotice(
+      lastSuccessfulSummaryRefreshAt,
+      computed(() =>
+        showModal.value &&
+        modalView.value === "game" &&
+        modalGameStatus.value === "in",
+      ),
+    );
+    const hasOpenGameModal = computed(() =>
+      showModal.value && modalView.value === "game",
+    );
+    const refreshIndicatorActive = computed(() =>
+      scoreboardRefreshing.value ||
+      (hasOpenGameModal.value && summaryRefreshing.value),
+    );
+    const refreshIndicatorFailed = computed(() =>
+      scoreboardRefreshFailed.value ||
+      (hasOpenGameModal.value && summaryRefreshFailed.value),
     );
     const {
       settingsOpen,
@@ -2249,6 +2316,7 @@ export default {
     };
 
     const startPoller = () => {
+      if (pollingInterval !== null) clearInterval(pollingInterval);
       pollingInterval = setInterval(() => {
         fetchScoreboard(false);
         if (
@@ -2272,8 +2340,9 @@ export default {
         selectedDate.value = new Date().toLocaleDateString("en-CA");
       }
       pushNavigationEntry();
+      if (pollingInterval !== null) clearInterval(pollingInterval);
       await fetchScoreboard(true);
-      triggerImmediateFetch();
+      startPoller();
       if (viewMode.value === "standings") await fetchStandings();
     };
 
@@ -2374,6 +2443,13 @@ export default {
       isDateLeague,
       games,
       loading,
+      lastSuccessfulRefreshAt,
+      lastSuccessfulSummaryRefreshAt,
+      scoreboardRefreshStale,
+      summaryRefreshStale,
+      refreshIndicatorActive,
+      refreshIndicatorFailed,
+      formatLastUpdatedAt: formatLastUpdatedAtUtil,
       viewMode,
       standings,
       standingsLoading,
