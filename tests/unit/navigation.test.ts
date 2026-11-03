@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   canGoBackWithinApp,
+  getDefaultAppView,
   initializeAppHistory,
   pushAppHistoryEntry,
   reconcileAppSnapshot,
   readAppHistoryEntry,
   replaceAppHistoryEntry,
+  shouldFetchScoreboardForSportSelection,
 } from "../../src/app/navigation";
 import type { AppHistory, AppSnapshot } from "../../src/app/navigation";
 
@@ -44,6 +46,21 @@ function makeHistory(state: unknown = { host: "preserved" }) {
 }
 
 describe("navigation history helpers", () => {
+  it("defaults to My Teams when available and refreshes on sport view entry", () => {
+    expect(getDefaultAppView(true)).toBe("my-teams");
+    expect(getDefaultAppView(false)).toBe("scoreboard");
+    expect(shouldFetchScoreboardForSportSelection("my-teams", true)).toBe(true);
+    expect(shouldFetchScoreboardForSportSelection("standings", true)).toBe(
+      true,
+    );
+    expect(shouldFetchScoreboardForSportSelection("scoreboard", false)).toBe(
+      true,
+    );
+    expect(shouldFetchScoreboardForSportSelection("scoreboard", true)).toBe(
+      false,
+    );
+  });
+
   it("redirects history snapshots away from hidden leagues and closes their modal", () => {
     const snapshot = makeSnapshot({
       league: "nfl",

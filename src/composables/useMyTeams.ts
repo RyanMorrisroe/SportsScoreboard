@@ -1,11 +1,17 @@
 import { computed, ref, type Ref } from "vue";
 import {
   fetchJson as requestJson,
+  getGameSummaryUrl,
   getTeamUrls,
   type FetchJsonOptions,
 } from "../api/espn";
 import { LEAGUE_IDS } from "../app/leagues";
 import type { FavoriteTeam, Preferences } from "../app/preferences";
+import {
+  buildGameDetail,
+  type GameDetail,
+  type GameDetailTeam,
+} from "../domain/game";
 import {
   filterMyTeamsScheduleEntries,
   normalizeSchedule,
@@ -31,6 +37,16 @@ interface TeamScheduleState extends FavoriteSchedule {
 export interface MyTeamsGame extends NormalizedScheduleEntry {
   league: LeagueId;
   favoriteTeams: FavoriteTeam[];
+  awayTeam?: GameDetailTeam;
+  homeTeam?: GameDetailTeam;
+  summaryCachedAt?: number | null;
+}
+
+interface LiveGameDetails {
+  detail: GameDetail;
+  state: string;
+  status: string;
+  cachedAt: number | null;
 }
 
 interface MyTeamsDependencies {
@@ -43,9 +59,53 @@ interface MyTeamsDependencies {
   now: () => number;
 }
 
+type JsonObject = Record<string, unknown>;
+
+function asObject(value: unknown): JsonObject {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonObject)
+    : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function getString(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value ? value : fallback;
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return "Unable to load schedule.";
+}
+
+function getSummaryStatus(raw: unknown): { state: string; status: string } {
+  const header = asObject(asObject(raw).header);
+  const competition = asObject(asArray(header.competitions)[0]);
+  const status = asObject(asObject(competition.status).type);
+  return {
+    state: getString(status.state).toLowerCase(),
+    status: getString(
+      status.shortDetail,
+      getString(status.detail, getString(status.description)),
+    ),
+  };
+}
+
+function hasSummaryScores(raw: unknown): boolean {
+  const header = asObject(asObject(raw).header);
+  const competition = asObject(asArray(header.competitions)[0]);
+  const competitors = asArray(competition.competitors).map(asObject);
+  return (["away", "home"] as const).every((side) => {
+    const score = competitors.find(
+      (competitor) => competitor.homeAway === side,
+    )?.score;
+    return (
+      (typeof score === "string" && score.trim() !== "") ||
+      (typeof score === "number" && Number.isFinite(score))
+    );
+  });
 }
 
 async function runWithConcurrency<T>(
@@ -73,8 +133,10 @@ export function useMyTeams(
   const fetchImpl = dependencies.fetchImpl ?? globalThis.fetch;
   const getNow = dependencies.now ?? Date.now;
   const scheduleStates = ref<Record<string, TeamScheduleState>>({});
+  const liveDetails = ref<Record<string, LiveGameDetails>>({});
   const hasLoaded = ref(false);
   const now = ref(getNow());
+  const activeSummaryRequests = new Map<string, Promise<void>>();
   let activeLoad: Promise<void> | null = null;
   let loadAgain = false;
   let forceAgain = false;
@@ -101,7 +163,7 @@ export function useMyTeams(
     }),
   );
 
-  const games = computed<MyTeamsGame[]>(() => {
+  const scheduleGames = computed<MyTeamsGame[]>(() => {
     const byEvent = new Map<string, MyTeamsGame>();
     for (const favorite of favoriteSchedules.value) {
       const entries = scheduleStates.value[favorite.key]?.entries ?? [];
@@ -134,6 +196,21 @@ export function useMyTeams(
       );
     });
   });
+
+  const games = computed<MyTeamsGame[]>(() =>
+    scheduleGames.value.map((game) => {
+      const details = liveDetails.value[`${game.league}:${game.id}`];
+      if (!details) return game;
+      return {
+        ...game,
+        state: details.state || game.state,
+        status: details.status || game.status,
+        awayTeam: details.detail.teams.away,
+        homeTeam: details.detail.teams.home,
+        summaryCachedAt: details.cachedAt,
+      };
+    }),
+  );
 
   const loading = computed(() =>
     teamSchedules.value.some((schedule) => schedule.loading),
@@ -180,6 +257,73 @@ export function useMyTeams(
     }
   }
 
+  function isStillLiveScheduleEvent(eventKey: string): boolean {
+    return scheduleGames.value.some(
+      (game) => `${game.league}:${game.id}` === eventKey && game.state === "in",
+    );
+  }
+
+  async function fetchLiveSummary(game: MyTeamsGame): Promise<void> {
+    const eventKey = `${game.league}:${game.id}`;
+    const activeRequest = activeSummaryRequests.get(eventKey);
+    if (activeRequest) {
+      await activeRequest;
+      return;
+    }
+
+    const request = (async () => {
+      let cachedAt: number | null = null;
+      try {
+        const payload = await fetchJson(
+          getGameSummaryUrl(game.league, String(game.id)),
+          fetchImpl,
+          {
+            onCacheFallback: (_url, savedAt) => {
+              cachedAt = savedAt;
+            },
+          },
+        );
+        if (!isStillLiveScheduleEvent(eventKey) || !hasSummaryScores(payload))
+          return;
+        const summaryStatus = getSummaryStatus(payload);
+        const detail = buildGameDetail(payload, game.id);
+        liveDetails.value = {
+          ...liveDetails.value,
+          [eventKey]: {
+            detail,
+            state: summaryStatus.state || game.state,
+            status: summaryStatus.status || game.status,
+            cachedAt,
+          },
+        };
+      } catch {
+        // Keep the schedule or last successful summary visible.
+      }
+    })();
+    activeSummaryRequests.set(eventKey, request);
+    try {
+      await request;
+    } finally {
+      if (activeSummaryRequests.get(eventKey) === request) {
+        activeSummaryRequests.delete(eventKey);
+      }
+    }
+  }
+
+  async function loadLiveSummaries(): Promise<void> {
+    const games = scheduleGames.value;
+    const displayedKeys = new Set(
+      games.map((game) => `${game.league}:${game.id}`),
+    );
+    liveDetails.value = Object.fromEntries(
+      Object.entries(liveDetails.value).filter(([key]) =>
+        displayedKeys.has(key),
+      ),
+    );
+    const uniqueLiveGames = games.filter((game) => game.state === "in");
+    await Promise.all(uniqueLiveGames.map(fetchLiveSummary));
+  }
+
   async function loadSchedules(force: boolean): Promise<void> {
     const favorites = favoriteSchedules.value;
     const favoriteKeys = new Set(favorites.map(({ key }) => key));
@@ -220,6 +364,7 @@ export function useMyTeams(
       do {
         loadAgain = false;
         await loadSchedules(nextForce);
+        await loadLiveSummaries();
         nextForce = forceAgain;
         forceAgain = false;
       } while (loadAgain);

@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import { useMyTeams } from "../../src/composables/useMyTeams";
+import type { FetchJsonOptions } from "../../src/api/espn";
 import {
   createDefaultPreferences,
   toggleFavoriteTeam,
@@ -62,6 +63,33 @@ function scheduleEvent(
         ],
       },
     ],
+  };
+}
+
+function liveSummaryEvent() {
+  return {
+    id: "event-1",
+    header: {
+      competitions: [
+        {
+          status: { type: { state: "in", shortDetail: "2nd Qtr" } },
+          competitors: [
+            {
+              id: "12",
+              homeAway: "home",
+              score: "24",
+              team: { displayName: "Home Team", logos: [{ href: "home.png" }] },
+            },
+            {
+              id: "34",
+              homeAway: "away",
+              score: "17",
+              team: { displayName: "Away Team", logos: [{ href: "away.png" }] },
+            },
+          ],
+        },
+      ],
+    },
   };
 }
 
@@ -214,5 +242,124 @@ describe("useMyTeams", () => {
       "34",
     ]);
     expect(teams.games.value.map(({ id }) => id)).toEqual(["new-event"]);
+  });
+
+  it("loads one live summary per event and maps scores by home and away", async () => {
+    const preferences = ref(createDefaultPreferences());
+    preferences.value = addFavorite(
+      preferences.value,
+      "nfl",
+      "12",
+      "Home Team",
+    );
+    preferences.value = addFavorite(
+      preferences.value,
+      "nfl",
+      "34",
+      "Away Team",
+    );
+    const fetchJson = vi.fn(async (url: string) =>
+      url.includes("/summary?")
+        ? liveSummaryEvent()
+        : { events: [scheduleEvent("event-1", "in")] },
+    );
+    const teams = useMyTeams(preferences, { fetchJson, now: () => NOW });
+
+    await teams.load();
+
+    const game = teams.games.value[0];
+    expect(
+      fetchJson.mock.calls.filter(([url]) => url.includes("/summary?")),
+    ).toHaveLength(1);
+    expect(game).toMatchObject({
+      state: "in",
+      status: "2nd Qtr",
+      awayTeam: { name: "Away Team", score: "17" },
+      homeTeam: { name: "Home Team", score: "24" },
+      favoriteTeams: [{ id: "12" }, { id: "34" }],
+    });
+  });
+
+  it("keeps schedule data visible when a live summary request fails", async () => {
+    const preferences = ref(
+      addFavorite(createDefaultPreferences(), "nfl", "12", "Home Team"),
+    );
+    const fetchJson = vi.fn(async (url: string) => {
+      if (url.includes("/summary?")) throw new Error("Summary unavailable");
+      return { events: [scheduleEvent("event-1", "in")] };
+    });
+    const teams = useMyTeams(preferences, { fetchJson, now: () => NOW });
+
+    await teams.load();
+
+    expect(teams.games.value[0]).toMatchObject({
+      state: "in",
+      status: "In Progress",
+      score: "17-10",
+    });
+    expect(teams.games.value[0]?.awayTeam).toBeUndefined();
+  });
+
+  it("records cache provenance when a summary falls back to saved data", async () => {
+    const preferences = ref(
+      addFavorite(createDefaultPreferences(), "nfl", "12", "Home Team"),
+    );
+    const cachedAt = NOW - 60_000;
+    const fetchJson = vi.fn(
+      async (
+        url: string,
+        _fetchImpl: typeof fetch,
+        options: FetchJsonOptions,
+      ) => {
+        if (url.includes("/summary?")) {
+          options.onCacheFallback?.(url, cachedAt);
+          return liveSummaryEvent();
+        }
+        return { events: [scheduleEvent("event-1", "in")] };
+      },
+    );
+    const teams = useMyTeams(preferences, { fetchJson, now: () => NOW });
+
+    await teams.load();
+
+    expect(teams.games.value[0]?.summaryCachedAt).toBe(cachedAt);
+    expect(teams.games.value[0]?.awayTeam?.score).toBe("17");
+  });
+
+  it("does not overlap a live summary request across refresh ticks", async () => {
+    const preferences = ref(
+      addFavorite(createDefaultPreferences(), "nfl", "12", "Home Team"),
+    );
+    let releaseFirstSummary: () => void = () => {};
+    const firstSummary = new Promise<void>((resolve) => {
+      releaseFirstSummary = resolve;
+    });
+    let summaryCalls = 0;
+    let activeSummaryRequests = 0;
+    let maximumActiveSummaryRequests = 0;
+    const fetchJson = vi.fn(async (url: string) => {
+      if (!url.includes("/summary?")) {
+        return { events: [scheduleEvent("event-1", "in")] };
+      }
+      summaryCalls++;
+      activeSummaryRequests++;
+      maximumActiveSummaryRequests = Math.max(
+        maximumActiveSummaryRequests,
+        activeSummaryRequests,
+      );
+      if (summaryCalls === 1) await firstSummary;
+      activeSummaryRequests--;
+      return liveSummaryEvent();
+    });
+    const teams = useMyTeams(preferences, { fetchJson, now: () => NOW });
+    const initialLoad = teams.load();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const refreshLoad = teams.load(true);
+    releaseFirstSummary();
+    await Promise.all([initialLoad, refreshLoad]);
+
+    expect(summaryCalls).toBe(2);
+    expect(maximumActiveSummaryRequests).toBe(1);
   });
 });
