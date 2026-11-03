@@ -7,6 +7,17 @@ const SUPPORTED_LEAGUES = new Set<string>(LEAGUE_IDS);
 
 export type AppView = "scoreboard" | "standings" | "tv-lineup" | "my-teams";
 
+export function getDefaultAppView(showMyTeams: boolean): AppView {
+  return showMyTeams ? "my-teams" : "scoreboard";
+}
+
+export function shouldFetchScoreboardForSportSelection(
+  currentView: AppView,
+  sameLeague: boolean,
+): boolean {
+  return currentView !== "scoreboard" || !sameLeague;
+}
+
 export type AppModalSnapshot =
   | { type: "game"; eventId: string }
   | {

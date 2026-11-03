@@ -856,11 +856,76 @@
             v-for="game in group.games"
             :key="`${game.league}:${game.id}`"
             type="button"
-            :aria-label="`${game.favoriteTeams.map((team) => team.name).join(' and ')}, ${game.status}, ${game.opponent}, ${game.score}`"
+            :aria-label="`${game.favoriteTeams.map((team) => team.name).join(' and ')}, ${game.status}, ${game.awayTeam?.name ?? game.opponent}, ${game.awayTeam?.score ?? game.score}, ${game.homeTeam?.name ?? ''}, ${game.homeTeam?.score ?? ''}`"
             @click="openMyTeamsGame(game)"
-            class="flex min-h-[88px] items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/70 p-3 text-left hover:bg-zinc-800"
+            class="flex min-h-[88px] items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4 text-left shadow-sm transition-all duration-150 hover:bg-zinc-800/60 active:bg-zinc-800/90"
           >
-            <div class="min-w-0">
+            <div
+              v-if="game.awayTeam && game.homeTeam"
+              class="min-w-0 flex-1 space-y-2.5"
+            >
+              <div
+                class="mb-3 flex items-center justify-between gap-2 border-b border-zinc-800/60 pb-3 text-xs"
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="game.state === 'in'"
+                    class="live-pulse rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-black tracking-widest text-white"
+                    >LIVE</span
+                  >
+                  <span class="font-medium text-zinc-300">{{
+                    game.status
+                  }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-zinc-500">
+                  <span v-if="game.summaryCachedAt" class="text-amber-300">
+                    Saved {{ formatLastUpdatedAt(game.summaryCachedAt) }}
+                  </span>
+                  <span
+                    >{{ getLeague(game.league)?.label }} · {{ game.date }}</span
+                  >
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-2">
+                  <img
+                    v-if="game.awayTeam.logo"
+                    :src="game.awayTeam.logo"
+                    :alt="`${game.awayTeam.name} logo`"
+                    class="h-6 w-6 shrink-0 object-contain"
+                    loading="lazy"
+                  />
+                  <span class="truncate text-sm font-bold text-white">
+                    {{ game.awayTeam.name }}
+                  </span>
+                </div>
+                <span
+                  class="shrink-0 pl-4 font-mono text-xl font-black text-white"
+                >
+                  {{ game.awayTeam.score }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-2">
+                  <img
+                    v-if="game.homeTeam.logo"
+                    :src="game.homeTeam.logo"
+                    :alt="`${game.homeTeam.name} logo`"
+                    class="h-6 w-6 shrink-0 object-contain"
+                    loading="lazy"
+                  />
+                  <span class="truncate text-sm font-bold text-white">
+                    {{ game.homeTeam.name }}
+                  </span>
+                </div>
+                <span
+                  class="shrink-0 pl-4 font-mono text-xl font-black text-white"
+                >
+                  {{ game.homeTeam.score }}
+                </span>
+              </div>
+            </div>
+            <div v-else class="min-w-0">
               <div class="mb-1 flex flex-wrap items-center gap-1.5">
                 <span
                   v-for="team in game.favoriteTeams"
@@ -884,7 +949,10 @@
                 {{ getLeague(game.league)?.label }} · {{ game.date }}
               </p>
             </div>
-            <div class="shrink-0 text-right">
+            <div
+              v-if="!game.awayTeam || !game.homeTeam"
+              class="shrink-0 text-right"
+            >
               <span
                 v-if="game.state === 'in'"
                 class="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-black text-white"
@@ -904,7 +972,7 @@
                 >{{ game.status }}</span
               >
               <p
-                v-if="game.state !== 'pre'"
+                v-if="game.state !== 'pre' && !game.awayTeam && !game.homeTeam"
                 class="mt-1 font-mono text-sm font-black text-white"
               >
                 {{ game.score }}
@@ -2568,6 +2636,10 @@ import {
 import { resolveLeague } from "./plugins/registry";
 import { useStandings } from "./composables/useStandings";
 import { useRefreshNotice } from "./composables/useRefreshNotice";
+import {
+  getDefaultAppView,
+  shouldFetchScoreboardForSportSelection,
+} from "./app/navigation";
 import type { AppHistoryEntry, AppView } from "./app/navigation";
 import type { GameDetailTeam } from "./domain/game";
 import type { LeagueId } from "./plugins/registry";
@@ -2644,7 +2716,7 @@ export default {
     const isDateLeague = computed(
       () => leagueBehavior.value?.schedule.mode === "date",
     );
-    const viewMode = ref<AppView>("scoreboard");
+    const viewMode = ref<AppView>(getDefaultAppView(showMyTeamsTab.value));
     const {
       standings,
       standingsLoading,
@@ -2883,16 +2955,21 @@ export default {
       if (viewMode.value === view) return;
       viewMode.value = view;
       pushNavigationEntry();
+      if (view === "scoreboard") await triggerImmediateFetch();
       if (view === "standings") await fetchStandings();
-      if (view === "my-teams") await loadMyTeams();
+      if (view === "my-teams") await loadMyTeams(true);
     };
 
     const selectLeagueTab = async (league: LeagueId) => {
-      if (viewMode.value === "my-teams") {
-        if (selectedLeague.value === league) {
-          await setDashboardView("scoreboard");
-          return;
-        }
+      const sameLeague = selectedLeague.value === league;
+      if (!shouldFetchScoreboardForSportSelection(viewMode.value, sameLeague)) {
+        return;
+      }
+      if (sameLeague) {
+        await setDashboardView("scoreboard");
+        return;
+      }
+      if (viewMode.value !== "scoreboard") {
         viewMode.value = "scoreboard";
       }
       await switchTab(league);
@@ -3081,7 +3158,7 @@ export default {
         fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
       ];
       if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
-      if (snapshot.view === "my-teams") pendingRequests.push(loadMyTeams());
+      if (snapshot.view === "my-teams") pendingRequests.push(loadMyTeams(true));
       if (snapshot.modal?.type === "game") {
         openModal({ id: snapshot.modal.eventId }, { pushHistory: false });
       } else if (snapshot.modal?.type === "team") {
@@ -3237,17 +3314,13 @@ export default {
       getPlayerBoxScoreUtil(modalData.value, selectedLeague.value),
     );
 
-    const triggerImmediateFetch = async () => {
-      if (pollingInterval !== null) clearInterval(pollingInterval);
-      await fetchScoreboard(false);
-      startPoller();
-    };
+    const triggerImmediateFetch = () => fetchScoreboard(false);
 
     const startPoller = () => {
       if (pollingInterval !== null) clearInterval(pollingInterval);
       pollingInterval = setInterval(() => {
-        fetchScoreboard(false);
-        if (viewMode.value === "my-teams" && !myTeamSchedulesLoading.value) {
+        void fetchScoreboard(false);
+        if (viewMode.value === "my-teams") {
           void loadMyTeams(true);
         }
         if (
@@ -3255,7 +3328,7 @@ export default {
           modalView.value === "game" &&
           modalData.value?.id
         ) {
-          fetchGameDetail(modalData.value.id);
+          void fetchGameDetail(modalData.value.id);
         }
       }, 15000);
     };
@@ -3277,9 +3350,7 @@ export default {
       }
       if (pushHistory) {
         pushNavigationEntry();
-        if (pollingInterval !== null) clearInterval(pollingInterval);
         await fetchScoreboard(true);
-        startPoller();
       }
       if (viewMode.value === "standings") await fetchStandings();
     };
@@ -3361,8 +3432,8 @@ export default {
 
     onMounted(async () => {
       window.addEventListener("popstate", handlePopState);
-      await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       startPoller();
+      await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       void checkForUpdates(true);
     });
 
