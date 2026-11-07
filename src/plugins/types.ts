@@ -4,7 +4,7 @@ export type LeagueScheduleMode = "date" | "week";
 
 export type LeaguePeriodKind = "inning" | "period";
 
-export type LeaguePeriodLabelStyle = "inning" | "quarter" | "period";
+export type LeaguePeriodLabelStyle = "inning" | "quarter" | "half" | "period";
 
 export type LeagueOvertimeLabelStyle = "ordinal" | "overtime";
 

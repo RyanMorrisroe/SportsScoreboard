@@ -54,6 +54,22 @@ describe("play-by-play normalization", () => {
       .toBe("5th Quarter");
   });
 
+  it("labels NCAA basketball halves and overtime", () => {
+    const timeline = normalizePlayByPlay({
+      plays: [
+        { id: "first-half", period: { number: 1 }, awayScore: 0, homeScore: 0 },
+        { id: "second-half", period: { number: 2 }, awayScore: 0, homeScore: 0 },
+        { id: "overtime", period: { number: 3 }, awayScore: 0, homeScore: 0 },
+      ],
+    }, "mens-college-basketball");
+
+    expect(timeline.events.map((event) => event.periodLabel)).toEqual([
+      "1st Half",
+      "2nd Half",
+      "Overtime 1",
+    ]);
+  });
+
   it("uses a scoring-only fallback when full plays are not present", () => {
     expect(normalizePlayByPlay({ scoringPlays: fixture.football.scoringPlays }, "nfl")).toMatchObject({
       mode: "scoring-only",

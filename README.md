@@ -4,12 +4,13 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 ## Features
 
-- College Football, NFL, MLB, NBA, and NHL scoreboard tabs
+- College Football, NFL, MLB, NBA, NCAA men's basketball, and NHL scoreboard tabs
 - TV Lineup view with network rows, estimated game windows, and live scores/status
 - Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed every 15 seconds
 - Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
-- Calendar date selection for MLB, NBA, and NHL
+- Calendar date selection for MLB, NBA, NCAA men's basketball, and NHL
+- NCAA men's basketball conference filtering and two-half game scoring
 - Live, upcoming, and completed game views
 - Automatic scoreboard refresh every 15 seconds
 - Game detail modal with scores, team statistics, scoring plays, drives, and win probability when supplied by ESPN
@@ -72,7 +73,7 @@ The application is a Vue 3 single-page app. Vite compiles its component template
 - Application code, the Vue script, Vite configuration, and tests are TypeScript. `tsconfig.json` enables strict checking; the production build runs `vue-tsc` before tests and bundling.
 - The SPA calls ESPN directly with `fetch` in a browser. When hosted inside Tauri, the same API adapter uses Tauri IPC to call the native ESPN proxy.
 - ESPN payloads enter through an `unknown` boundary and are normalized by typed domain modules.
-- League behavior is composed from shared defaults, sport-family defaults, and league-specific overrides in `src/plugins/`. The current registry contains College Football, NFL, MLB, NBA, and NHL.
+- League behavior is composed from shared defaults, sport-family defaults, and league-specific overrides in `src/plugins/`. The current registry contains College Football, NFL, MLB, NBA, NCAA men's basketball, and NHL.
 - The static browser build has no backend, database, production Node.js runtime, or runtime configuration service. The native Tauri wrapper optionally supplies the ESPN proxy over IPC.
 
 The application currently builds ESPN endpoints using these patterns:
@@ -94,8 +95,8 @@ Standings:
 https://site.api.espn.com/apis/v2/sports/{sport}/{league}/standings
 ```
 
-College Football and NFL use the `football` sport path. MLB uses `baseball`, NBA uses `basketball`, and NHL uses `hockey`. Date-based leagues send the selected date as `dates=YYYYMMDD`; football uses week and season-type parameters.
-Standings use ESPN's v2 Site API endpoint, whose response contains league-specific groups and team statistics. ESPN may expose additional levels through a `group` query parameter; the app follows group IDs from the response to load those levels and renders the resulting hierarchy without assuming each sport uses the same conference or division structure.
+College Football and NFL use the `football` sport path. MLB uses `baseball`, NBA and NCAA men's basketball use `basketball`, and NHL uses `hockey`. Date-based leagues send the selected date as `dates=YYYYMMDD`; NCAA men's basketball can combine this with `groups={conferenceId}`. Football uses week and season-type parameters. NCAA men's basketball uses two regulation halves and labels overtime periods after the second half.
+Standings use ESPN's v2 Site API endpoint, whose response contains league-specific groups and team statistics. NCAA men's basketball uses a static list of ESPN conference IDs, defaults to ESPN's date scoreboard response for Top 25 games, and fetches standings by conference to avoid oversized all-conference responses. Its favorite-team picker uses the bounded ESPN team directory instead of standings. Other leagues may expose additional standings levels through a `group` query parameter; the app follows those IDs and renders each league's hierarchy without assuming every sport uses the same conference or division structure.
 
 ## Project Structure
 

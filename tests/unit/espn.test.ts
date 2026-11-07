@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   fetchJson,
+  fetchCbbTeamDirectory,
   fetchStandings,
   fetchTeamDetails,
   getGameSummaryUrl,
+  getCbbTeamDirectoryUrl,
   getLeagueBaseUrl,
   getScoreboardRequestParams,
   getScoreboardUrl,
@@ -54,6 +56,7 @@ describe("ESPN API helpers", () => {
     ["nfl", "football"],
     ["mlb", "baseball"],
     ["nba", "basketball"],
+    ["mens-college-basketball", "basketball"],
     ["nhl", "hockey"],
   ])("maps %s to %s", (league, sport) => {
     expect(getSportPath(league)).toBe(sport);
@@ -71,11 +74,23 @@ describe("ESPN API helpers", () => {
     });
   });
 
+  it("loads the bounded CBB team directory", async () => {
+    const payload = { sports: [{ leagues: [{ teams: [{ team: { id: "150" } }] }] }] };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(payload));
+
+    expect(getCbbTeamDirectoryUrl()).toBe(
+      "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000",
+    );
+    await expect(fetchCbbTeamDirectory(fetchImpl)).resolves.toEqual(payload);
+    expect(fetchImpl).toHaveBeenCalledWith(getCbbTeamDirectoryUrl());
+  });
+
   it.each([
     ["college-football", "football"],
     ["nfl", "football"],
     ["mlb", "baseball"],
     ["nba", "basketball"],
+    ["mens-college-basketball", "basketball"],
     ["nhl", "hockey"],
   ])("builds the v2 standings URL for %s", (league, sport) => {
     expect(getStandingsUrl(league)).toBe(
@@ -89,8 +104,25 @@ describe("ESPN API helpers", () => {
     );
   });
 
+  it("loads CBB standings by conference without requesting the oversized root", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ standings: { entries: [] } }));
+
+    const response = await fetchStandings("mens-college-basketball", fetchImpl) as {
+      children: Array<{ id: string; name: string }>;
+    };
+
+    expect(fetchImpl).toHaveBeenCalledTimes(32);
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      1,
+      getStandingsUrl("mens-college-basketball", { group: "1" }),
+    );
+    expect(response.children).toHaveLength(32);
+    expect(response.children[0]).toMatchObject({ id: "1", name: "America East" });
+  });
+
   it.each([
     ["nba", "basketball", "nba"],
+    ["mens-college-basketball", "basketball", "mens-college-basketball"],
     ["nhl", "hockey", "nhl"],
   ])("builds scoreboard and summary URLs for %s", (league, sport, slug) => {
     const base = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}`;
@@ -123,6 +155,20 @@ describe("ESPN API helpers", () => {
       dates: "20250320",
     });
     expect(getScoreboardRequestParams(league, { date: "" })).toEqual({});
+  });
+
+  it("includes a conference group in NCAA basketball date requests", () => {
+    expect(getScoreboardRequestParams("mens-college-basketball", {
+      date: "2025-03-20",
+      group: "2",
+    })).toEqual({
+       dates: "20250320",
+      groups: "2",
+     });
+    expect(getScoreboardRequestParams("mens-college-basketball", {
+      date: "2025-03-20",
+      group: "80",
+    })).toEqual({ dates: "20250320" });
   });
 
   it("keeps football week controls and college group filters", () => {

@@ -51,7 +51,14 @@ describe("user preferences", () => {
       autoCheckForUpdates: true,
       showMyTeams: true,
       visibleLeagues: ["nfl"],
-      leagueOrder: ["nfl", "nba", "college-football", "mlb", "nhl"],
+      leagueOrder: [
+        "nfl",
+        "nba",
+        "college-football",
+        "mlb",
+        "mens-college-basketball",
+        "nhl",
+      ],
       favoriteTeams: {
         nfl: [{ id: "12", name: "Kansas City", abbreviation: "", logo: "" }],
       },
@@ -79,6 +86,7 @@ describe("user preferences", () => {
       "college-football",
       "nfl",
       "mlb",
+      "mens-college-basketball",
       "nhl",
     ]);
   });
@@ -151,6 +159,7 @@ describe("user preferences", () => {
       "college-football",
       "mlb",
       "nba",
+      "mens-college-basketball",
       "nhl",
     ]);
     expect(moveLeague(moved, "nfl", -1).leagueOrder).toEqual(moved.leagueOrder);

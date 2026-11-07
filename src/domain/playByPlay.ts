@@ -104,7 +104,9 @@ function getPeriodLabel(period: JsonObject, league: string): string {
 
   const periodName = behavior.linescore.periodLabelStyle === "quarter"
     ? "Quarter"
-    : "Period";
+    : behavior.linescore.periodLabelStyle === "half"
+      ? "Half"
+      : "Period";
   return `${ordinal} ${periodName}`;
 }
 

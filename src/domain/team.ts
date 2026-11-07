@@ -113,3 +113,29 @@ export function getTeamRecordStats(teamPayload: unknown): TeamRecordStat[] {
     });
   });
 }
+
+export function getTeamDirectoryOptions(payload: unknown): Array<{
+  id: string;
+  name: string;
+  abbreviation: string;
+  logo: string;
+}> {
+  const sports = asArray(asObject(payload).sports).map(asObject);
+  const leagues = sports.flatMap((sport) => asArray(sport.leagues).map(asObject));
+  const teams = leagues.flatMap((league) => asArray(league.teams).map(asObject));
+
+  return teams.flatMap((entry) => {
+    const team = asObject(entry.team);
+    if (team.id === undefined || team.id === null) return [];
+    const id = String(team.id);
+    const logos = asArray(team.logos).map(asObject);
+    return [{
+      id,
+      name: getString(team.displayName, getString(team.name, id)),
+      abbreviation: getString(team.abbreviation, ""),
+      logo: getString(logos[0]?.href, getString(team.logo, "")),
+    }];
+  }).sort((first, second) =>
+    first.name.localeCompare(second.name, undefined, { sensitivity: "base" }),
+  );
+}

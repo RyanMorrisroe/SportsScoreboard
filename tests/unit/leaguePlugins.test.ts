@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLeague, LEAGUES } from "../../src/app/leagues";
+import { CBB_CONFERENCE_GROUPS, getLeague, LEAGUES } from "../../src/app/leagues";
 import {
   composeLeagueBehavior,
   LEAGUE_IDS,
@@ -13,6 +13,7 @@ describe("league plugin registry", () => {
       "nfl",
       "mlb",
       "nba",
+      "mens-college-basketball",
       "nhl",
     ]);
     expect(LEAGUES).toEqual([
@@ -20,6 +21,7 @@ describe("league plugin registry", () => {
       { id: "nfl", label: "NFL", name: "NFL" },
       { id: "mlb", label: "MLB", name: "MLB" },
       { id: "nba", label: "NBA", name: "NBA" },
+      { id: "mens-college-basketball", label: "CBB", name: "Men's College Basketball" },
       { id: "nhl", label: "NHL", name: "NHL" },
     ]);
   });
@@ -56,7 +58,26 @@ describe("league plugin registry", () => {
       linescore: { regulationPeriods: 9, kind: "inning", situation: "baseball" },
     });
     expect(resolveLeague("nba")?.linescore.regulationPeriods).toBe(4);
+    expect(resolveLeague("mens-college-basketball")).toMatchObject({
+      family: "basketball",
+      schedule: { mode: "date", supportsGroupFilter: true },
+      linescore: {
+        regulationPeriods: 2,
+        periodLabelStyle: "half",
+        overtimeLabelStyle: "overtime",
+      },
+      tvLineup: { duration: { mode: "fixed", minutes: 150 } },
+    });
     expect(resolveLeague("nhl")?.linescore.regulationPeriods).toBe(3);
+  });
+
+  it("has a static CBB conference list without an all-conferences entry", () => {
+    expect(CBB_CONFERENCE_GROUPS).toHaveLength(32);
+    expect(CBB_CONFERENCE_GROUPS).toContainEqual({
+      id: "2",
+      name: "Atlantic Coast (ACC)",
+    });
+    expect(CBB_CONFERENCE_GROUPS.some((group) => String(group.id) === "80")).toBe(false);
   });
 
   it("composes TV lineup defaults and league-specific timing policies", () => {

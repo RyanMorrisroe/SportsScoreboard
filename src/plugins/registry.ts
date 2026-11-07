@@ -93,6 +93,15 @@ export const LEAGUE_PLUGINS = {
   nfl: { label: "NFL", name: "NFL", family: "football" },
   mlb: { label: "MLB", name: "MLB", family: "baseball" },
   nba: { label: "NBA", name: "NBA", family: "basketball" },
+  "mens-college-basketball": {
+    label: "CBB",
+    name: "Men's College Basketball",
+    family: "basketball",
+    overrides: {
+      schedule: { supportsGroupFilter: true },
+      linescore: { regulationPeriods: 2, periodLabelStyle: "half" },
+    },
+  },
   nhl: { label: "NHL", name: "NHL", family: "hockey" },
 } as const satisfies Record<string, LeaguePluginDefinition>;
 

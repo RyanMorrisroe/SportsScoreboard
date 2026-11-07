@@ -3,10 +3,12 @@ import details from "../fixtures/espn/nfl-team-details.json";
 import schedule from "../fixtures/espn/nfl-team-schedule.json";
 import nba from "../fixtures/espn/nba.json";
 import nhl from "../fixtures/espn/nhl.json";
+import mensCollegeBasketball from "../fixtures/espn/mens-college-basketball.json";
 import mlbBoxscoreStats from "../fixtures/espn/mlb-boxscore-stats.json";
 import playerBoxscoreSamples from "../fixtures/espn/player-boxscore-samples.json";
 import standingsFixture from "../fixtures/espn/standings.json";
 import { fetchStandings, fetchTeamDetails, getTeamUrls, getStandingsUrl } from "../../src/api/espn.js";
+import { CBB_CONFERENCE_GROUPS } from "../../src/app/leagues";
 import {
   getLinescoreHeaders,
   getLinescoreValues,
@@ -21,7 +23,8 @@ import {
 } from "../../src/app/scoreboard.js";
 import { buildGameDetail } from "../../src/domain/game.js";
 import { normalizeSchedule } from "../../src/domain/schedule.js";
-import { normalizeStandings } from "../../src/domain/standings.js";
+import { filterStandingGroups, normalizeStandings } from "../../src/domain/standings.js";
+import { normalizePlayByPlay } from "../../src/domain/playByPlay.js";
 import { getTeamRecordStats, getTeamRecords } from "../../src/domain/team.js";
 
 const jsonResponse = (body: unknown) => ({
@@ -43,6 +46,20 @@ describe("ESPN fixture contracts", () => {
       "Eastern Conference",
       "Atlantic Division",
       "Western Conference",
+    ]);
+  });
+
+  it("filters CBB fixture standings by the hardcoded ESPN conference IDs", () => {
+    expect(CBB_CONFERENCE_GROUPS).toContainEqual({ id: "2", name: "Atlantic Coast (ACC)" });
+    const groups = normalizeStandings(mensCollegeBasketball.standings, {
+      league: "mens-college-basketball",
+    });
+    expect(filterStandingGroups(groups, "mens-college-basketball", "2").map((group) => group.name)).toEqual([
+      "Atlantic Coast Conference",
+    ]);
+    expect(filterStandingGroups(groups, "mens-college-basketball", "2")[0].teams.map((team) => team.name)).toEqual([
+      "Duke Blue Devils",
+      "North Carolina Tar Heels",
     ]);
   });
 
@@ -109,6 +126,27 @@ describe("ESPN fixture contracts", () => {
         result: "",
         status: "Scheduled",
         venue: "Golden 1 Center",
+      },
+    }],
+    ["mens-college-basketball", mensCollegeBasketball, {
+      away: "SIU Edwardsville Cougars",
+      awayScore: "40",
+      homeScore: "78",
+      headers: ["1H", "2H"],
+      awayLines: ["24", "16"],
+      homeLines: ["52", "26"],
+      playerGroupTitle: "Player Stats",
+      firstStatAwayPct: (22 / (22 + 28)) * 100,
+      statBarColors: { away: "#D50032", home: "#D50032" },
+      recordLabel: "Overall Record",
+      record: "2-0",
+      schedule: {
+        opponent: "Maine Black Bears",
+        homeAway: "home",
+        score: "96-62",
+        result: "W",
+        status: "Final",
+        venue: "Cameron Indoor Stadium",
       },
     }],
     ["nhl", nhl, {
@@ -184,6 +222,16 @@ describe("ESPN fixture contracts", () => {
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(1, getTeamUrls(league, fixture.teamId).details);
     expect(fetchImpl).toHaveBeenNthCalledWith(2, getTeamUrls(league, fixture.teamId).schedule);
+  });
+
+  it("normalizes CBB play-by-play periods as halves", () => {
+    const timeline = normalizePlayByPlay(mensCollegeBasketball.summary, "mens-college-basketball");
+
+    expect(timeline.mode).toBe("all-plays");
+    expect(timeline.events.map((event) => event.periodLabel)).toEqual([
+      "1st Half",
+      "2nd Half",
+    ]);
   });
 
   it.each([

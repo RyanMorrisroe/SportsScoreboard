@@ -184,6 +184,19 @@ describe("standings normalization", () => {
     expect(filterStandingGroups(groups, "nba", "8")).toBe(groups);
   });
 
+  it("filters NCAA basketball standings by ESPN conference group ID", () => {
+    const groups = [
+      { id: "2", name: "Atlantic Coast Conference", depth: 0, columns: [], teams: [] },
+      { id: "2-subgroup", name: "ACC Subgroup", depth: 1, columns: [], teams: [] },
+      { id: "8", name: "Big 12 Conference", depth: 0, columns: [], teams: [] },
+    ];
+
+    expect(filterStandingGroups(groups, "mens-college-basketball", "2").map((group) => group.id))
+      .toEqual(["2", "2-subgroup"]);
+    expect(filterStandingGroups(groups, "mens-college-basketball", "80")).toBe(groups);
+    expect(filterStandingGroups(groups, "mens-college-basketball", "")).toBe(groups);
+  });
+
   it("hides locked division rank globally and CFB-only stats only for college football", () => {
     const [collegeFootball] = normalizeStandings(collegeFootballFixture, {
       league: "college-football",

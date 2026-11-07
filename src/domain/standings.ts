@@ -219,10 +219,17 @@ export function filterStandingGroups(
   selectedGroup: string,
 ): StandingGroup[] {
   if (
-    league !== "college-football" ||
-    selectedGroup === "80" ||
-    selectedGroup === ""
+    selectedGroup === "" ||
+    ((league === "college-football" || league === "mens-college-basketball") &&
+      selectedGroup === "80")
   ) return groups;
+
+  if (league === "mens-college-basketball") {
+    return groups.filter((group) =>
+      group.id === selectedGroup || group.id.startsWith(`${selectedGroup}-`),
+    );
+  }
+  if (league !== "college-football") return groups;
 
   const conferenceNames = COLLEGE_FOOTBALL_CONFERENCE_NAMES[selectedGroup];
   if (!conferenceNames) return groups;

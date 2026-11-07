@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import { fetchStandings } from "../../src/api/espn";
+import { fetchCbbTeamDirectory, fetchStandings } from "../../src/api/espn";
 import { createDefaultPreferences } from "../../src/app/preferences";
 import type { LeagueId } from "../../src/plugins/registry";
 import { usePreferences } from "../../src/composables/usePreferences";
 
 vi.mock("../../src/api/espn", () => ({
+  fetchCbbTeamDirectory: vi.fn(),
   fetchStandings: vi.fn(),
 }));
 
@@ -38,6 +39,17 @@ const standingsPayload = {
   ],
 };
 
+const cbbTeamDirectoryPayload = {
+  sports: [{
+    leagues: [{
+      teams: [
+        { team: { id: "150", displayName: "Duke Blue Devils", abbreviation: "DUKE", logos: [{ href: "duke.png" }] } },
+        { team: { id: "153", displayName: "North Carolina Tar Heels", abbreviation: "UNC", logos: [{ href: "unc.png" }] } },
+      ],
+    }],
+  }],
+};
+
 function setup() {
   const preferences = ref(createDefaultPreferences());
   const selectedLeague = ref<LeagueId>("nfl");
@@ -51,7 +63,22 @@ function setup() {
 
 describe("preferences composable", () => {
   beforeEach(() => {
+    vi.mocked(fetchCbbTeamDirectory).mockReset();
     vi.mocked(fetchStandings).mockReset();
+  });
+
+  it("loads CBB favorite options from the team directory instead of large standings", async () => {
+    vi.mocked(fetchCbbTeamDirectory).mockResolvedValue(cbbTeamDirectoryPayload);
+    const { subject } = setup();
+
+    await subject.loadFavoriteTeamOptions("mens-college-basketball");
+
+    expect(subject.teamOptionsByLeague.value["mens-college-basketball"]).toEqual([
+      { id: "150", name: "Duke Blue Devils", abbreviation: "DUKE", logo: "duke.png" },
+      { id: "153", name: "North Carolina Tar Heels", abbreviation: "UNC", logo: "unc.png" },
+    ]);
+    expect(fetchCbbTeamDirectory).toHaveBeenCalledTimes(1);
+    expect(fetchStandings).not.toHaveBeenCalled();
   });
 
   it("loads, caches, and filters selectable favorite teams", async () => {
@@ -145,6 +172,7 @@ describe("preferences composable", () => {
     subject.setLeagueVisibility("college-football", false);
     subject.setLeagueVisibility("mlb", false);
     subject.setLeagueVisibility("nba", false);
+    subject.setLeagueVisibility("mens-college-basketball", false);
     subject.setLeagueVisibility("nhl", false);
     expect(preferences.value.visibleLeagues).toEqual(["nhl"]);
 

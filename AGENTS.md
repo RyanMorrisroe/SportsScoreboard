@@ -18,9 +18,10 @@ This file records repository-specific context and working guidance. Follow highe
 ## Supported Leagues
 
 - College Football and NFL use the ESPN `football` sport path and week/season-type controls.
-- MLB uses `baseball`; NBA uses `basketball`; NHL uses `hockey`. These leagues use calendar dates for scoreboard requests.
-- The app currently supports NBA and NHL only for pro basketball/hockey, not NCAA or other international leagues.
-- Plugin composition order is shared defaults, then sport-family defaults, then league-specific overrides. Keep the registry limited to the five supported leagues unless product scope changes.
+- MLB uses `baseball`; NBA and NCAA men's basketball use `basketball`; NHL uses `hockey`. These leagues use calendar dates for scoreboard requests.
+- NCAA men's basketball uses ESPN league ID `41`, two regulation halves, and a static conference ID list in `src/app/leagues.ts`. Default its scoreboard to Top 25 using ESPN's default date response; send numeric `groups` only for conference-specific requests. Use the bounded team directory for favorite choices and per-conference standings requests instead of the oversized standings root.
+- The app supports NBA and NHL pro basketball/hockey and NCAA men's basketball; it does not support women's college basketball or other international leagues.
+- Plugin composition order is shared defaults, then sport-family defaults, then league-specific overrides. Keep the registry limited to the six supported leagues unless product scope changes.
 
 ## ESPN Payload Notes
 
