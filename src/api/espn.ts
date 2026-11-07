@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { gameCache, type GameCache } from "../app/gameCache";
+import { CBB_CONFERENCE_GROUPS } from "../app/leagues";
 import { resolveLeague } from "../plugins/registry";
 
 const ESPN_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports";
@@ -52,6 +53,10 @@ export function getStandingsUrl(
   return group ? `${url}?group=${encodeURIComponent(group)}` : url;
 }
 
+export function getCbbTeamDirectoryUrl(): string {
+  return `${getLeagueBaseUrl("mens-college-basketball")}/teams?limit=1000`;
+}
+
 export function getTeamUrls(
   league: string,
   teamId: string,
@@ -78,7 +83,16 @@ export function getScoreboardRequestParams(
 ): Record<string, QueryValue> {
   const behavior = resolveLeague(league);
   if (behavior?.schedule.mode === "date") {
-    return date ? { dates: String(date).replace(/-/g, "") } : {};
+    const params: Record<string, QueryValue> = {};
+    if (date) params.dates = String(date).replace(/-/g, "");
+    if (
+      behavior.schedule.supportsGroupFilter &&
+      group &&
+      !(league === "mens-college-basketball" && group === "80")
+    ) {
+      params.groups = group;
+    }
+    return params;
   }
 
   const params: Record<string, QueryValue> = {};
@@ -183,6 +197,26 @@ export async function fetchStandings(
   fetchImpl: typeof fetch = fetch,
   options: FetchJsonOptions = {},
 ): Promise<unknown> {
+  if (league === "mens-college-basketball") {
+    const children = await Promise.all(
+      CBB_CONFERENCE_GROUPS.map(async ({ id, name }) => {
+        const group = await fetchJson(
+          getStandingsUrl(league, { group: id }),
+          fetchImpl,
+          options,
+        );
+        return isJsonObject(group)
+          ? {
+              ...group,
+              id,
+              name: typeof group.name === "string" ? group.name : name,
+            }
+          : { id, name };
+      }),
+    );
+    return { children };
+  }
+
   const standings = await fetchJson(
     getStandingsUrl(league),
     fetchImpl,
@@ -219,4 +253,11 @@ export async function fetchStandings(
     }),
   );
   return { ...standings, children };
+}
+
+export async function fetchCbbTeamDirectory(
+  fetchImpl: typeof fetch = fetch,
+  options: FetchJsonOptions = {},
+): Promise<unknown> {
+  return fetchJson(getCbbTeamDirectoryUrl(), fetchImpl, options);
 }

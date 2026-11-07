@@ -241,6 +241,13 @@ describe("scoreboard helpers", () => {
   it("uses sport-specific linescore periods and overtime labels", () => {
     expect(getLinescoreHeaders("mlb")).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(getLinescoreHeaders("nba")).toEqual([1, 2, 3, 4]);
+    expect(getLinescoreHeaders("mens-college-basketball")).toEqual([
+      "1H",
+      "2H",
+    ]);
+    expect(
+      getLinescoreHeaders("mens-college-basketball", Array(3).fill({})),
+    ).toEqual(["1H", "2H", "OT"]);
     expect(getLinescoreHeaders("nba", Array(6).fill({}))).toEqual([
       1,
       2,

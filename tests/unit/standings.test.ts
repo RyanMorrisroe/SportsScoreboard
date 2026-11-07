@@ -22,19 +22,21 @@ describe("standings normalization", () => {
           { key: "losses", label: "L" },
           { key: "winPercent", label: "PCT" },
         ],
-        teams: [{
-          id: "2",
-          name: "Boston Celtics",
-          abbreviation: "BOS",
-          logo: "celtics.png",
-          note: "",
-          stats: [
-            { key: "playoffSeed", label: "POS", value: "1" },
-            { key: "wins", label: "W", value: "52" },
-            { key: "losses", label: "L", value: "14" },
-            { key: "winPercent", label: "PCT", value: ".788" },
-          ],
-        }],
+        teams: [
+          {
+            id: "2",
+            name: "Boston Celtics",
+            abbreviation: "BOS",
+            logo: "celtics.png",
+            note: "",
+            stats: [
+              { key: "playoffSeed", label: "POS", value: "1" },
+              { key: "wins", label: "W", value: "52" },
+              { key: "losses", label: "L", value: "14" },
+              { key: "winPercent", label: "PCT", value: ".788" },
+            ],
+          },
+        ],
       },
       {
         id: "east-atlantic",
@@ -44,31 +46,39 @@ describe("standings normalization", () => {
           { key: "wins", label: "W" },
           { key: "divisionRecord", label: "Division Record" },
         ],
-        teams: [{
-          id: "2",
-          name: "Boston Celtics",
-          abbreviation: "BOS",
-          logo: "celtics.png",
-          note: "",
-          stats: [
-            { key: "wins", label: "W", value: 52 },
-            { key: "divisionRecord", label: "Division Record", value: "10-2" },
-          ],
-        }],
+        teams: [
+          {
+            id: "2",
+            name: "Boston Celtics",
+            abbreviation: "BOS",
+            logo: "celtics.png",
+            note: "",
+            stats: [
+              { key: "wins", label: "W", value: 52 },
+              {
+                key: "divisionRecord",
+                label: "Division Record",
+                value: "10-2",
+              },
+            ],
+          },
+        ],
       },
       {
         id: "west",
         name: "Western Conference",
         depth: 0,
         columns: [{ key: "wins", label: "Wins" }],
-        teams: [{
-          id: "9",
-          name: "Golden State Warriors",
-          abbreviation: "GS",
-          logo: "warriors.png",
-          note: "",
-          stats: [{ key: "wins", label: "Wins", value: 41 }],
-        }],
+        teams: [
+          {
+            id: "9",
+            name: "Golden State Warriors",
+            abbreviation: "GS",
+            logo: "warriors.png",
+            note: "",
+            stats: [{ key: "wins", label: "Wins", value: 41 }],
+          },
+        ],
       },
     ]);
   });
@@ -77,8 +87,18 @@ describe("standings normalization", () => {
     const teams = getUniqueStandingTeams(normalizeStandings(fixture));
 
     expect(teams).toEqual([
-      { id: "2", name: "Boston Celtics", abbreviation: "BOS", logo: "celtics.png" },
-      { id: "9", name: "Golden State Warriors", abbreviation: "GS", logo: "warriors.png" },
+      {
+        id: "2",
+        name: "Boston Celtics",
+        abbreviation: "BOS",
+        logo: "celtics.png",
+      },
+      {
+        id: "9",
+        name: "Golden State Warriors",
+        abbreviation: "GS",
+        logo: "warriors.png",
+      },
     ]);
     expect(getUniqueStandingTeams(null)).toEqual([]);
   });
@@ -86,46 +106,56 @@ describe("standings normalization", () => {
   it("handles empty, partial, and root-level standings payloads", () => {
     expect(normalizeStandings(null)).toEqual([]);
     expect(normalizeStandings({ children: [] })).toEqual([]);
-    expect(normalizeStandings({ children: [{ name: "Eastern Conference" }] })).toEqual([]);
-    expect(normalizeStandings({
-      name: "League",
-      standings: {
-        entries: [{
-          team: { displayName: "Team" },
-          stats: [
-            { name: "wins", value: 0 },
-            { name: "missing-value" },
-            null,
+    expect(
+      normalizeStandings({ children: [{ name: "Eastern Conference" }] }),
+    ).toEqual([]);
+    expect(
+      normalizeStandings({
+        name: "League",
+        standings: {
+          entries: [
+            {
+              team: { displayName: "Team" },
+              stats: [
+                { name: "wins", value: 0 },
+                { name: "missing-value" },
+                null,
+              ],
+            },
           ],
-        }],
+        },
+      }),
+    ).toMatchObject([
+      {
+        name: "League",
+        teams: [{ name: "Team", stats: [{ value: 0 }, { value: "--" }] }],
       },
-    })).toMatchObject([{
-      name: "League",
-      teams: [{ name: "Team", stats: [{ value: 0 }, { value: "--" }] }],
-    }]);
+    ]);
   });
 
   it("orders known stats consistently and keeps unknown stats at the end", () => {
     const result = normalizeStandings({
       standings: {
-        entries: [{
-          team: { displayName: "Team" },
-          stats: [
-            { name: "streak", value: "W3" },
-            { name: "conferenceRecord", value: "8-2" },
-            { name: "pointsAgainst", value: 90 },
-            { name: "winPercent", value: 0.8 },
-            { name: "losses", value: 2 },
-            { name: "playoffSeed", value: 1 },
-            { name: "customSecond", value: 2 },
-            { name: "wins", value: 8 },
-            { name: "pointsFor", value: 100 },
-            { name: "gamesBehind", value: 0 },
-            { name: "pointDifferential", value: 10 },
-            { name: "homeRecord", value: "4-1" },
-            { name: "customFirst", value: 1 },
-          ],
-        }],
+        entries: [
+          {
+            team: { displayName: "Team" },
+            stats: [
+              { name: "streak", value: "W3" },
+              { name: "conferenceRecord", value: "8-2" },
+              { name: "pointsAgainst", value: 90 },
+              { name: "winPercent", value: 0.8 },
+              { name: "losses", value: 2 },
+              { name: "playoffSeed", value: 1 },
+              { name: "customSecond", value: 2 },
+              { name: "wins", value: 8 },
+              { name: "pointsFor", value: 100 },
+              { name: "gamesBehind", value: 0 },
+              { name: "pointDifferential", value: 10 },
+              { name: "homeRecord", value: "4-1" },
+              { name: "customFirst", value: 1 },
+            ],
+          },
+        ],
       },
     });
 
@@ -168,20 +198,72 @@ describe("standings normalization", () => {
       "streak",
     ]);
     expect(getStandingPositionKey(group)).toBe("playoffSeed");
-    expect(sortStandingTeams(group?.teams ?? [], getStandingPositionKey(group), "asc")
-      .map((team) => team.name)).toEqual(["Team One", "Team Two"]);
+    expect(
+      sortStandingTeams(
+        group?.teams ?? [],
+        getStandingPositionKey(group),
+        "asc",
+      ).map((team) => team.name),
+    ).toEqual(["Team One", "Team Two"]);
   });
 
   it("filters college-football standings by the selected conference", () => {
     const groups = [
-      { id: "fbs-acc", name: "Atlantic Coast Conference", depth: 0, columns: [], teams: [] },
-      { id: "fbs-sec", name: "Southeastern Conference", depth: 0, columns: [], teams: [] },
+      {
+        id: "fbs-acc",
+        name: "Atlantic Coast Conference",
+        depth: 0,
+        columns: [],
+        teams: [],
+      },
+      {
+        id: "fbs-sec",
+        name: "Southeastern Conference",
+        depth: 0,
+        columns: [],
+        teams: [],
+      },
     ];
 
-    expect(filterStandingGroups(groups, "college-football", "8").map((group) => group.id))
-      .toEqual(["fbs-sec"]);
+    expect(
+      filterStandingGroups(groups, "college-football", "8").map(
+        (group) => group.id,
+      ),
+    ).toEqual(["fbs-sec"]);
     expect(filterStandingGroups(groups, "college-football", "80")).toBe(groups);
     expect(filterStandingGroups(groups, "nba", "8")).toBe(groups);
+  });
+
+  it("filters NCAA basketball standings by ESPN conference group ID", () => {
+    const groups = [
+      {
+        id: "2",
+        name: "Atlantic Coast Conference",
+        depth: 0,
+        columns: [],
+        teams: [],
+      },
+      {
+        id: "2-subgroup",
+        name: "ACC Subgroup",
+        depth: 1,
+        columns: [],
+        teams: [],
+      },
+      { id: "8", name: "Big 12 Conference", depth: 0, columns: [], teams: [] },
+    ];
+
+    expect(
+      filterStandingGroups(groups, "mens-college-basketball", "2").map(
+        (group) => group.id,
+      ),
+    ).toEqual(["2", "2-subgroup"]);
+    expect(filterStandingGroups(groups, "mens-college-basketball", "80")).toBe(
+      groups,
+    );
+    expect(filterStandingGroups(groups, "mens-college-basketball", "")).toBe(
+      groups,
+    );
   });
 
   it("hides locked division rank globally and CFB-only stats only for college football", () => {
@@ -192,12 +274,24 @@ describe("standings normalization", () => {
       league: "nfl",
     });
 
-    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain("lockedDivRank");
-    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain("divisionWins");
-    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain("vs Division");
-    expect(otherLeague?.columns.map((column) => column.key)).not.toContain("lockedDivRank");
-    expect(otherLeague?.columns.map((column) => column.key)).toContain("divisionWins");
-    expect(otherLeague?.columns.map((column) => column.key)).toContain("vs Division");
+    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain(
+      "lockedDivRank",
+    );
+    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain(
+      "divisionWins",
+    );
+    expect(collegeFootball?.columns.map((column) => column.key)).not.toContain(
+      "vs Division",
+    );
+    expect(otherLeague?.columns.map((column) => column.key)).not.toContain(
+      "lockedDivRank",
+    );
+    expect(otherLeague?.columns.map((column) => column.key)).toContain(
+      "divisionWins",
+    );
+    expect(otherLeague?.columns.map((column) => column.key)).toContain(
+      "vs Division",
+    );
     expect(otherLeague?.teams[0]?.stats).toContainEqual({
       key: "divisionTies",
       label: "DT",
@@ -222,17 +316,17 @@ describe("standings normalization", () => {
       { name: "No record", stats: [{ key: "record", value: "--" }] },
     ];
 
-    expect(sortStandingTeams(teams, "record", "asc").map((team) => team.name)).toEqual([
-      "Seven wins",
-      "Ten wins",
-      "No record",
-    ]);
-    expect(sortStandingTeams(teams, "record", "desc").map((team) => team.name)).toEqual([
-      "Ten wins",
-      "Seven wins",
-      "No record",
-    ]);
+    expect(
+      sortStandingTeams(teams, "record", "asc").map((team) => team.name),
+    ).toEqual(["Seven wins", "Ten wins", "No record"]);
+    expect(
+      sortStandingTeams(teams, "record", "desc").map((team) => team.name),
+    ).toEqual(["Ten wins", "Seven wins", "No record"]);
     expect(sortStandingTeams(teams, null, null)).toBe(teams);
-    expect(teams.map((team) => team.name)).toEqual(["Seven wins", "Ten wins", "No record"]);
+    expect(teams.map((team) => team.name)).toEqual([
+      "Seven wins",
+      "Ten wins",
+      "No record",
+    ]);
   });
 });

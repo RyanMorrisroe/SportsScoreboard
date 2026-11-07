@@ -108,7 +108,11 @@ export function getLinescoreHeaders(
     const regulationPeriods =
       behavior?.linescore.regulationPeriods ??
       (selectedLeague === "nhl" ? 3 : 4);
-    if (index < regulationPeriods) return index + 1;
+    if (index < regulationPeriods) {
+      return behavior?.linescore.periodLabelStyle === "half"
+        ? `${index + 1}H`
+        : index + 1;
+    }
     return index === regulationPeriods
       ? "OT"
       : `${index - regulationPeriods + 1}OT`;

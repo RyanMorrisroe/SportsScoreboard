@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from "vue";
-import { fetchStandings } from "../api/espn";
+import { fetchCbbTeamDirectory, fetchStandings } from "../api/espn";
 import { LEAGUES } from "../app/leagues";
 import {
   moveLeague,
@@ -13,6 +13,7 @@ import {
   getUniqueStandingTeams,
   normalizeStandings,
 } from "../domain/standings";
+import { getTeamDirectoryOptions } from "../domain/team";
 import type { LeagueId } from "../plugins/registry";
 
 type FavoriteTeamOption = ReturnType<typeof getUniqueStandingTeams>[number];
@@ -89,12 +90,17 @@ export function usePreferences(
       cachedAt = cachedAt === null ? savedAt : Math.min(cachedAt, savedAt);
     };
     try {
-      const response = await fetchStandings(league.id, fetchImpl, {
-        onCacheFallback,
-      });
-      const teams = getUniqueStandingTeams(
-        normalizeStandings(response, { league: league.id }),
-      );
+      const teams =
+        league.id === "mens-college-basketball"
+          ? getTeamDirectoryOptions(
+              await fetchCbbTeamDirectory(fetchImpl, { onCacheFallback }),
+            )
+          : getUniqueStandingTeams(
+              normalizeStandings(
+                await fetchStandings(league.id, fetchImpl, { onCacheFallback }),
+                { league: league.id },
+              ),
+            );
       if (!teams.length)
         throw new Error("No teams were returned for this league.");
       if (requestId !== teamOptionsRequestId) return;

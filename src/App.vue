@@ -438,7 +438,7 @@
       class="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-zinc-800 pb-5 mb-1"
     >
       <div class="flex flex-wrap items-center gap-3 justify-start w-full">
-        <!-- CFB CONFERENCE DROPDOWN -->
+        <!-- Conference dropdown -->
         <span
           v-if="leagueBehavior?.schedule.supportsGroupFilter"
           class="relative inline-block"
@@ -448,18 +448,40 @@
             @change="handleGroupChange"
             class="block min-w-[140px] appearance-none rounded-xl border border-zinc-800 bg-zinc-950 px-3 pr-9 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="80">All</option>
-            <option value="">Top 25 Rankings</option>
-            <option value="1">ACC</option>
-            <option value="4">Big 12</option>
-            <option value="5">Big Ten (B1G)</option>
-            <option value="12">C-USA</option>
-            <option value="18">Independent</option>
-            <option value="15">MAC</option>
-            <option value="17">Mountain West</option>
-            <option value="9">PAC-12</option>
-            <option value="8">SEC</option>
-            <option value="37">Sun Belt</option>
+            <option v-if="selectedLeague === 'college-football'" value="80">
+              All
+            </option>
+            <option
+              v-else-if="selectedLeague === 'mens-college-basketball'"
+              value="80"
+            >
+              Top 25
+            </option>
+            <option v-else value="">All</option>
+            <option v-if="selectedLeague === 'college-football'" value="">
+              Top 25 Rankings
+            </option>
+            <template v-if="selectedLeague === 'college-football'">
+              <option value="1">ACC</option>
+              <option value="4">Big 12</option>
+              <option value="5">Big Ten (B1G)</option>
+              <option value="12">C-USA</option>
+              <option value="18">Independent</option>
+              <option value="15">MAC</option>
+              <option value="17">Mountain West</option>
+              <option value="9">PAC-12</option>
+              <option value="8">SEC</option>
+              <option value="37">Sun Belt</option>
+            </template>
+            <template v-else-if="selectedLeague === 'mens-college-basketball'">
+              <option
+                v-for="group in CBB_CONFERENCE_GROUPS"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.name }}
+              </option>
+            </template>
           </select>
           <span
             aria-hidden="true"
@@ -2579,14 +2601,14 @@
 </template>
 
 <script lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   fetchJson,
   getScoreboardRequestParams,
   getScoreboardUrl,
 } from "./api/espn.js";
-import { LEAGUES, getLeague } from "./app/leagues";
+import { CBB_CONFERENCE_GROUPS, LEAGUES, getLeague } from "./app/leagues";
 import { loadPreferences } from "./app/preferences.js";
 import { usePreferences } from "./composables/usePreferences";
 import { useAppUpdates } from "./composables/useAppUpdates";
@@ -2712,11 +2734,15 @@ export default {
     );
     const firstVisibleLeague = (): LeagueId =>
       visibleLeagues.value[0]?.id || LEAGUES[0].id;
+    const defaultGroupForLeague = (league: LeagueId) =>
+      league === "college-football" || league === "mens-college-basketball"
+        ? "80"
+        : "";
     const selectedLeague = ref<LeagueId>(firstVisibleLeague());
     const leagueBehavior = computed(() => resolveLeague(selectedLeague.value));
     const seasonType = ref(2);
     const week = ref(1);
-    const selectedGroup = ref("80");
+    const selectedGroup = ref(defaultGroupForLeague(selectedLeague.value));
     const selectedDate = ref(new Date().toLocaleDateString("en-CA"));
     const mlbStatGroup = ref("batting");
     const isDateLeague = computed(
@@ -3358,7 +3384,7 @@ export default {
       resetTeamView();
       selectedLeague.value = league;
       resetStandings();
-      selectedGroup.value = "80";
+      selectedGroup.value = defaultGroupForLeague(league);
       if (resolveLeague(league)?.schedule.mode === "date") {
         selectedDate.value = new Date().toLocaleDateString("en-CA");
       }
@@ -3498,6 +3524,7 @@ export default {
       seasonType,
       week,
       selectedGroup,
+      CBB_CONFERENCE_GROUPS,
       selectedDate,
       mlbStatGroup,
       isDateLeague,
