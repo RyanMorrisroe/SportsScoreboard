@@ -7,7 +7,12 @@ import mensCollegeBasketball from "../fixtures/espn/mens-college-basketball.json
 import mlbBoxscoreStats from "../fixtures/espn/mlb-boxscore-stats.json";
 import playerBoxscoreSamples from "../fixtures/espn/player-boxscore-samples.json";
 import standingsFixture from "../fixtures/espn/standings.json";
-import { fetchStandings, fetchTeamDetails, getTeamUrls, getStandingsUrl } from "../../src/api/espn.js";
+import {
+  fetchStandings,
+  fetchTeamDetails,
+  getTeamUrls,
+  getStandingsUrl,
+} from "../../src/api/espn.js";
 import { CBB_CONFERENCE_GROUPS } from "../../src/app/leagues";
 import {
   getLinescoreHeaders,
@@ -23,7 +28,10 @@ import {
 } from "../../src/app/scoreboard.js";
 import { buildGameDetail } from "../../src/domain/game.js";
 import { normalizeSchedule } from "../../src/domain/schedule.js";
-import { filterStandingGroups, normalizeStandings } from "../../src/domain/standings.js";
+import {
+  filterStandingGroups,
+  normalizeStandings,
+} from "../../src/domain/standings.js";
 import { normalizePlayByPlay } from "../../src/domain/playByPlay.js";
 import { getTeamRecordStats, getTeamRecords } from "../../src/domain/team.js";
 
@@ -35,7 +43,8 @@ const jsonResponse = (body: unknown) => ({
 
 describe("ESPN fixture contracts", () => {
   it("fetches and normalizes the nested standings fixture", async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse(standingsFixture))
       .mockResolvedValueOnce(jsonResponse({ children: [] }));
 
@@ -50,21 +59,28 @@ describe("ESPN fixture contracts", () => {
   });
 
   it("filters CBB fixture standings by the hardcoded ESPN conference IDs", () => {
-    expect(CBB_CONFERENCE_GROUPS).toContainEqual({ id: "2", name: "Atlantic Coast (ACC)" });
+    expect(CBB_CONFERENCE_GROUPS).toContainEqual({
+      id: "2",
+      name: "Atlantic Coast (ACC)",
+    });
     const groups = normalizeStandings(mensCollegeBasketball.standings, {
       league: "mens-college-basketball",
     });
-    expect(filterStandingGroups(groups, "mens-college-basketball", "2").map((group) => group.name)).toEqual([
-      "Atlantic Coast Conference",
-    ]);
-    expect(filterStandingGroups(groups, "mens-college-basketball", "2")[0].teams.map((team) => team.name)).toEqual([
-      "Duke Blue Devils",
-      "North Carolina Tar Heels",
-    ]);
+    expect(
+      filterStandingGroups(groups, "mens-college-basketball", "2").map(
+        (group) => group.name,
+      ),
+    ).toEqual(["Atlantic Coast Conference"]);
+    expect(
+      filterStandingGroups(groups, "mens-college-basketball", "2")[0].teams.map(
+        (team) => team.name,
+      ),
+    ).toEqual(["Duke Blue Devils", "North Carolina Tar Heels"]);
   });
 
   it("normalizes representative team details and schedule payloads", async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse(details))
       .mockResolvedValueOnce(jsonResponse(schedule));
 
@@ -107,125 +123,170 @@ describe("ESPN fixture contracts", () => {
   });
 
   it.each([
-    ["nba", nba, {
-      away: "New York Knicks",
-      awayScore: "98",
-      homeScore: "115",
-      headers: [1, 2, 3, 4],
-      awayLines: ["19", "25", "28", "26"],
-      homeLines: ["27", "27", "31", "30"],
-      playerGroupTitle: "Player Stats",
-      firstStatAwayPct: (36 / (36 + 43)) * 100,
-      statBarColors: { away: "#f58426", home: "#008ca8" },
-      recordLabel: "Overall Record",
-      record: "0-0",
-      schedule: {
-        opponent: "Sacramento Kings",
-        homeAway: "away",
-        score: "--",
-        result: "",
-        status: "Scheduled",
-        venue: "Golden 1 Center",
+    [
+      "nba",
+      nba,
+      {
+        away: "New York Knicks",
+        awayScore: "98",
+        homeScore: "115",
+        headers: [1, 2, 3, 4],
+        awayLines: ["19", "25", "28", "26"],
+        homeLines: ["27", "27", "31", "30"],
+        playerGroupTitle: "Player Stats",
+        firstStatAwayPct: (36 / (36 + 43)) * 100,
+        statBarColors: { away: "#f58426", home: "#008ca8" },
+        recordLabel: "Overall Record",
+        record: "0-0",
+        schedule: {
+          opponent: "Sacramento Kings",
+          homeAway: "away",
+          score: "--",
+          result: "",
+          status: "Scheduled",
+          venue: "Golden 1 Center",
+        },
       },
-    }],
-    ["mens-college-basketball", mensCollegeBasketball, {
-      away: "SIU Edwardsville Cougars",
-      awayScore: "40",
-      homeScore: "78",
-      headers: ["1H", "2H"],
-      awayLines: ["24", "16"],
-      homeLines: ["52", "26"],
-      playerGroupTitle: "Player Stats",
-      firstStatAwayPct: (22 / (22 + 28)) * 100,
-      statBarColors: { away: "#D50032", home: "#D50032" },
-      recordLabel: "Overall Record",
-      record: "2-0",
-      schedule: {
-        opponent: "Maine Black Bears",
-        homeAway: "home",
-        score: "96-62",
-        result: "W",
-        status: "Final",
-        venue: "Cameron Indoor Stadium",
+    ],
+    [
+      "mens-college-basketball",
+      mensCollegeBasketball,
+      {
+        away: "SIU Edwardsville Cougars",
+        awayScore: "40",
+        homeScore: "78",
+        headers: ["1H", "2H"],
+        awayLines: ["24", "16"],
+        homeLines: ["52", "26"],
+        playerGroupTitle: "Player Stats",
+        firstStatAwayPct: (22 / (22 + 28)) * 100,
+        statBarColors: { away: "#D50032", home: "#D50032" },
+        recordLabel: "Overall Record",
+        record: "2-0",
+        schedule: {
+          opponent: "Maine Black Bears",
+          homeAway: "home",
+          score: "96-62",
+          result: "W",
+          status: "Final",
+          venue: "Cameron Indoor Stadium",
+        },
       },
-    }],
-    ["nhl", nhl, {
-      away: "New Jersey Devils",
-      awayScore: "5",
-      homeScore: "4",
-      headers: [1, 2, 3, "OT"],
-      awayLines: ["1", "3", "0", "1"],
-      homeLines: ["1", "2", "1", "0"],
-      playerGroupTitle: "Forwards",
-      firstStatAwayPct: (8 / (8 + 14)) * 100,
-      statBarColors: { away: "#e30b2b", home: "#918f90" },
-      recordLabel: "Overall Record",
-      record: "0-0-1",
-      schedule: {
-        opponent: "Boston Bruins",
-        homeAway: "home",
-        score: "3-4",
-        result: "L",
-        status: "Final/OT",
-        venue: "Canada Life Centre",
+    ],
+    [
+      "nhl",
+      nhl,
+      {
+        away: "New Jersey Devils",
+        awayScore: "5",
+        homeScore: "4",
+        headers: [1, 2, 3, "OT"],
+        awayLines: ["1", "3", "0", "1"],
+        homeLines: ["1", "2", "1", "0"],
+        playerGroupTitle: "Forwards",
+        firstStatAwayPct: (8 / (8 + 14)) * 100,
+        statBarColors: { away: "#e30b2b", home: "#918f90" },
+        recordLabel: "Overall Record",
+        record: "0-0-1",
+        schedule: {
+          opponent: "Boston Bruins",
+          homeAway: "home",
+          score: "3-4",
+          result: "L",
+          status: "Final/OT",
+          venue: "Canada Life Centre",
+        },
       },
-    }],
-  ])("normalizes %s scoreboard, summary, and team payloads", async (league, fixture, expected) => {
-    const event = fixture.scoreboard.events[0];
-    const detail = buildGameDetail(fixture.summary, fixture.summary.id);
-    const competition = fixture.summary.header.competitions[0];
-    const awayLines = competition.competitors.find((team) => team.homeAway === "away")!.linescores;
-    const homeLines = competition.competitors.find((team) => team.homeAway === "home")!.linescores;
+    ],
+  ])(
+    "normalizes %s scoreboard, summary, and team payloads",
+    async (league, fixture, expected) => {
+      const event = fixture.scoreboard.events[0];
+      const detail = buildGameDetail(fixture.summary, fixture.summary.id);
+      const competition = fixture.summary.header.competitions[0];
+      const awayLines = competition.competitors.find(
+        (team) => team.homeAway === "away",
+      )!.linescores;
+      const homeLines = competition.competitors.find(
+        (team) => team.homeAway === "home",
+      )!.linescores;
 
-    expect(getTeamName(event, "away")).toBe(expected.away);
-    expect(getTeamScore(event, "away")).toBe(expected.awayScore);
-    expect(detail.teams.away.name).toBe(expected.away);
-    expect(detail.teams.away.score).toBe(expected.awayScore);
-    expect(detail.teams.home.score).toBe(expected.homeScore);
-    expect(getTeamStatBarColors(detail.teams)).toEqual(expected.statBarColors);
-    const statComparisons = getTeamStatComparisons(
-      detail.teams.away.statistics,
-      detail.teams.home.statistics,
-    );
-    expect(statComparisons[0].awayPct).toBeCloseTo(expected.firstStatAwayPct);
-    expect(statComparisons[0].homePct).toBeCloseTo(100 - expected.firstStatAwayPct);
-    expect(getLinescoreHeaders(league, awayLines, homeLines)).toEqual(expected.headers);
-    expect(getLinescoreValues(competition, expected.headers.length)).toEqual({
-      away: expected.awayLines,
-      home: expected.homeLines,
-    });
-    expect(hasPossession(event, "home", league)).toBe(false);
-    expect(getWinProbabilityChart(detail.winprobability)).toEqual(
-      league === "nba"
-        ? { points: "50,72", singlePoint: { x: 50, y: 72 } }
-        : { points: "", singlePoint: null },
-    );
-    const playerBoxScore = getPlayerBoxScore(detail, league);
-    expect(playerBoxScore.available).toBe(true);
-    expect(playerBoxScore.teams[0].groups[0].title).toBe(expected.playerGroupTitle);
-    expect(playerBoxScore.teams[0].groups[0].players.length).toBeGreaterThan(0);
-    expect(getTeamRecords(fixture.teamDetails)).toEqual([
-      { label: expected.recordLabel, value: expected.record },
-    ]);
-    expect(getTeamRecordStats(fixture.teamDetails).length).toBeGreaterThan(0);
+      expect(getTeamName(event, "away")).toBe(expected.away);
+      expect(getTeamScore(event, "away")).toBe(expected.awayScore);
+      expect(detail.teams.away.name).toBe(expected.away);
+      expect(detail.teams.away.score).toBe(expected.awayScore);
+      expect(detail.teams.home.score).toBe(expected.homeScore);
+      expect(getTeamStatBarColors(detail.teams)).toEqual(
+        expected.statBarColors,
+      );
+      const statComparisons = getTeamStatComparisons(
+        detail.teams.away.statistics,
+        detail.teams.home.statistics,
+      );
+      expect(statComparisons[0].awayPct).toBeCloseTo(expected.firstStatAwayPct);
+      expect(statComparisons[0].homePct).toBeCloseTo(
+        100 - expected.firstStatAwayPct,
+      );
+      expect(getLinescoreHeaders(league, awayLines, homeLines)).toEqual(
+        expected.headers,
+      );
+      expect(getLinescoreValues(competition, expected.headers.length)).toEqual({
+        away: expected.awayLines,
+        home: expected.homeLines,
+      });
+      expect(hasPossession(event, "home", league)).toBe(false);
+      expect(getWinProbabilityChart(detail.winprobability)).toEqual(
+        league === "nba"
+          ? { points: "50,72", singlePoint: { x: 50, y: 72 } }
+          : { points: "", singlePoint: null },
+      );
+      const playerBoxScore = getPlayerBoxScore(detail, league);
+      expect(playerBoxScore.available).toBe(true);
+      expect(playerBoxScore.teams[0].groups[0].title).toBe(
+        expected.playerGroupTitle,
+      );
+      expect(playerBoxScore.teams[0].groups[0].players.length).toBeGreaterThan(
+        0,
+      );
+      expect(getTeamRecords(fixture.teamDetails)).toEqual([
+        { label: expected.recordLabel, value: expected.record },
+      ]);
+      expect(getTeamRecordStats(fixture.teamDetails).length).toBeGreaterThan(0);
 
-    const normalizedSchedule = normalizeSchedule(fixture.teamSchedule, fixture.teamId, "UTC");
-    expect(normalizedSchedule).toHaveLength(1);
-    expect(normalizedSchedule[0]).toMatchObject(expected.schedule);
+      const normalizedSchedule = normalizeSchedule(
+        fixture.teamSchedule,
+        fixture.teamId,
+        "UTC",
+      );
+      expect(normalizedSchedule).toHaveLength(1);
+      expect(normalizedSchedule[0]).toMatchObject(expected.schedule);
 
-    const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(fixture.teamDetails))
-      .mockResolvedValueOnce(jsonResponse(fixture.teamSchedule));
-    await expect(fetchTeamDetails(league, fixture.teamId, fetchImpl)).resolves.toEqual({
-      details: fixture.teamDetails,
-      schedule: fixture.teamSchedule,
-    });
-    expect(fetchImpl).toHaveBeenNthCalledWith(1, getTeamUrls(league, fixture.teamId).details);
-    expect(fetchImpl).toHaveBeenNthCalledWith(2, getTeamUrls(league, fixture.teamId).schedule);
-  });
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(fixture.teamDetails))
+        .mockResolvedValueOnce(jsonResponse(fixture.teamSchedule));
+      await expect(
+        fetchTeamDetails(league, fixture.teamId, fetchImpl),
+      ).resolves.toEqual({
+        details: fixture.teamDetails,
+        schedule: fixture.teamSchedule,
+      });
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        1,
+        getTeamUrls(league, fixture.teamId).details,
+      );
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        2,
+        getTeamUrls(league, fixture.teamId).schedule,
+      );
+    },
+  );
 
   it("normalizes CBB play-by-play periods as halves", () => {
-    const timeline = normalizePlayByPlay(mensCollegeBasketball.summary, "mens-college-basketball");
+    const timeline = normalizePlayByPlay(
+      mensCollegeBasketball.summary,
+      "mens-college-basketball",
+    );
 
     expect(timeline.mode).toBe("all-plays");
     expect(timeline.events.map((event) => event.periodLabel)).toEqual([
@@ -247,9 +308,11 @@ describe("ESPN fixture contracts", () => {
     expect(boxScore.available).toBe(true);
     expect(boxScore.teams.map((team) => team.side)).toEqual(["away", "home"]);
     expect(boxScore.teams.every((team) => team.groups.length > 0)).toBe(true);
-    expect(boxScore.teams.flatMap((team) => team.groups).every((group) =>
-      group.labels.length > 0 && group.players.length > 0,
-    )).toBe(true);
+    expect(
+      boxScore.teams
+        .flatMap((team) => team.groups)
+        .every((group) => group.labels.length > 0 && group.players.length > 0),
+    ).toBe(true);
 
     if (league === "mlb") {
       expect(boxScore.teams[0].groups.map((group) => group.title)).toEqual([
@@ -268,9 +331,18 @@ describe("ESPN fixture contracts", () => {
   });
 
   it("exposes batting, pitching, and fielding stats from an MLB boxscore", () => {
-    const batting = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "batting");
-    const pitching = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "pitching");
-    const fielding = getBaseballTeamStatComparisons(mlbBoxscoreStats.teams, "fielding");
+    const batting = getBaseballTeamStatComparisons(
+      mlbBoxscoreStats.teams,
+      "batting",
+    );
+    const pitching = getBaseballTeamStatComparisons(
+      mlbBoxscoreStats.teams,
+      "pitching",
+    );
+    const fielding = getBaseballTeamStatComparisons(
+      mlbBoxscoreStats.teams,
+      "fielding",
+    );
 
     expect(batting).toHaveLength(13);
     expect(batting.find((stat) => stat.label === "Hits")).toMatchObject({

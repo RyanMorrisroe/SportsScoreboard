@@ -75,7 +75,9 @@ describe("ESPN API helpers", () => {
   });
 
   it("loads the bounded CBB team directory", async () => {
-    const payload = { sports: [{ leagues: [{ teams: [{ team: { id: "150" } }] }] }] };
+    const payload = {
+      sports: [{ leagues: [{ teams: [{ team: { id: "150" } }] }] }],
+    };
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(payload));
 
     expect(getCbbTeamDirectoryUrl()).toBe(
@@ -105,9 +107,14 @@ describe("ESPN API helpers", () => {
   });
 
   it("loads CBB standings by conference without requesting the oversized root", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ standings: { entries: [] } }));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ standings: { entries: [] } }));
 
-    const response = await fetchStandings("mens-college-basketball", fetchImpl) as {
+    const response = (await fetchStandings(
+      "mens-college-basketball",
+      fetchImpl,
+    )) as {
       children: Array<{ id: string; name: string }>;
     };
 
@@ -117,7 +124,10 @@ describe("ESPN API helpers", () => {
       getStandingsUrl("mens-college-basketball", { group: "1" }),
     );
     expect(response.children).toHaveLength(32);
-    expect(response.children[0]).toMatchObject({ id: "1", name: "America East" });
+    expect(response.children[0]).toMatchObject({
+      id: "1",
+      name: "America East",
+    });
   });
 
   it.each([
@@ -158,17 +168,21 @@ describe("ESPN API helpers", () => {
   });
 
   it("includes a conference group in NCAA basketball date requests", () => {
-    expect(getScoreboardRequestParams("mens-college-basketball", {
-      date: "2025-03-20",
-      group: "2",
-    })).toEqual({
-       dates: "20250320",
+    expect(
+      getScoreboardRequestParams("mens-college-basketball", {
+        date: "2025-03-20",
+        group: "2",
+      }),
+    ).toEqual({
+      dates: "20250320",
       groups: "2",
-     });
-    expect(getScoreboardRequestParams("mens-college-basketball", {
-      date: "2025-03-20",
-      group: "80",
-    })).toEqual({ dates: "20250320" });
+    });
+    expect(
+      getScoreboardRequestParams("mens-college-basketball", {
+        date: "2025-03-20",
+        group: "80",
+      }),
+    ).toEqual({ dates: "20250320" });
   });
 
   it("keeps football week controls and college group filters", () => {

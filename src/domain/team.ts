@@ -25,7 +25,7 @@ export interface TeamDetailsView {
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -91,7 +91,10 @@ export function getTeamRecords(teamPayload: unknown): TeamRecord[] {
   return getRecordItems(teamPayload).map((item) => {
     const itemObj = asObject(item);
     return {
-      label: getString(itemObj.description, getString(itemObj.displayName, "Record")),
+      label: getString(
+        itemObj.description,
+        getString(itemObj.displayName, "Record"),
+      ),
       value: itemObj.summary || itemObj.displayValue || "--",
     };
   });
@@ -103,13 +106,15 @@ export function getTeamRecordStats(teamPayload: unknown): TeamRecordStat[] {
     return asArray(itemObj.stats).flatMap((statValue) => {
       const stat = asObject(statValue);
       if (typeof stat.name !== "string" || !stat.name) return [];
-      return [{
-        key: `${getString(itemObj.type, "record")}-${stat.name}`,
-        label: stat.name
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^./, (letter) => letter.toUpperCase()),
-        value: formatStatValue(stat),
-      }];
+      return [
+        {
+          key: `${getString(itemObj.type, "record")}-${stat.name}`,
+          label: stat.name
+            .replace(/([A-Z])/g, " $1")
+            .replace(/^./, (letter) => letter.toUpperCase()),
+          value: formatStatValue(stat),
+        },
+      ];
     });
   });
 }
@@ -121,21 +126,29 @@ export function getTeamDirectoryOptions(payload: unknown): Array<{
   logo: string;
 }> {
   const sports = asArray(asObject(payload).sports).map(asObject);
-  const leagues = sports.flatMap((sport) => asArray(sport.leagues).map(asObject));
-  const teams = leagues.flatMap((league) => asArray(league.teams).map(asObject));
-
-  return teams.flatMap((entry) => {
-    const team = asObject(entry.team);
-    if (team.id === undefined || team.id === null) return [];
-    const id = String(team.id);
-    const logos = asArray(team.logos).map(asObject);
-    return [{
-      id,
-      name: getString(team.displayName, getString(team.name, id)),
-      abbreviation: getString(team.abbreviation, ""),
-      logo: getString(logos[0]?.href, getString(team.logo, "")),
-    }];
-  }).sort((first, second) =>
-    first.name.localeCompare(second.name, undefined, { sensitivity: "base" }),
+  const leagues = sports.flatMap((sport) =>
+    asArray(sport.leagues).map(asObject),
   );
+  const teams = leagues.flatMap((league) =>
+    asArray(league.teams).map(asObject),
+  );
+
+  return teams
+    .flatMap((entry) => {
+      const team = asObject(entry.team);
+      if (team.id === undefined || team.id === null) return [];
+      const id = String(team.id);
+      const logos = asArray(team.logos).map(asObject);
+      return [
+        {
+          id,
+          name: getString(team.displayName, getString(team.name, id)),
+          abbreviation: getString(team.abbreviation, ""),
+          logo: getString(logos[0]?.href, getString(team.logo, "")),
+        },
+      ];
+    })
+    .sort((first, second) =>
+      first.name.localeCompare(second.name, undefined, { sensitivity: "base" }),
+    );
 }

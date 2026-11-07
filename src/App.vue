@@ -451,14 +451,14 @@
             <option v-if="selectedLeague === 'college-football'" value="80">
               All
             </option>
-            <option v-else-if="selectedLeague === 'mens-college-basketball'" value="80">
+            <option
+              v-else-if="selectedLeague === 'mens-college-basketball'"
+              value="80"
+            >
               Top 25
             </option>
             <option v-else value="">All</option>
-            <option
-              v-if="selectedLeague === 'college-football'"
-              value=""
-            >
+            <option v-if="selectedLeague === 'college-football'" value="">
               Top 25 Rankings
             </option>
             <template v-if="selectedLeague === 'college-football'">
@@ -478,7 +478,9 @@
                 v-for="group in CBB_CONFERENCE_GROUPS"
                 :key="group.id"
                 :value="group.id"
-              >{{ group.name }}</option>
+              >
+                {{ group.name }}
+              </option>
             </template>
           </select>
           <span

@@ -33,7 +33,10 @@ export const DEFAULT_LEAGUE_BEHAVIOR: LeagueBehavior = {
   },
 };
 
-export const SPORT_FAMILY_DEFAULTS: Record<SportFamily, LeagueBehaviorOverrides> = {
+export const SPORT_FAMILY_DEFAULTS: Record<
+  SportFamily,
+  LeagueBehaviorOverrides
+> = {
   football: {
     sportPath: "football",
     schedule: { mode: "week", includesSeasonType: true },
@@ -85,7 +88,12 @@ export const LEAGUE_PLUGINS = {
       schedule: { supportsGroupFilter: true },
       linescore: { overtimeLabelStyle: "overtime" },
       standings: {
-        hiddenStatKeys: ["divisionwins", "divisionlosses", "divisionties", "vs division"],
+        hiddenStatKeys: [
+          "divisionwins",
+          "divisionlosses",
+          "divisionties",
+          "vs division",
+        ],
       },
       tvLineup: { duration: { mode: "fixed", minutes: 210 } },
     },
@@ -140,11 +148,13 @@ export function composeLeagueBehavior(
       ...overrides.game,
     },
     standings: {
-      hiddenStatKeys: [...new Set([
-        ...DEFAULT_LEAGUE_BEHAVIOR.standings.hiddenStatKeys,
-        ...(familyDefaults.standings?.hiddenStatKeys ?? []),
-        ...(overrides.standings?.hiddenStatKeys ?? []),
-      ])],
+      hiddenStatKeys: [
+        ...new Set([
+          ...DEFAULT_LEAGUE_BEHAVIOR.standings.hiddenStatKeys,
+          ...(familyDefaults.standings?.hiddenStatKeys ?? []),
+          ...(overrides.standings?.hiddenStatKeys ?? []),
+        ]),
+      ],
     },
     tvLineup: {
       ...DEFAULT_LEAGUE_BEHAVIOR.tvLineup,

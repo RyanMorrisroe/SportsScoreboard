@@ -91,7 +91,7 @@ const COLLEGE_FOOTBALL_CONFERENCE_NAMES: Record<string, readonly string[]> = {
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -120,7 +120,11 @@ function getStatValue(stat: JsonObject, key: unknown): unknown {
   return "--";
 }
 
-function normalizeEntry(entryValue: unknown, index: number, hiddenStats: Set<string>): StandingTeam {
+function normalizeEntry(
+  entryValue: unknown,
+  index: number,
+  hiddenStats: Set<string>,
+): StandingTeam {
   const entry = asObject(entryValue);
   const stats = asArray(entry.stats)
     .map(asObject)
@@ -131,7 +135,10 @@ function normalizeEntry(entryValue: unknown, index: number, hiddenStats: Set<str
         key,
         label: getString(
           stat.shortDisplayName,
-          getString(stat.abbreviation, getString(stat.displayName, getString(stat.name))),
+          getString(
+            stat.abbreviation,
+            getString(stat.displayName, getString(stat.name)),
+          ),
         ),
         value: getStatValue(stat, key),
       };
@@ -139,10 +146,15 @@ function normalizeEntry(entryValue: unknown, index: number, hiddenStats: Set<str
     .filter((stat) => !hiddenStats.has(stat.key.toLowerCase()));
   const team = asObject(entry.team);
   const logos = asArray(team.logos).map(asObject);
-  const teamId = team.id || `${getString(team.abbreviation, getString(team.displayName, "team"))}-${index}`;
+  const teamId =
+    team.id ||
+    `${getString(team.abbreviation, getString(team.displayName, "team"))}-${index}`;
 
   return {
-    id: typeof teamId === "number" || typeof teamId === "string" ? teamId : String(teamId),
+    id:
+      typeof teamId === "number" || typeof teamId === "string"
+        ? teamId
+        : String(teamId),
     name: getString(team.displayName, getString(team.name, "Unknown team")),
     abbreviation: getString(team.abbreviation),
     logo: getString(logos[0]?.href, getString(team.logo)),
@@ -157,15 +169,24 @@ function collectGroups(
   groups: StandingGroup[],
   hiddenStats: Set<string>,
 ): void {
-  if (nodeValue === null || typeof nodeValue !== "object" || Array.isArray(nodeValue)) return;
+  if (
+    nodeValue === null ||
+    typeof nodeValue !== "object" ||
+    Array.isArray(nodeValue)
+  )
+    return;
   const node = asObject(nodeValue);
   const name = getString(node.name, getString(node.displayName, "Standings"));
   const id = getString(node.id, getString(node.abbreviation, name));
   const entries = asArray(asObject(node.standings).entries ?? node.entries);
-  const eligibleEntries = entries.filter((entry) => Boolean(asObject(entry).team));
+  const eligibleEntries = entries.filter((entry) =>
+    Boolean(asObject(entry).team),
+  );
 
   if (eligibleEntries.length > 0) {
-    const teams = eligibleEntries.map((entry, index) => normalizeEntry(entry, index, hiddenStats));
+    const teams = eligibleEntries.map((entry, index) =>
+      normalizeEntry(entry, index, hiddenStats),
+    );
     const columns: StandingColumn[] = [];
     for (const team of teams) {
       for (const stat of team.stats) {
@@ -175,8 +196,12 @@ function collectGroups(
       }
     }
     columns.sort((first, second) => {
-      const firstOrder = STANDINGS_STAT_ORDER_INDEX.get(first.key.toLowerCase());
-      const secondOrder = STANDINGS_STAT_ORDER_INDEX.get(second.key.toLowerCase());
+      const firstOrder = STANDINGS_STAT_ORDER_INDEX.get(
+        first.key.toLowerCase(),
+      );
+      const secondOrder = STANDINGS_STAT_ORDER_INDEX.get(
+        second.key.toLowerCase(),
+      );
       return (firstOrder ?? Infinity) - (secondOrder ?? Infinity);
     });
     groups.push({
@@ -197,7 +222,8 @@ export function normalizeStandings(
   payload: unknown,
   { league }: { league?: string } = {},
 ): StandingGroup[] {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return [];
   const hiddenStats = new Set(
     resolveLeague(league ?? "")?.standings.hiddenStatKeys ?? ["lockeddivrank"],
   );
@@ -222,11 +248,13 @@ export function filterStandingGroups(
     selectedGroup === "" ||
     ((league === "college-football" || league === "mens-college-basketball") &&
       selectedGroup === "80")
-  ) return groups;
+  )
+    return groups;
 
   if (league === "mens-college-basketball") {
-    return groups.filter((group) =>
-      group.id === selectedGroup || group.id.startsWith(`${selectedGroup}-`),
+    return groups.filter(
+      (group) =>
+        group.id === selectedGroup || group.id.startsWith(`${selectedGroup}-`),
     );
   }
   if (league !== "college-football") return groups;
@@ -240,8 +268,9 @@ export function filterStandingGroups(
   return groups.filter((group) => {
     const name = group.name.toLowerCase().replace(/[^a-z0-9]/g, "");
     const id = group.id.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return normalizedNames.some((conference) =>
-      name === conference || id === conference || id.endsWith(conference),
+    return normalizedNames.some(
+      (conference) =>
+        name === conference || id === conference || id.endsWith(conference),
     );
   });
 }
@@ -252,7 +281,10 @@ export function getUniqueStandingTeams(groups: unknown): Array<{
   abbreviation: string;
   logo: string;
 }> {
-  const teams = new Map<string, { id: string; name: string; abbreviation: string; logo: string }>();
+  const teams = new Map<
+    string,
+    { id: string; name: string; abbreviation: string; logo: string }
+  >();
   for (const groupValue of asArray(groups)) {
     const group = asObject(groupValue);
     for (const teamValue of asArray(group.teams)) {
@@ -283,7 +315,10 @@ export function getStandingPositionKey(groupValue: unknown): string | null {
   return typeof key === "string" ? key : null;
 }
 
-function getStandingSortValue(team: SortableStandingTeam, key: string): number | string | null {
+function getStandingSortValue(
+  team: SortableStandingTeam,
+  key: string,
+): number | string | null {
   const value = team.stats.find((stat) => stat.key === key)?.value;
   if (value === undefined || value === null || value === "--") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -294,7 +329,9 @@ function getStandingSortValue(team: SortableStandingTeam, key: string): number |
   if (splitRecord) return Number(splitRecord[1]);
 
   const numericValue = Number(text.replaceAll(",", ""));
-  return Number.isFinite(numericValue) ? numericValue : text.toLocaleLowerCase();
+  return Number.isFinite(numericValue)
+    ? numericValue
+    : text.toLocaleLowerCase();
 }
 
 export function sortStandingTeams<T extends SortableStandingTeam>(
@@ -312,7 +349,8 @@ export function sortStandingTeams<T extends SortableStandingTeam>(
       value: getStandingSortValue(team, key),
     }))
     .sort((first, second) => {
-      if (first.value === null) return second.value === null ? first.index - second.index : 1;
+      if (first.value === null)
+        return second.value === null ? first.index - second.index : 1;
       if (second.value === null) return -1;
 
       const comparison =

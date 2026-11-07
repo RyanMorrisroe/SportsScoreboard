@@ -206,7 +206,11 @@ export async function fetchStandings(
           options,
         );
         return isJsonObject(group)
-          ? { ...group, id, name: typeof group.name === "string" ? group.name : name }
+          ? {
+              ...group,
+              id,
+              name: typeof group.name === "string" ? group.name : name,
+            }
           : { id, name };
       }),
     );

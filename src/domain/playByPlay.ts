@@ -35,7 +35,7 @@ export interface PlayByPlayTimeline {
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : {};
 }
 
@@ -60,7 +60,11 @@ function getFootballPlays(raw: JsonObject): JsonObject[] {
         drive: {
           id: drive.id || "",
           description: drive.description || "",
-          result: drive.displayResult || drive.shortDisplayResult || drive.result || "",
+          result:
+            drive.displayResult ||
+            drive.shortDisplayResult ||
+            drive.result ||
+            "",
           teamId: team.id ? String(team.id) : "",
           teamAbbreviation: team.abbreviation || "",
         },
@@ -72,9 +76,10 @@ function getFootballPlays(raw: JsonObject): JsonObject[] {
 function getOrdinal(value: unknown): string {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 1) return String(value || "");
-  const suffix = number % 100 >= 11 && number % 100 <= 13
-    ? "th"
-    : ({ 1: "st", 2: "nd", 3: "rd" }[number % 10] || "th");
+  const suffix =
+    number % 100 >= 11 && number % 100 <= 13
+      ? "th"
+      : { 1: "st", 2: "nd", 3: "rd" }[number % 10] || "th";
   return `${number}${suffix}`;
 }
 
@@ -92,7 +97,8 @@ function getPeriodLabel(period: JsonObject, league: string): string {
   const number = Number(period.number);
   if (behavior.linescore.periodLabelStyle === "inning") {
     const type = String(period.type || "").toLowerCase();
-    const side = type === "top" ? "Top of" : type === "bottom" ? "Bottom of" : "";
+    const side =
+      type === "top" ? "Top of" : type === "bottom" ? "Bottom of" : "";
     return `${side ? `${side} ` : ""}${ordinal} Inning`;
   }
   if (
@@ -102,11 +108,12 @@ function getPeriodLabel(period: JsonObject, league: string): string {
     return `Overtime ${number - behavior.linescore.regulationPeriods}`;
   }
 
-  const periodName = behavior.linescore.periodLabelStyle === "quarter"
-    ? "Quarter"
-    : behavior.linescore.periodLabelStyle === "half"
-      ? "Half"
-      : "Period";
+  const periodName =
+    behavior.linescore.periodLabelStyle === "quarter"
+      ? "Quarter"
+      : behavior.linescore.periodLabelStyle === "half"
+        ? "Half"
+        : "Period";
   return `${ordinal} ${periodName}`;
 }
 
@@ -138,7 +145,9 @@ function normalizeEvent(
   const teamId = getTeamId(play) || getText(drive.teamId);
   const scoreValue = getScoreValue(play.scoreValue);
   const isScoring =
-    scoringOnly || play.scoringPlay === true || (scoreValue !== null && scoreValue > 0);
+    scoringOnly ||
+    play.scoringPlay === true ||
+    (scoreValue !== null && scoreValue > 0);
   const end = asObject(play.end);
   const type = asObject(play.type);
   const clock = asObject(play.clock);
@@ -149,14 +158,22 @@ function normalizeEvent(
     id: String(play.id ?? `event-${index}`),
     order: index,
     sequenceNumber: play.sequenceNumber ?? null,
-    periodNumber: Number.isFinite(Number(period.number)) ? Number(period.number) : null,
+    periodNumber: Number.isFinite(Number(period.number))
+      ? Number(period.number)
+      : null,
     periodLabel: getPeriodLabel(period, league),
     periodType: getText(period.type),
     clock: getText(clock.displayValue),
-    description: getText(play.text, getText(play.shortText, getText(type.text, "Play details unavailable."))),
+    description: getText(
+      play.text,
+      getText(play.shortText, getText(type.text, "Play details unavailable.")),
+    ),
     eventType: getText(type.text, getText(play.summaryType)),
     teamId,
-    teamAbbreviation: getText(team.abbreviation, getText(drive.teamAbbreviation)),
+    teamAbbreviation: getText(
+      team.abbreviation,
+      getText(drive.teamAbbreviation),
+    ),
     scoring: isScoring,
     awayScore: getScoreValue(play.awayScore),
     homeScore: getScoreValue(play.homeScore),
@@ -173,7 +190,11 @@ function normalizeEvent(
 }
 
 function getSequenceNumber(event: NormalizedPlayEvent): number | null {
-  if (event.sequenceNumber === null || event.sequenceNumber === undefined || event.sequenceNumber === "") {
+  if (
+    event.sequenceNumber === null ||
+    event.sequenceNumber === undefined ||
+    event.sequenceNumber === ""
+  ) {
     return null;
   }
   const sequence = Number(event.sequenceNumber);
@@ -185,16 +206,27 @@ function getClockSeconds(event: NormalizedPlayEvent): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
-function compareEvents(left: NormalizedPlayEvent, right: NormalizedPlayEvent): number {
+function compareEvents(
+  left: NormalizedPlayEvent,
+  right: NormalizedPlayEvent,
+): number {
   const leftPeriod = left.periodNumber;
   const rightPeriod = right.periodNumber;
-  if (leftPeriod !== null && rightPeriod !== null && leftPeriod !== rightPeriod) {
+  if (
+    leftPeriod !== null &&
+    rightPeriod !== null &&
+    leftPeriod !== rightPeriod
+  ) {
     return leftPeriod - rightPeriod;
   }
 
   const leftSequence = getSequenceNumber(left);
   const rightSequence = getSequenceNumber(right);
-  if (leftSequence !== null && rightSequence !== null && leftSequence !== rightSequence) {
+  if (
+    leftSequence !== null &&
+    rightSequence !== null &&
+    leftSequence !== rightSequence
+  ) {
     return leftSequence - rightSequence;
   }
 
@@ -206,28 +238,42 @@ function compareEvents(left: NormalizedPlayEvent, right: NormalizedPlayEvent): n
   return left.order - right.order;
 }
 
-export function normalizePlayByPlay(rawValue: unknown, league: string): PlayByPlayTimeline {
+export function normalizePlayByPlay(
+  rawValue: unknown,
+  league: string,
+): PlayByPlayTimeline {
   const raw = asObject(rawValue);
   const summaryPlays = asArray(raw.plays);
   const behavior = resolveLeague(league);
-  const footballPlays = behavior?.game.supportsDrives ? getFootballPlays(raw) : [];
-  const fullPlays = summaryPlays.length ? summaryPlays.map(asObject) : footballPlays;
+  const footballPlays = behavior?.game.supportsDrives
+    ? getFootballPlays(raw)
+    : [];
+  const fullPlays = summaryPlays.length
+    ? summaryPlays.map(asObject)
+    : footballPlays;
   const scoringPlays = asArray(raw.scoringPlays).map(asObject);
   const source = fullPlays.length ? fullPlays : scoringPlays;
   const uniquePlays: JsonObject[] = [];
   const seenIds = new Set<string>();
 
   for (const play of source) {
-    const id = play.id === undefined || play.id === null ? null : String(play.id);
+    const id =
+      play.id === undefined || play.id === null ? null : String(play.id);
     if (id && seenIds.has(id)) continue;
     if (id) seenIds.add(id);
     uniquePlays.push(play);
   }
 
   return {
-    mode: fullPlays.length ? "all-plays" : scoringPlays.length ? "scoring-only" : "unavailable",
+    mode: fullPlays.length
+      ? "all-plays"
+      : scoringPlays.length
+        ? "scoring-only"
+        : "unavailable",
     events: uniquePlays
-      .map((play, index) => normalizeEvent(play, index, league, fullPlays.length === 0))
+      .map((play, index) =>
+        normalizeEvent(play, index, league, fullPlays.length === 0),
+      )
       .sort(compareEvents)
       .map((event, index) => ({ ...event, order: index })),
   };

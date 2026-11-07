@@ -90,14 +90,17 @@ export function usePreferences(
       cachedAt = cachedAt === null ? savedAt : Math.min(cachedAt, savedAt);
     };
     try {
-      const teams = league.id === "mens-college-basketball"
-        ? getTeamDirectoryOptions(await fetchCbbTeamDirectory(fetchImpl, { onCacheFallback }))
-        : getUniqueStandingTeams(
-          normalizeStandings(
-            await fetchStandings(league.id, fetchImpl, { onCacheFallback }),
-            { league: league.id },
-          ),
-        );
+      const teams =
+        league.id === "mens-college-basketball"
+          ? getTeamDirectoryOptions(
+              await fetchCbbTeamDirectory(fetchImpl, { onCacheFallback }),
+            )
+          : getUniqueStandingTeams(
+              normalizeStandings(
+                await fetchStandings(league.id, fetchImpl, { onCacheFallback }),
+                { league: league.id },
+              ),
+            );
       if (!teams.length)
         throw new Error("No teams were returned for this league.");
       if (requestId !== teamOptionsRequestId) return;

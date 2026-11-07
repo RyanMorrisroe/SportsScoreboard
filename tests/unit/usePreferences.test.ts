@@ -40,14 +40,32 @@ const standingsPayload = {
 };
 
 const cbbTeamDirectoryPayload = {
-  sports: [{
-    leagues: [{
-      teams: [
-        { team: { id: "150", displayName: "Duke Blue Devils", abbreviation: "DUKE", logos: [{ href: "duke.png" }] } },
-        { team: { id: "153", displayName: "North Carolina Tar Heels", abbreviation: "UNC", logos: [{ href: "unc.png" }] } },
+  sports: [
+    {
+      leagues: [
+        {
+          teams: [
+            {
+              team: {
+                id: "150",
+                displayName: "Duke Blue Devils",
+                abbreviation: "DUKE",
+                logos: [{ href: "duke.png" }],
+              },
+            },
+            {
+              team: {
+                id: "153",
+                displayName: "North Carolina Tar Heels",
+                abbreviation: "UNC",
+                logos: [{ href: "unc.png" }],
+              },
+            },
+          ],
+        },
       ],
-    }],
-  }],
+    },
+  ],
 };
 
 function setup() {
@@ -73,9 +91,21 @@ describe("preferences composable", () => {
 
     await subject.loadFavoriteTeamOptions("mens-college-basketball");
 
-    expect(subject.teamOptionsByLeague.value["mens-college-basketball"]).toEqual([
-      { id: "150", name: "Duke Blue Devils", abbreviation: "DUKE", logo: "duke.png" },
-      { id: "153", name: "North Carolina Tar Heels", abbreviation: "UNC", logo: "unc.png" },
+    expect(
+      subject.teamOptionsByLeague.value["mens-college-basketball"],
+    ).toEqual([
+      {
+        id: "150",
+        name: "Duke Blue Devils",
+        abbreviation: "DUKE",
+        logo: "duke.png",
+      },
+      {
+        id: "153",
+        name: "North Carolina Tar Heels",
+        abbreviation: "UNC",
+        logo: "unc.png",
+      },
     ]);
     expect(fetchCbbTeamDirectory).toHaveBeenCalledTimes(1);
     expect(fetchStandings).not.toHaveBeenCalled();
