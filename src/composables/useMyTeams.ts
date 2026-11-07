@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import {
   fetchJson as requestJson,
   getGameSummaryUrl,
@@ -20,6 +20,7 @@ import {
 import type { LeagueId } from "../plugins/registry";
 
 const MAX_CONCURRENT_SCHEDULES = 4;
+const MAX_CONCURRENT_SUMMARIES = 4;
 
 interface FavoriteSchedule {
   key: string;
@@ -40,13 +41,15 @@ export interface MyTeamsGame extends NormalizedScheduleEntry {
   awayTeam?: GameDetailTeam;
   homeTeam?: GameDetailTeam;
   summaryCachedAt?: number | null;
+  summaryLastUpdatedAt?: number | null;
+  summaryRefreshFailed?: boolean;
 }
 
 interface LiveGameDetails {
   detail: GameDetail;
-  state: string;
-  status: string;
   cachedAt: number | null;
+  lastUpdatedAt: number;
+  refreshFailed: boolean;
 }
 
 interface MyTeamsDependencies {
@@ -78,19 +81,6 @@ function getString(value: unknown, fallback = ""): string {
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return "Unable to load schedule.";
-}
-
-function getSummaryStatus(raw: unknown): { state: string; status: string } {
-  const header = asObject(asObject(raw).header);
-  const competition = asObject(asArray(header.competitions)[0]);
-  const status = asObject(asObject(competition.status).type);
-  return {
-    state: getString(status.state).toLowerCase(),
-    status: getString(
-      status.shortDetail,
-      getString(status.detail, getString(status.description)),
-    ),
-  };
 }
 
 function hasSummaryScores(raw: unknown): boolean {
@@ -137,9 +127,12 @@ export function useMyTeams(
   const hasLoaded = ref(false);
   const now = ref(getNow());
   const activeSummaryRequests = new Map<string, Promise<void>>();
+  const favoriteGenerations = new Map<string, number>();
   let activeLoad: Promise<void> | null = null;
+  let activePassForce = false;
   let loadAgain = false;
   let forceAgain = false;
+  let skippedSummaryKey: string | null = null;
 
   const favoriteSchedules = computed<FavoriteSchedule[]>(() =>
     LEAGUE_IDS.flatMap((league) =>
@@ -149,6 +142,23 @@ export function useMyTeams(
         team,
       })),
     ),
+  );
+
+  watch(
+    () => favoriteSchedules.value.map(({ key }) => key),
+    (keys, previousKeys) => {
+      const currentKeys = new Set(keys);
+      const removedKeys = previousKeys.filter((key) => !currentKeys.has(key));
+      if (!removedKeys.length) return;
+
+      const nextStates = { ...scheduleStates.value };
+      for (const key of removedKeys) {
+        favoriteGenerations.set(key, (favoriteGenerations.get(key) ?? 0) + 1);
+        delete nextStates[key];
+      }
+      scheduleStates.value = nextStates;
+    },
+    { flush: "sync" },
   );
 
   const teamSchedules = computed(() =>
@@ -203,11 +213,11 @@ export function useMyTeams(
       if (!details) return game;
       return {
         ...game,
-        state: details.state || game.state,
-        status: details.status || game.status,
         awayTeam: details.detail.teams.away,
         homeTeam: details.detail.teams.home,
         summaryCachedAt: details.cachedAt,
+        summaryLastUpdatedAt: details.lastUpdatedAt,
+        summaryRefreshFailed: details.refreshFailed,
       };
     }),
   );
@@ -229,6 +239,10 @@ export function useMyTeams(
 
   async function fetchSchedule(favorite: FavoriteSchedule): Promise<void> {
     const previous = scheduleStates.value[favorite.key];
+    const generation = favoriteGenerations.get(favorite.key) ?? 0;
+    const isCurrentFavorite = () =>
+      isStillFavorite(favorite) &&
+      (favoriteGenerations.get(favorite.key) ?? 0) === generation;
     let cachedAt: number | null = null;
     try {
       const url = getTeamUrls(favorite.league, favorite.team.id).schedule;
@@ -237,7 +251,7 @@ export function useMyTeams(
           cachedAt = savedAt;
         },
       });
-      if (!isStillFavorite(favorite)) return;
+      if (!isCurrentFavorite()) return;
       updateState(favorite.key, {
         ...favorite,
         loading: false,
@@ -246,12 +260,12 @@ export function useMyTeams(
         entries: normalizeSchedule(payload, favorite.team.id),
       });
     } catch (error) {
-      if (!isStillFavorite(favorite)) return;
+      if (!isCurrentFavorite()) return;
       updateState(favorite.key, {
         ...favorite,
         loading: false,
         error: getErrorMessage(error),
-        cachedAt,
+        cachedAt: cachedAt ?? previous?.cachedAt ?? null,
         entries: previous?.entries ?? [],
       });
     }
@@ -285,19 +299,24 @@ export function useMyTeams(
         );
         if (!isStillLiveScheduleEvent(eventKey) || !hasSummaryScores(payload))
           return;
-        const summaryStatus = getSummaryStatus(payload);
         const detail = buildGameDetail(payload, game.id);
         liveDetails.value = {
           ...liveDetails.value,
           [eventKey]: {
             detail,
-            state: summaryStatus.state || game.state,
-            status: summaryStatus.status || game.status,
             cachedAt,
+            lastUpdatedAt: cachedAt ?? getNow(),
+            refreshFailed: false,
           },
         };
       } catch {
-        // Keep the schedule or last successful summary visible.
+        const previous = liveDetails.value[eventKey];
+        if (previous) {
+          liveDetails.value = {
+            ...liveDetails.value,
+            [eventKey]: { ...previous, refreshFailed: true },
+          };
+        }
       }
     })();
     activeSummaryRequests.set(eventKey, request);
@@ -312,16 +331,24 @@ export function useMyTeams(
 
   async function loadLiveSummaries(): Promise<void> {
     const games = scheduleGames.value;
-    const displayedKeys = new Set(
-      games.map((game) => `${game.league}:${game.id}`),
+    const liveKeys = new Set(
+      games
+        .filter((game) => game.state === "in")
+        .map((game) => `${game.league}:${game.id}`),
     );
     liveDetails.value = Object.fromEntries(
-      Object.entries(liveDetails.value).filter(([key]) =>
-        displayedKeys.has(key),
-      ),
+      Object.entries(liveDetails.value).filter(([key]) => liveKeys.has(key)),
     );
-    const uniqueLiveGames = games.filter((game) => game.state === "in");
-    await Promise.all(uniqueLiveGames.map(fetchLiveSummary));
+    const uniqueLiveGames = games.filter(
+      (game) =>
+        game.state === "in" &&
+        `${game.league}:${game.id}` !== skippedSummaryKey,
+    );
+    await runWithConcurrency(
+      uniqueLiveGames,
+      MAX_CONCURRENT_SUMMARIES,
+      fetchLiveSummary,
+    );
   }
 
   async function loadSchedules(force: boolean): Promise<void> {
@@ -351,10 +378,18 @@ export function useMyTeams(
     await runWithConcurrency(pending, MAX_CONCURRENT_SCHEDULES, fetchSchedule);
   }
 
-  async function load(force = false): Promise<void> {
+  async function load(
+    force = false,
+    skipSummaryEventKey: string | null = null,
+  ): Promise<void> {
+    skippedSummaryKey = skipSummaryEventKey;
     if (activeLoad) {
-      loadAgain = true;
-      forceAgain ||= force;
+      if (!force) {
+        loadAgain = true;
+      } else if (!activePassForce || loadAgain) {
+        loadAgain ||= !activePassForce;
+        forceAgain = true;
+      }
       await activeLoad;
       return;
     }
@@ -363,6 +398,7 @@ export function useMyTeams(
       let nextForce = force;
       do {
         loadAgain = false;
+        activePassForce = nextForce;
         await loadSchedules(nextForce);
         await loadLiveSummaries();
         nextForce = forceAgain;
@@ -373,6 +409,7 @@ export function useMyTeams(
       await activeLoad;
     } finally {
       activeLoad = null;
+      activePassForce = false;
     }
   }
 

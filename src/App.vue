@@ -856,7 +856,7 @@
             v-for="game in group.games"
             :key="`${game.league}:${game.id}`"
             type="button"
-            :aria-label="`${game.favoriteTeams.map((team) => team.name).join(' and ')}, ${game.status}, ${game.awayTeam?.name ?? game.opponent}, ${game.awayTeam?.score ?? game.score}, ${game.homeTeam?.name ?? ''}, ${game.homeTeam?.score ?? ''}`"
+            :aria-label="`${game.favoriteTeams.map((team) => team.name).join(' and ')}, ${game.summaryRefreshFailed ? 'stale scores, ' : ''}${game.status}, ${game.awayTeam?.name ?? game.opponent}, ${game.awayTeam?.score ?? game.score}, ${game.homeTeam?.name ?? ''}, ${game.homeTeam?.score ?? ''}`"
             @click="openMyTeamsGame(game)"
             class="flex min-h-[88px] items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4 text-left shadow-sm transition-all duration-150 hover:bg-zinc-800/60 active:bg-zinc-800/90"
           >
@@ -878,7 +878,13 @@
                   }}</span>
                 </div>
                 <div class="flex items-center gap-2 text-[10px] text-zinc-500">
-                  <span v-if="game.summaryCachedAt" class="text-amber-300">
+                  <span v-if="game.summaryRefreshFailed" class="text-amber-300">
+                    Stale<span v-if="game.summaryLastUpdatedAt">
+                      · Updated
+                      {{ formatLastUpdatedAt(game.summaryLastUpdatedAt) }}
+                    </span>
+                  </span>
+                  <span v-else-if="game.summaryCachedAt" class="text-amber-300">
                     Saved {{ formatLastUpdatedAt(game.summaryCachedAt) }}
                   </span>
                   <span
@@ -2573,7 +2579,7 @@
 </template>
 
 <script lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   fetchJson,
@@ -3321,7 +3327,15 @@ export default {
       pollingInterval = setInterval(() => {
         void fetchScoreboard(false);
         if (viewMode.value === "my-teams") {
-          void loadMyTeams(true);
+          const modalEventId = selectedGame.value?.id;
+          const skipSummaryEventKey =
+            showModal.value &&
+            modalView.value === "game" &&
+            modalEventId !== undefined &&
+            String(modalEventId).trim() !== ""
+              ? `${selectedLeague.value}:${modalEventId}`
+              : null;
+          void loadMyTeams(true, skipSummaryEventKey);
         }
         if (
           showModal.value &&
@@ -3435,6 +3449,11 @@ export default {
       startPoller();
       await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       void checkForUpdates(true);
+    });
+
+    onUnmounted(() => {
+      if (pollingInterval !== null) clearInterval(pollingInterval);
+      window.removeEventListener("popstate", handlePopState);
     });
 
     return {
