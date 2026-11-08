@@ -462,16 +462,13 @@
               Top 25 Rankings
             </option>
             <template v-if="selectedLeague === 'college-football'">
-              <option value="1">ACC</option>
-              <option value="4">Big 12</option>
-              <option value="5">Big Ten (B1G)</option>
-              <option value="12">C-USA</option>
-              <option value="18">Independent</option>
-              <option value="15">MAC</option>
-              <option value="17">Mountain West</option>
-              <option value="9">PAC-12</option>
-              <option value="8">SEC</option>
-              <option value="37">Sun Belt</option>
+              <option
+                v-for="group in CFB_CONFERENCE_GROUPS"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.name }}
+              </option>
             </template>
             <template v-else-if="selectedLeague === 'mens-college-basketball'">
               <option
@@ -2609,6 +2606,7 @@ import {
   getScoreboardUrl,
 } from "./api/espn.js";
 import { CBB_CONFERENCE_GROUPS, LEAGUES, getLeague } from "./app/leagues";
+import { createDashboardPoller } from "./app/dashboardPolling";
 import { loadPreferences } from "./app/preferences.js";
 import { usePreferences } from "./composables/usePreferences";
 import { useAppUpdates } from "./composables/useAppUpdates";
@@ -2645,7 +2643,10 @@ import {
   isWinner as isWinnerUtil,
   sortGames as sortGamesUtil,
 } from "./app/scoreboard";
-import { filterStandingGroups } from "./domain/standings";
+import {
+  CFB_CONFERENCE_GROUPS,
+  filterStandingGroups,
+} from "./domain/standings";
 import { normalizeMatchup } from "./domain/matchup.js";
 import { normalizePlayByPlay } from "./domain/playByPlay";
 import { buildGameFlow } from "./app/gameFlow.js";
@@ -2778,7 +2779,6 @@ export default {
     const selectedTeamSide = ref<HomeAway | null>(null);
     const selectedTeamOverride = ref<TeamChoice | null>(null);
     const showSeasonMetrics = ref(false);
-    let pollingInterval: ReturnType<typeof setInterval> | null = null;
     const {
       modalLoading,
       modalData,
@@ -2987,9 +2987,7 @@ export default {
       if (viewMode.value === view) return;
       viewMode.value = view;
       pushNavigationEntry();
-      if (view === "scoreboard") await triggerImmediateFetch();
-      if (view === "standings") await fetchStandings();
-      if (view === "my-teams") await loadMyTeams(true);
+      await refreshVisibleSection();
     };
 
     const selectLeagueTab = async (league: LeagueId) => {
@@ -3186,9 +3184,12 @@ export default {
       showModal.value = false;
       modalView.value = "game";
 
-      const pendingRequests = [
-        fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
-      ];
+      const pendingRequests: Promise<unknown>[] = [];
+      if (snapshot.view === "scoreboard" || snapshot.view === "tv-lineup") {
+        pendingRequests.push(
+          fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
+        );
+      }
       if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
       if (snapshot.view === "my-teams") pendingRequests.push(loadMyTeams(true));
       if (snapshot.modal?.type === "game") {
@@ -3348,30 +3349,66 @@ export default {
 
     const triggerImmediateFetch = () => fetchScoreboard(false);
 
-    const startPoller = () => {
-      if (pollingInterval !== null) clearInterval(pollingInterval);
-      pollingInterval = setInterval(() => {
-        void fetchScoreboard(false);
-        if (viewMode.value === "my-teams") {
-          const modalEventId = selectedGame.value?.id;
-          const skipSummaryEventKey =
-            showModal.value &&
-            modalView.value === "game" &&
-            modalEventId !== undefined &&
-            String(modalEventId).trim() !== ""
-              ? `${selectedLeague.value}:${modalEventId}`
-              : null;
-          void loadMyTeams(true, skipSummaryEventKey);
-        }
-        if (
-          showModal.value &&
-          modalView.value === "game" &&
-          modalData.value?.id
-        ) {
-          void fetchGameDetail(modalData.value.id);
-        }
-      }, 15000);
+    const skipOpenGameSummaryKey = () => {
+      const modalEventId = selectedGame.value?.id;
+      if (
+        !showModal.value ||
+        modalView.value !== "game" ||
+        modalEventId === undefined ||
+        String(modalEventId).trim() === ""
+      ) {
+        return null;
+      }
+      return `${selectedLeague.value}:${modalEventId}`;
     };
+
+    const refreshVisibleSection = async () => {
+      const pendingRequests: Promise<unknown>[] = [];
+      if (viewMode.value === "scoreboard" || viewMode.value === "tv-lineup") {
+        pendingRequests.push(triggerImmediateFetch());
+      } else if (viewMode.value === "standings") {
+        pendingRequests.push(fetchStandings());
+      } else if (viewMode.value === "my-teams") {
+        pendingRequests.push(loadMyTeams(true, skipOpenGameSummaryKey()));
+      }
+
+      if (
+        showModal.value &&
+        modalView.value === "game" &&
+        modalData.value?.id
+      ) {
+        pendingRequests.push(fetchGameDetail(modalData.value.id));
+      } else if (
+        showModal.value &&
+        modalView.value === "team" &&
+        selectedTeam.value.id
+      ) {
+        pendingRequests.push(loadTeamDetails(selectedTeam.value.id));
+      }
+
+      await Promise.all(pendingRequests);
+    };
+
+    const refreshPolledData = () => {
+      if (viewMode.value === "scoreboard" || viewMode.value === "tv-lineup") {
+        void fetchScoreboard(false);
+      } else if (viewMode.value === "my-teams") {
+        void loadMyTeams(true, skipOpenGameSummaryKey());
+      }
+      if (
+        showModal.value &&
+        modalView.value === "game" &&
+        modalData.value?.id
+      ) {
+        void fetchGameDetail(modalData.value.id);
+      }
+    };
+
+    const dashboardPoller = createDashboardPoller(
+      document,
+      refreshPolledData,
+      () => void refreshVisibleSection(),
+    );
 
     const switchTab = async (
       league: LeagueId,
@@ -3472,19 +3509,20 @@ export default {
 
     onMounted(async () => {
       window.addEventListener("popstate", handlePopState);
-      startPoller();
+      dashboardPoller.start();
       await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       void checkForUpdates(true);
     });
 
     onUnmounted(() => {
-      if (pollingInterval !== null) clearInterval(pollingInterval);
+      dashboardPoller.stop();
       window.removeEventListener("popstate", handlePopState);
     });
 
     return {
       isNativeApp,
       LEAGUES,
+      CFB_CONFERENCE_GROUPS,
       getLeague,
       showMyTeamsTab,
       preferences,

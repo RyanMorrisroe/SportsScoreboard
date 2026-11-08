@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/espn/standings.json";
 import collegeFootballFixture from "../fixtures/espn/college-football-standings.json";
 import {
+  CFB_CONFERENCE_GROUPS,
   filterStandingGroups,
   getUniqueStandingTeams,
   getStandingPositionKey,
@@ -10,6 +11,24 @@ import {
 } from "../../src/domain/standings";
 
 describe("standings normalization", () => {
+  it("keeps CFB selector IDs, labels, and standings aliases together", () => {
+    expect(CFB_CONFERENCE_GROUPS.map(({ id, name }) => [id, name])).toEqual([
+      ["1", "ACC"],
+      ["4", "Big 12"],
+      ["5", "Big Ten (B1G)"],
+      ["12", "C-USA"],
+      ["18", "Independent"],
+      ["15", "MAC"],
+      ["17", "Mountain West"],
+      ["9", "PAC-12"],
+      ["8", "SEC"],
+      ["37", "Sun Belt"],
+    ]);
+    expect(
+      CFB_CONFERENCE_GROUPS.find(({ id }) => id === "18")?.aliases,
+    ).toEqual(["independent", "independents", "fbs independents"]);
+  });
+
   it("normalizes conference and nested division standings with available stat labels", () => {
     expect(normalizeStandings(fixture)).toEqual([
       {

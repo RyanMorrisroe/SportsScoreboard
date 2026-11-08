@@ -6,13 +6,13 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 - College Football, NFL, MLB, NBA, NCAA men's basketball, and NHL scoreboard tabs
 - TV Lineup view with network rows, estimated game windows, and live scores/status
-- Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed every 15 seconds
+- Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed while selected and when returning to the app
 - Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
 - Calendar date selection for MLB, NBA, NCAA men's basketball, and NHL
 - NCAA men's basketball conference filtering and two-half game scoring
 - Live, upcoming, and completed game views
-- Automatic scoreboard refresh every 15 seconds
+- Scoreboard and TV Lineup refresh every 15 seconds while visible; active sections refresh when selected and when returning to the app
 - Game detail modal with scores, team statistics, scoring plays, drives, and win probability when supplied by ESPN
 - Clickable team names that open team information, records, statistics, and schedule
 - Customizable sport tabs, including visibility and ordering
