@@ -5,6 +5,8 @@
   "scripts": {
     "build": "npm run typecheck && npm test && node ./scripts/build.mjs",
     "serve": "vite --host 0.0.0.0 --port 8000 --strictPort",
+    "screenshots": "node scripts/screenshots.mjs",
+    "test:screenshots": "node --test scripts/screenshot-fixtures.check.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
     "test": "vitest run",
     "test:live": "vitest run tests/live",
@@ -17,6 +19,7 @@
     "@types/node": "^22.20.5",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "latest",
+    "playwright": "^1.65.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^8.3.4",
