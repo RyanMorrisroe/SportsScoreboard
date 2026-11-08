@@ -4,6 +4,26 @@ export interface VisibilityTarget {
   removeEventListener(type: "visibilitychange", listener: () => void): void;
 }
 
+export function getLiveModalGameId({
+  open,
+  view,
+  status,
+  detailId,
+  selectedId,
+}: {
+  open: boolean;
+  view: string;
+  status: string;
+  detailId?: string | number;
+  selectedId?: string | number;
+}): string | number | null {
+  if (!open || view !== "game" || status !== "in") return null;
+  const eventId = detailId ?? selectedId;
+  return eventId !== undefined && String(eventId).trim() !== ""
+    ? eventId
+    : null;
+}
+
 export function createDashboardPoller(
   visibilityTarget: VisibilityTarget,
   poll: () => void,

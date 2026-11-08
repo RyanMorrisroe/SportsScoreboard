@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDashboardPoller,
+  getLiveModalGameId,
   type VisibilityTarget,
 } from "../../src/app/dashboardPolling";
 
@@ -81,5 +82,34 @@ describe("createDashboardPoller", () => {
     expect(poll).not.toHaveBeenCalled();
     expect(refreshOnVisible).toHaveBeenCalledTimes(1);
     expect(visibility.target.removeEventListener).toHaveBeenCalledOnce();
+  });
+});
+
+describe("getLiveModalGameId", () => {
+  it("uses the selected event ID until its detail data is available", () => {
+    expect(
+      getLiveModalGameId({
+        open: true,
+        view: "game",
+        status: "in",
+        selectedId: "live-event",
+      }),
+    ).toBe("live-event");
+  });
+
+  it("only returns IDs for a live game modal", () => {
+    const base = {
+      open: true,
+      view: "game",
+      status: "in",
+      detailId: "detail-event",
+      selectedId: "selected-event",
+    };
+
+    expect(getLiveModalGameId(base)).toBe("detail-event");
+    expect(getLiveModalGameId({ ...base, status: "pre" })).toBeNull();
+    expect(getLiveModalGameId({ ...base, status: "post" })).toBeNull();
+    expect(getLiveModalGameId({ ...base, view: "team" })).toBeNull();
+    expect(getLiveModalGameId({ ...base, open: false })).toBeNull();
   });
 });

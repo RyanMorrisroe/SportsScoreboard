@@ -7,6 +7,7 @@ import {
   toggleFavoriteTeam,
   type Preferences,
 } from "../../src/app/preferences";
+import { groupMyTeamsGames } from "../../src/app/myTeamsGroups";
 
 const NOW = Date.parse("2026-10-31T12:00:00Z");
 
@@ -94,6 +95,35 @@ function liveSummaryEvent() {
 }
 
 describe("useMyTeams", () => {
+  it("groups all of today's games first, including completed and future games", () => {
+    const now = new Date(2026, 9, 31, 12).getTime();
+    const todayMorning = new Date(2026, 9, 31, 9).getTime();
+    const todayEvening = new Date(2026, 9, 31, 19).getTime();
+    const yesterday = new Date(2026, 9, 30, 19).getTime();
+    const tomorrow = new Date(2026, 10, 1, 19).getTime();
+    const groups = groupMyTeamsGames(
+      [
+        { id: "yesterday", state: "post", startTime: yesterday },
+        { id: "future-today", state: "pre", startTime: todayEvening },
+        { id: "tomorrow", state: "pre", startTime: tomorrow },
+        { id: "completed-today", state: "post", startTime: todayMorning },
+        { id: "live-today", state: "in", startTime: todayMorning },
+      ],
+      now,
+    );
+
+    expect(groups.map(({ key }) => key)).toEqual([
+      "live",
+      "today",
+      "2026-10-30",
+      "2026-11-01",
+    ]);
+    expect(groups[1]).toMatchObject({
+      label: "Today",
+      games: [{ id: "future-today" }, { id: "completed-today" }],
+    });
+  });
+
   it("loads favorite schedules across leagues and deduplicates favorite matchups", async () => {
     const preferences = ref(createDefaultPreferences());
     preferences.value = addFavorite(

@@ -1031,7 +1031,7 @@
         v-if="!tvLineup.channels.length && !tvLineup.unscheduled.length"
         class="rounded-xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-400"
       >
-        No games scheduled for this day.
+        No games scheduled for {{ isDateLeague ? "this day" : "today" }}.
       </div>
       <div
         v-if="tvLineup.channels.length"
@@ -1125,9 +1125,17 @@
                       class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
                       :style="getTvLineupTeamStyle(entry.game, 'away')"
                     >
-                      <span class="truncate text-[11px] font-semibold">{{
-                        getTeamName(entry.game, "away")
-                      }}</span>
+                      <span class="flex min-w-0 items-center gap-1">
+                        <span
+                          v-if="getTeamRank(entry.game, 'away')"
+                          class="shrink-0 text-[9px] font-black text-amber-400"
+                        >
+                          #{{ getTeamRank(entry.game, "away") }}
+                        </span>
+                        <span class="truncate text-[11px] font-semibold">{{
+                          getTeamName(entry.game, "away")
+                        }}</span>
+                      </span>
                       <span
                         v-if="getGameState(entry.game) !== 'pre'"
                         class="shrink-0 font-mono text-xs font-black"
@@ -1138,9 +1146,17 @@
                       class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
                       :style="getTvLineupTeamStyle(entry.game, 'home')"
                     >
-                      <span class="truncate text-[11px] font-semibold">{{
-                        getTeamName(entry.game, "home")
-                      }}</span>
+                      <span class="flex min-w-0 items-center gap-1">
+                        <span
+                          v-if="getTeamRank(entry.game, 'home')"
+                          class="shrink-0 text-[9px] font-black text-amber-400"
+                        >
+                          #{{ getTeamRank(entry.game, "home") }}
+                        </span>
+                        <span class="truncate text-[11px] font-semibold">{{
+                          getTeamName(entry.game, "home")
+                        }}</span>
+                      </span>
                       <span
                         v-if="getGameState(entry.game) !== 'pre'"
                         class="shrink-0 font-mono text-xs font-black"
@@ -1191,9 +1207,17 @@
                 class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
                 :style="getTvLineupTeamStyle(entry.game, 'away')"
               >
-                <span class="truncate text-xs font-semibold">{{
-                  getTeamName(entry.game, "away")
-                }}</span>
+                <span class="flex min-w-0 items-center gap-1">
+                  <span
+                    v-if="getTeamRank(entry.game, 'away')"
+                    class="shrink-0 text-[10px] font-black text-amber-400"
+                  >
+                    #{{ getTeamRank(entry.game, "away") }}
+                  </span>
+                  <span class="truncate text-xs font-semibold">{{
+                    getTeamName(entry.game, "away")
+                  }}</span>
+                </span>
                 <span
                   v-if="getGameState(entry.game) !== 'pre'"
                   class="font-mono text-xs font-black"
@@ -1204,9 +1228,17 @@
                 class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
                 :style="getTvLineupTeamStyle(entry.game, 'home')"
               >
-                <span class="truncate text-xs font-semibold">{{
-                  getTeamName(entry.game, "home")
-                }}</span>
+                <span class="flex min-w-0 items-center gap-1">
+                  <span
+                    v-if="getTeamRank(entry.game, 'home')"
+                    class="shrink-0 text-[10px] font-black text-amber-400"
+                  >
+                    #{{ getTeamRank(entry.game, "home") }}
+                  </span>
+                  <span class="truncate text-xs font-semibold">{{
+                    getTeamName(entry.game, "home")
+                  }}</span>
+                </span>
                 <span
                   v-if="getGameState(entry.game) !== 'pre'"
                   class="font-mono text-xs font-black"
@@ -2111,8 +2143,31 @@
                 <p class="text-white font-bold text-sm tracking-tight mb-0.5">
                   {{ currentDrive.description }}
                 </p>
+                <div
+                  class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-300"
+                >
+                  <span v-if="currentDrive.possessionTeam">
+                    Ball: {{ currentDrive.possessionTeam }}
+                  </span>
+                  <span v-if="currentDrive.fieldPosition">
+                    At {{ currentDrive.fieldPosition }}
+                  </span>
+                  <span v-if="currentDrive.downDistance">
+                    {{ currentDrive.downDistance }}
+                  </span>
+                </div>
                 <p
-                  v-if="currentDrive.recap"
+                  v-if="currentDrive.lastPlay"
+                  class="mt-2 border-t border-blue-900/40 pt-2 text-xs text-white"
+                >
+                  <span class="mr-1.5 font-bold text-blue-300">Last play</span>
+                  {{ currentDrive.lastPlay }}
+                </p>
+                <p
+                  v-if="
+                    currentDrive.recap &&
+                    currentDrive.recap !== currentDrive.lastPlay
+                  "
                   class="text-xs text-zinc-400 font-medium"
                 >
                   {{ currentDrive.recap }}
@@ -2606,7 +2661,11 @@ import {
   getScoreboardUrl,
 } from "./api/espn.js";
 import { CBB_CONFERENCE_GROUPS, LEAGUES, getLeague } from "./app/leagues";
-import { createDashboardPoller } from "./app/dashboardPolling";
+import {
+  createDashboardPoller,
+  getLiveModalGameId as getLiveModalGameIdUtil,
+} from "./app/dashboardPolling";
+import { groupMyTeamsGames } from "./app/myTeamsGroups";
 import { loadPreferences } from "./app/preferences.js";
 import { usePreferences } from "./composables/usePreferences";
 import { useAppUpdates } from "./composables/useAppUpdates";
@@ -2647,6 +2706,7 @@ import {
   CFB_CONFERENCE_GROUPS,
   filterStandingGroups,
 } from "./domain/standings";
+import { getCurrentDriveSummary } from "./domain/drive";
 import { normalizeMatchup } from "./domain/matchup.js";
 import { normalizePlayByPlay } from "./domain/playByPlay";
 import { buildGameFlow } from "./app/gameFlow.js";
@@ -2918,33 +2978,9 @@ export default {
     const myTeamCachedSchedules = computed(() =>
       myTeamSchedules.value.filter((schedule) => schedule.cachedAt !== null),
     );
-    const myTeamsGroups = computed(() => {
-      const groups = new Map<
-        string,
-        { key: string; label: string; games: MyTeamsGame[] }
-      >();
-      for (const game of myTeamGames.value) {
-        const date = new Date(game.startTime ?? myTeamsNow.value);
-        const dateKey = [
-          date.getFullYear(),
-          String(date.getMonth() + 1).padStart(2, "0"),
-          String(date.getDate()).padStart(2, "0"),
-        ].join("-");
-        const key = game.state === "in" ? "live" : dateKey;
-        const label =
-          key === "live"
-            ? "Live now"
-            : date.toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              });
-        const group = groups.get(key) ?? { key, label, games: [] };
-        group.games.push(game);
-        groups.set(key, group);
-      }
-      return [...groups.values()];
-    });
+    const myTeamsGroups = computed(() =>
+      groupMyTeamsGames(myTeamGames.value, myTeamsNow.value),
+    );
     const {
       update,
       checking: updateChecking,
@@ -3309,13 +3345,10 @@ export default {
       if (!leagueBehavior.value?.game.supportsDrives) {
         return null;
       }
-      const dr = asObject(asObject(modalData.value?.drives).current);
-      if (Object.keys(dr).length === 0) return null;
-      return {
-        description: dr.description || "Active drive ongoing...",
-        result: dr.result || "Ongoing",
-        recap: asObject(dr.recap).recap || "",
-      };
+      return getCurrentDriveSummary(
+        modalData.value?.drives,
+        modalData.value?.teams,
+      );
     });
 
     const winProbabilityChart = computed(() =>
@@ -3349,6 +3382,15 @@ export default {
 
     const triggerImmediateFetch = () => fetchScoreboard(false);
 
+    const liveModalGameId = () =>
+      getLiveModalGameIdUtil({
+        open: showModal.value,
+        view: modalView.value,
+        status: modalGameStatus.value,
+        detailId: modalData.value?.id,
+        selectedId: selectedGame.value?.id,
+      });
+
     const skipOpenGameSummaryKey = () => {
       const modalEventId = selectedGame.value?.id;
       if (
@@ -3372,12 +3414,9 @@ export default {
         pendingRequests.push(loadMyTeams(true, skipOpenGameSummaryKey()));
       }
 
-      if (
-        showModal.value &&
-        modalView.value === "game" &&
-        modalData.value?.id
-      ) {
-        pendingRequests.push(fetchGameDetail(modalData.value.id));
+      const liveGameId = liveModalGameId();
+      if (liveGameId !== null) {
+        pendingRequests.push(fetchGameDetail(liveGameId));
       } else if (
         showModal.value &&
         modalView.value === "team" &&
@@ -3395,13 +3434,8 @@ export default {
       } else if (viewMode.value === "my-teams") {
         void loadMyTeams(true, skipOpenGameSummaryKey());
       }
-      if (
-        showModal.value &&
-        modalView.value === "game" &&
-        modalData.value?.id
-      ) {
-        void fetchGameDetail(modalData.value.id);
-      }
+      const liveGameId = liveModalGameId();
+      if (liveGameId !== null) void fetchGameDetail(liveGameId);
     };
 
     const dashboardPoller = createDashboardPoller(
