@@ -13,7 +13,7 @@ export interface NormalizedScheduleEntry {
   teamLogo: string;
   homeAway: string | undefined;
   score: string;
-  result: "W" | "L" | "";
+  result: "W" | "L" | "T" | "";
   state: string;
   status: string;
   venue: string;
@@ -88,9 +88,20 @@ export function normalizeSchedule(
     const score = competitor.score;
     if (score && typeof score === "object") {
       const scoreObject = asObject(score);
-      return String(scoreObject.displayValue || scoreObject.value || "--");
+      return String(scoreObject.displayValue ?? scoreObject.value ?? "--");
     }
     return String(score ?? "--");
+  };
+  const getNumericScore = (competitor: JsonObject): number | null => {
+    const score = competitor.score;
+    const value =
+      score !== null && typeof score === "object"
+        ? (asObject(score).value ?? asObject(score).displayValue)
+        : score;
+    if (typeof value !== "string" && typeof value !== "number") return null;
+    if (typeof value === "string" && value.trim() === "") return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
   };
 
   return asArray(asObject(payload).events).map((eventValue) => {
@@ -122,6 +133,19 @@ export function normalizeSchedule(
     const opponentScore = opponent.score;
     const venue = asObject(competition.venue);
     const status = asObject(competitionStatus.type);
+    const state = getString(statusType.state).toLowerCase();
+    const ownNumericScore = getNumericScore(own);
+    const opponentNumericScore = getNumericScore(opponent);
+    const result =
+      own.winner === true
+        ? "W"
+        : opponent.winner === true
+          ? "L"
+          : state === "post" &&
+              ownNumericScore !== null &&
+              ownNumericScore === opponentNumericScore
+            ? "T"
+            : "";
 
     return {
       id: getId(event.id),
@@ -137,8 +161,8 @@ export function normalizeSchedule(
         ownScore !== undefined && opponentScore !== undefined
           ? `${getScore(own)}-${getScore(opponent)}`
           : "--",
-      result: own.winner === true ? "W" : opponent.winner === true ? "L" : "",
-      state: getString(statusType.state).toLowerCase(),
+      result,
+      state,
       status: timeIsTBD
         ? "TBD"
         : status.state === "pre"

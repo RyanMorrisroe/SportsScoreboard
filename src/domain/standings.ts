@@ -76,18 +76,38 @@ const STANDINGS_STAT_ORDER_INDEX = new Map(
   STANDINGS_STAT_ORDER.map((key, index) => [key, index]),
 );
 
-const COLLEGE_FOOTBALL_CONFERENCE_NAMES: Record<string, readonly string[]> = {
-  "1": ["acc", "atlantic coast conference"],
-  "4": ["big 12", "big 12 conference"],
-  "5": ["big ten", "big ten conference", "b1g"],
-  "12": ["c-usa", "conference usa"],
-  "18": ["independent", "independents", "fbs independents"],
-  "15": ["mac", "mid-american", "mid-american conference"],
-  "17": ["mountain west", "mountain west conference"],
-  "9": ["pac-12", "pacific-12", "pac-12 conference"],
-  "8": ["sec", "southeastern conference"],
-  "37": ["sun belt", "sun belt conference"],
-};
+export const CFB_CONFERENCE_GROUPS = [
+  { id: "1", name: "ACC", aliases: ["acc", "atlantic coast conference"] },
+  { id: "4", name: "Big 12", aliases: ["big 12", "big 12 conference"] },
+  {
+    id: "5",
+    name: "Big Ten (B1G)",
+    aliases: ["big ten", "big ten conference", "b1g"],
+  },
+  { id: "12", name: "C-USA", aliases: ["c-usa", "conference usa"] },
+  {
+    id: "18",
+    name: "Independent",
+    aliases: ["independent", "independents", "fbs independents"],
+  },
+  {
+    id: "15",
+    name: "MAC",
+    aliases: ["mac", "mid-american", "mid-american conference"],
+  },
+  {
+    id: "17",
+    name: "Mountain West",
+    aliases: ["mountain west", "mountain west conference"],
+  },
+  {
+    id: "9",
+    name: "PAC-12",
+    aliases: ["pac-12", "pacific-12", "pac-12 conference"],
+  },
+  { id: "8", name: "SEC", aliases: ["sec", "southeastern conference"] },
+  { id: "37", name: "Sun Belt", aliases: ["sun belt", "sun belt conference"] },
+] as const;
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -259,9 +279,11 @@ export function filterStandingGroups(
   }
   if (league !== "college-football") return groups;
 
-  const conferenceNames = COLLEGE_FOOTBALL_CONFERENCE_NAMES[selectedGroup];
-  if (!conferenceNames) return groups;
-  const normalizedNames = conferenceNames.map((name) =>
+  const conference = CFB_CONFERENCE_GROUPS.find(
+    (group) => group.id === selectedGroup,
+  );
+  if (!conference) return groups;
+  const normalizedNames = conference.aliases.map((name) =>
     name.toLowerCase().replace(/[^a-z0-9]/g, ""),
   );
 

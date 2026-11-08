@@ -6,13 +6,13 @@ A static, responsive sports scoreboard dashboard powered by ESPN's public site A
 
 - College Football, NFL, MLB, NBA, NCAA men's basketball, and NHL scoreboard tabs
 - TV Lineup view with network rows, estimated game windows, and live scores/status
-- Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed every 15 seconds
+- Cross-league My Teams view for favorite teams' live/upcoming games and their latest result from the prior seven days, refreshed while selected and when returning to the app
 - Standings view for each supported league, showing ESPN-provided groupings and statistics
 - Football week and season-type controls
 - Calendar date selection for MLB, NBA, NCAA men's basketball, and NHL
 - NCAA men's basketball conference filtering and two-half game scoring
 - Live, upcoming, and completed game views
-- Automatic scoreboard refresh every 15 seconds
+- Scoreboard and TV Lineup refresh every 15 seconds while visible; active sections refresh when selected and when returning to the app
 - Game detail modal with scores, team statistics, scoring plays, drives, and win probability when supplied by ESPN
 - Clickable team names that open team information, records, statistics, and schedule
 - Customizable sport tabs, including visibility and ordering
@@ -27,43 +27,46 @@ ESPN's browser CORS behavior has been inconsistent since October 2026, particula
 
 ## Screenshots
 
-Desktop images are full-page browser captures. Mobile images are captured at Pixel 9a resolution (1081 x 2404 pixels, approximately 412 x 916 CSS pixels).
+These responsive browser captures use curated sample data, including synthetic scores and dates; they are not live ESPN results or Android device captures. Desktop uses a 1280 x 800 CSS-pixel viewport, and mobile uses 412 x 916 CSS pixels at 2x scale. Longer pages are captured in full. Native-only update notices and update settings are not shown.
 
-### Scoreboard
+| View                           | Desktop                                                                              | Mobile                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| College football               | ![College football desktop](docs/screenshots/Desktop_Scoreboard_CFB.png)             | ![College football mobile](docs/screenshots/Mobile_Scoreboard_CFB.png)             |
+| NFL                            | ![NFL desktop](docs/screenshots/Desktop_Scoreboard_NFL.png)                          | ![NFL mobile](docs/screenshots/Mobile_Scoreboard_NFL.png)                          |
+| MLB                            | ![MLB desktop](docs/screenshots/Desktop_Scoreboard_MLB.png)                          | ![MLB mobile](docs/screenshots/Mobile_Scoreboard_MLB.png)                          |
+| NBA                            | ![NBA desktop](docs/screenshots/Desktop_Scoreboard_NBA.png)                          | ![NBA mobile](docs/screenshots/Mobile_Scoreboard_NBA.png)                          |
+| Men's college basketball       | ![College basketball desktop](docs/screenshots/Desktop_Scoreboard_CBB.png)           | ![College basketball mobile](docs/screenshots/Mobile_Scoreboard_CBB.png)           |
+| Conference filter              | ![Conference filter desktop](docs/screenshots/Desktop_Scoreboard_CBB_Conference.png) | ![Conference filter mobile](docs/screenshots/Mobile_Scoreboard_CBB_Conference.png) |
+| NHL                            | ![NHL desktop](docs/screenshots/Desktop_Scoreboard_NHL.png)                          | ![NHL mobile](docs/screenshots/Mobile_Scoreboard_NHL.png)                          |
+| TV Lineup                      | ![TV Lineup desktop](docs/screenshots/Desktop_TV_Lineup.png)                         | ![TV Lineup mobile](docs/screenshots/Mobile_TV_Lineup.png)                         |
+| Standings                      | ![Standings desktop](docs/screenshots/Desktop_Standings.png)                         | ![Standings mobile](docs/screenshots/Mobile_Standings.png)                         |
+| My Teams                       | ![My Teams desktop](docs/screenshots/Desktop_My_Teams.png)                           | ![My Teams mobile](docs/screenshots/Mobile_My_Teams.png)                           |
+| Sport settings                 | ![Sport settings desktop](docs/screenshots/Desktop_Settings_Sports.png)              | ![Sport settings mobile](docs/screenshots/Mobile_Settings_Sports.png)              |
+| Favorite teams                 | ![Favorite teams desktop](docs/screenshots/Desktop_Settings_Favorites.png)           | ![Favorite teams mobile](docs/screenshots/Mobile_Settings_Favorites.png)           |
+| Pregame matchup                | ![Pregame desktop](docs/screenshots/Desktop_Game_Pregame.png)                        | ![Pregame mobile](docs/screenshots/Mobile_Game_Pregame.png)                        |
+| Team stats and win probability | ![Game stats desktop](docs/screenshots/Desktop_Game_Stats.png)                       | ![Game stats mobile](docs/screenshots/Mobile_Game_Stats.png)                       |
+| Game flow                      | ![Game flow desktop](docs/screenshots/Desktop_Game_Flow.png)                         | ![Game flow mobile](docs/screenshots/Mobile_Game_Flow.png)                         |
+| Play-by-play                   | ![Play-by-play desktop](docs/screenshots/Desktop_Game_Timeline.png)                  | ![Play-by-play mobile](docs/screenshots/Mobile_Game_Timeline.png)                  |
+| Scoring plays                  | ![Scoring plays desktop](docs/screenshots/Desktop_Game_Scoring.png)                  | ![Scoring plays mobile](docs/screenshots/Mobile_Game_Scoring.png)                  |
+| Player box score               | ![Box score desktop](docs/screenshots/Desktop_Game_Box_Score.png)                    | ![Box score mobile](docs/screenshots/Mobile_Game_Box_Score.png)                    |
+| Matchup                        | ![Matchup desktop](docs/screenshots/Desktop_Game_Matchup.png)                        | ![Matchup mobile](docs/screenshots/Mobile_Game_Matchup.png)                        |
+| Team overview                  | ![Team overview desktop](docs/screenshots/Desktop_Team_Overview.png)                 | ![Team overview mobile](docs/screenshots/Mobile_Team_Overview.png)                 |
+| Team schedule                  | ![Team schedule desktop](docs/screenshots/Desktop_Team_Schedule.png)                 | ![Team schedule mobile](docs/screenshots/Mobile_Team_Schedule.png)                 |
+| Football live drive            | ![Live drive desktop](docs/screenshots/Desktop_Football_Drive.png)                   | ![Live drive mobile](docs/screenshots/Mobile_Football_Drive.png)                   |
+| Baseball batting stats         | ![Batting stats desktop](docs/screenshots/Desktop_Baseball_Stats.png)                | ![Batting stats mobile](docs/screenshots/Mobile_Baseball_Stats.png)                |
+| Baseball pitching stats        | ![Pitching stats desktop](docs/screenshots/Desktop_Baseball_Pitching.png)            | ![Pitching stats mobile](docs/screenshots/Mobile_Baseball_Pitching.png)            |
 
-| Desktop                                                        | Pixel 9a                                                          |
-| -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| ![Desktop scoreboard](docs/screenshots/Desktop_Scoreboard.png) | ![Scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard.png) |
+### Regenerating Screenshots
 
-### TV Lineup
+From this directory, install dependencies and the Playwright browser once, then run the capture script on demand:
 
-| Desktop                                                        | Pixel 9a                                                          |
-| -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| ![Desktop TV Lineup](docs/screenshots/Desktop_TV_Schedule.png) | ![TV Lineup on Pixel 9a](docs/screenshots/Mobile_TV_Schedule.png) |
+```sh
+npm ci
+npx playwright install chromium
+npm run screenshots
+```
 
-### Standings
-
-| Desktop                                                      | Pixel 9a                                                        |
-| ------------------------------------------------------------ | --------------------------------------------------------------- |
-| ![Desktop standings](docs/screenshots/Desktop_Standings.png) | ![Standings on Pixel 9a](docs/screenshots/Mobile_Standings.png) |
-
-### Hockey Scoreboard
-
-| Desktop                                                                      | Pixel 9a                                                                        |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| ![Desktop hockey scoreboard](docs/screenshots/Desktop_Scoreboard_Hockey.png) | ![Hockey scoreboard on Pixel 9a](docs/screenshots/Mobile_Scoreboard_Hockey.png) |
-
-### Game Details
-
-| Desktop                                                                | Pixel 9a                                                                  |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| ![Desktop game details modal](docs/screenshots/Dekstop_Game_Modal.png) | ![Game details modal on Pixel 9a](docs/screenshots/Mobile_Game_Modal.png) |
-
-### Team Details
-
-| Desktop                                                                | Pixel 9a                                                                  |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| ![Desktop team details modal](docs/screenshots/Desktop_Team_Modal.png) | ![Team details modal on Pixel 9a](docs/screenshots/Mobile_Team_Modal.png) |
+The script starts a local Vite server on `127.0.0.1:18731` and uses an isolated browser profile, a fixed clock, and screenshot-only ESPN response fixtures. It intercepts API calls locally, avoiding ESPN's browser CORS restrictions; internet access is still required for ESPN-hosted team logos and player images. It checks for missing fixtures and broken images and stages the complete set before replacing the listed files in `docs/screenshots/`. Existing unrelated images are left alone. Run `npm run test:screenshots` to check the fixture router and scenario manifest. Screenshot generation is never part of a build or CI workflow.
 
 ## How It Works
 

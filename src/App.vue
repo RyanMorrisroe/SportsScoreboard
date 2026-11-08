@@ -462,16 +462,13 @@
               Top 25 Rankings
             </option>
             <template v-if="selectedLeague === 'college-football'">
-              <option value="1">ACC</option>
-              <option value="4">Big 12</option>
-              <option value="5">Big Ten (B1G)</option>
-              <option value="12">C-USA</option>
-              <option value="18">Independent</option>
-              <option value="15">MAC</option>
-              <option value="17">Mountain West</option>
-              <option value="9">PAC-12</option>
-              <option value="8">SEC</option>
-              <option value="37">Sun Belt</option>
+              <option
+                v-for="group in CFB_CONFERENCE_GROUPS"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.name }}
+              </option>
             </template>
             <template v-else-if="selectedLeague === 'mens-college-basketball'">
               <option
@@ -1034,7 +1031,7 @@
         v-if="!tvLineup.channels.length && !tvLineup.unscheduled.length"
         class="rounded-xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-400"
       >
-        No games scheduled for this day.
+        No games scheduled for {{ isDateLeague ? "this day" : "today" }}.
       </div>
       <div
         v-if="tvLineup.channels.length"
@@ -1128,9 +1125,17 @@
                       class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
                       :style="getTvLineupTeamStyle(entry.game, 'away')"
                     >
-                      <span class="truncate text-[11px] font-semibold">{{
-                        getTeamName(entry.game, "away")
-                      }}</span>
+                      <span class="flex min-w-0 items-center gap-1">
+                        <span
+                          v-if="getTeamRank(entry.game, 'away')"
+                          class="shrink-0 text-[9px] font-black text-amber-400"
+                        >
+                          #{{ getTeamRank(entry.game, "away") }}
+                        </span>
+                        <span class="truncate text-[11px] font-semibold">{{
+                          getTeamName(entry.game, "away")
+                        }}</span>
+                      </span>
                       <span
                         v-if="getGameState(entry.game) !== 'pre'"
                         class="shrink-0 font-mono text-xs font-black"
@@ -1141,9 +1146,17 @@
                       class="flex min-w-0 items-center justify-between gap-1 rounded-sm border-b border-zinc-800/80 px-1 pb-0.5"
                       :style="getTvLineupTeamStyle(entry.game, 'home')"
                     >
-                      <span class="truncate text-[11px] font-semibold">{{
-                        getTeamName(entry.game, "home")
-                      }}</span>
+                      <span class="flex min-w-0 items-center gap-1">
+                        <span
+                          v-if="getTeamRank(entry.game, 'home')"
+                          class="shrink-0 text-[9px] font-black text-amber-400"
+                        >
+                          #{{ getTeamRank(entry.game, "home") }}
+                        </span>
+                        <span class="truncate text-[11px] font-semibold">{{
+                          getTeamName(entry.game, "home")
+                        }}</span>
+                      </span>
                       <span
                         v-if="getGameState(entry.game) !== 'pre'"
                         class="shrink-0 font-mono text-xs font-black"
@@ -1194,9 +1207,17 @@
                 class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
                 :style="getTvLineupTeamStyle(entry.game, 'away')"
               >
-                <span class="truncate text-xs font-semibold">{{
-                  getTeamName(entry.game, "away")
-                }}</span>
+                <span class="flex min-w-0 items-center gap-1">
+                  <span
+                    v-if="getTeamRank(entry.game, 'away')"
+                    class="shrink-0 text-[10px] font-black text-amber-400"
+                  >
+                    #{{ getTeamRank(entry.game, "away") }}
+                  </span>
+                  <span class="truncate text-xs font-semibold">{{
+                    getTeamName(entry.game, "away")
+                  }}</span>
+                </span>
                 <span
                   v-if="getGameState(entry.game) !== 'pre'"
                   class="font-mono text-xs font-black"
@@ -1207,9 +1228,17 @@
                 class="flex items-center justify-between gap-2 rounded-sm border-b border-zinc-800 px-1 pb-1"
                 :style="getTvLineupTeamStyle(entry.game, 'home')"
               >
-                <span class="truncate text-xs font-semibold">{{
-                  getTeamName(entry.game, "home")
-                }}</span>
+                <span class="flex min-w-0 items-center gap-1">
+                  <span
+                    v-if="getTeamRank(entry.game, 'home')"
+                    class="shrink-0 text-[10px] font-black text-amber-400"
+                  >
+                    #{{ getTeamRank(entry.game, "home") }}
+                  </span>
+                  <span class="truncate text-xs font-semibold">{{
+                    getTeamName(entry.game, "home")
+                  }}</span>
+                </span>
                 <span
                   v-if="getGameState(entry.game) !== 'pre'"
                   class="font-mono text-xs font-black"
@@ -2114,8 +2143,31 @@
                 <p class="text-white font-bold text-sm tracking-tight mb-0.5">
                   {{ currentDrive.description }}
                 </p>
+                <div
+                  class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-300"
+                >
+                  <span v-if="currentDrive.possessionTeam">
+                    Ball: {{ currentDrive.possessionTeam }}
+                  </span>
+                  <span v-if="currentDrive.fieldPosition">
+                    At {{ currentDrive.fieldPosition }}
+                  </span>
+                  <span v-if="currentDrive.downDistance">
+                    {{ currentDrive.downDistance }}
+                  </span>
+                </div>
                 <p
-                  v-if="currentDrive.recap"
+                  v-if="currentDrive.lastPlay"
+                  class="mt-2 border-t border-blue-900/40 pt-2 text-xs text-white"
+                >
+                  <span class="mr-1.5 font-bold text-blue-300">Last play</span>
+                  {{ currentDrive.lastPlay }}
+                </p>
+                <p
+                  v-if="
+                    currentDrive.recap &&
+                    currentDrive.recap !== currentDrive.lastPlay
+                  "
                   class="text-xs text-zinc-400 font-medium"
                 >
                   {{ currentDrive.recap }}
@@ -2458,78 +2510,233 @@
               </p>
 
               <div
+                role="tablist"
+                aria-label="Team details"
+                class="flex gap-1 border-b border-zinc-800"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="teamDetailTab === 'overview'"
+                  @click="teamDetailTab = 'overview'"
+                  class="border-b-2 px-4 py-2.5 text-xs font-bold transition-colors"
+                  :class="
+                    teamDetailTab === 'overview'
+                      ? 'border-amber-400 text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-200'
+                  "
+                >
+                  Overview
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="teamDetailTab === 'schedule'"
+                  @click="teamDetailTab = 'schedule'"
+                  class="border-b-2 px-4 py-2.5 text-xs font-bold transition-colors"
+                  :class="
+                    teamDetailTab === 'schedule'
+                      ? 'border-amber-400 text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-200'
+                  "
+                >
+                  Schedule
+                  <span class="ml-1.5 font-mono text-[10px] text-zinc-500">{{
+                    teamSchedule.length
+                  }}</span>
+                </button>
+              </div>
+
+              <div
                 v-if="teamError"
                 class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
               >
                 {{ teamError }}
               </div>
 
-              <div
-                v-if="teamRecords.length || teamRecordStats.length"
-                class="space-y-5"
-              >
+              <section v-if="teamDetailTab === 'overview'" class="space-y-5">
                 <div
-                  v-if="teamRecords.length"
-                  class="grid grid-cols-2 gap-2 sm:gap-3"
+                  v-if="primaryTeamRecord || secondaryTeamRecords.length"
+                  class="flex flex-wrap items-end justify-between gap-4 border-y border-zinc-800 py-4"
                 >
+                  <div v-if="primaryTeamRecord">
+                    <p class="text-[10px] font-bold uppercase text-zinc-500">
+                      {{ primaryTeamRecord.label }}
+                    </p>
+                    <p class="mt-1 font-mono text-3xl font-black text-white">
+                      {{ primaryTeamRecord.value }}
+                    </p>
+                  </div>
                   <div
-                    v-for="record in teamRecords"
-                    :key="record.label"
-                    class="bg-gradient-to-br from-blue-950/60 to-zinc-950/60 border border-blue-900/50 rounded-2xl px-3 sm:px-4 py-3"
+                    v-if="secondaryTeamRecords.length"
+                    class="flex flex-wrap gap-x-5 gap-y-2"
                   >
                     <div
-                      class="text-[10px] text-blue-300/70 uppercase tracking-widest font-bold"
+                      v-for="record in secondaryTeamRecords"
+                      :key="record.label"
                     >
-                      {{ record.label }}
-                    </div>
-                    <div
-                      class="font-mono text-xl sm:text-2xl font-black text-white mt-1 truncate"
-                    >
-                      {{ record.value }}
+                      <p class="text-[10px] font-bold uppercase text-zinc-500">
+                        {{ record.label }}
+                      </p>
+                      <p class="mt-1 font-mono text-sm font-bold text-zinc-200">
+                        {{ record.value }}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div v-if="teamRecordStats.length" class="space-y-3">
-                  <button
-                    @click="showSeasonMetrics = !showSeasonMetrics"
-                    class="flex items-center justify-between w-full text-left text-xs font-black text-zinc-400 uppercase tracking-widest hover:text-white"
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <article
+                    v-if="teamNextGame"
+                    class="min-w-0 border border-zinc-800 bg-zinc-950/60 p-4"
                   >
-                    <span>Season Metrics</span>
-                    <span class="text-base leading-none">{{
-                      showSeasonMetrics ? "−" : "+"
-                    }}</span>
-                  </button>
-                  <div
-                    v-if="showSeasonMetrics"
-                    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
+                    <div class="flex items-center justify-between gap-3">
+                      <h4 class="text-[10px] font-bold uppercase text-zinc-500">
+                        {{
+                          teamNextGame.state === "in"
+                            ? "In progress"
+                            : "Next game"
+                        }}
+                      </h4>
+                      <span
+                        class="shrink-0 text-[10px] font-bold uppercase"
+                        :class="
+                          teamNextGame.state === 'in'
+                            ? 'text-rose-400'
+                            : 'text-zinc-400'
+                        "
+                      >
+                        {{ teamNextGame.status }}
+                      </span>
+                    </div>
+                    <p class="mt-2 text-xs text-zinc-400">
+                      {{ teamNextGame.date
+                      }}<span v-if="teamNextGame.week">
+                        · {{ teamNextGame.week }}</span
+                      >
+                    </p>
+                    <div class="mt-3 flex min-w-0 items-center gap-2">
+                      <img
+                        :src="teamNextGame.opponentLogo"
+                        :alt="`${teamNextGame.opponent} logo`"
+                        class="h-8 w-8 shrink-0 object-contain"
+                        loading="lazy"
+                      />
+                      <p class="min-w-0 truncate text-sm font-bold text-white">
+                        {{ teamNextGame.homeAway === "home" ? "vs" : "at" }}
+                        {{ teamNextGame.opponent }}
+                      </p>
+                    </div>
+                    <p
+                      v-if="teamNextGame.venue"
+                      class="mt-2 truncate text-[10px] text-zinc-500"
+                    >
+                      {{ teamNextGame.venue }}
+                    </p>
+                  </article>
+
+                  <article
+                    class="min-w-0 border border-zinc-800 bg-zinc-950/60 p-4"
                   >
+                    <h4 class="text-[10px] font-bold uppercase text-zinc-500">
+                      Last five
+                    </h4>
                     <div
-                      v-for="stat in teamRecordStats"
-                      :key="stat.key"
-                      class="bg-zinc-950/70 border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-3"
+                      v-if="teamScheduleSections.lastFive.length"
+                      class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"
                     >
                       <div
-                        class="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight"
+                        v-for="game in teamScheduleSections.lastFive"
+                        :key="game.id"
+                        class="flex min-w-0 items-center gap-2 border-l-2 py-1 pl-2"
+                        :class="
+                          game.result === 'W'
+                            ? 'border-emerald-400'
+                            : game.result === 'L'
+                              ? 'border-rose-400'
+                              : 'border-amber-300'
+                        "
                       >
-                        {{ stat.label }}
-                      </div>
-                      <div
-                        class="font-mono text-base sm:text-lg font-black text-white mt-2 truncate"
-                      >
-                        {{ stat.value }}
+                        <span
+                          class="shrink-0 text-xs font-black"
+                          :class="
+                            game.result === 'W'
+                              ? 'text-emerald-300'
+                              : game.result === 'L'
+                                ? 'text-rose-300'
+                                : 'text-amber-300'
+                          "
+                        >
+                          {{ game.result }}
+                        </span>
+                        <span class="min-w-0">
+                          <span
+                            class="block truncate text-[10px] font-semibold text-zinc-300"
+                          >
+                            {{ game.opponent }}
+                          </span>
+                          <span
+                            class="block font-mono text-[10px] text-zinc-500"
+                          >
+                            {{ game.score }}
+                          </span>
+                        </span>
                       </div>
                     </div>
-                  </div>
+                    <p v-else class="mt-3 text-xs text-zinc-500">
+                      Recent results unavailable.
+                    </p>
+                  </article>
                 </div>
-              </div>
 
-              <div>
-                <h4
-                  class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3"
-                >
-                  Schedule
-                </h4>
+                <section v-if="teamRecordStatGroups.length" class="space-y-5">
+                  <h4
+                    class="text-xs font-black uppercase tracking-widest text-zinc-400"
+                  >
+                    Team metrics
+                  </h4>
+                  <section
+                    v-for="group in teamRecordStatGroups"
+                    :key="group.key"
+                    class="space-y-3"
+                  >
+                    <h5
+                      class="border-b border-zinc-800 pb-2 text-sm font-bold text-zinc-200"
+                    >
+                      {{ group.label }}
+                    </h5>
+                    <section
+                      v-for="category in group.categories"
+                      :key="category.key"
+                      class="space-y-1"
+                    >
+                      <h6
+                        class="text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+                      >
+                        {{ category.label }}
+                      </h6>
+                      <dl class="divide-y divide-zinc-800/80">
+                        <div
+                          v-for="stat in category.stats"
+                          :key="stat.key"
+                          class="flex items-center justify-between gap-4 py-2.5"
+                        >
+                          <dt class="min-w-0 text-sm text-zinc-300">
+                            {{ stat.label }}
+                          </dt>
+                          <dd
+                            class="shrink-0 font-mono text-sm font-semibold text-white"
+                          >
+                            {{ stat.value }}
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                  </section>
+                </section>
+              </section>
+
+              <section v-if="teamDetailTab === 'schedule'" class="space-y-6">
                 <div
                   v-if="scheduleError"
                   class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
@@ -2542,55 +2749,69 @@
                 >
                   No schedule available.
                 </div>
-                <div v-else class="space-y-2">
-                  <div
-                    v-for="game in teamSchedule"
-                    :key="game.id"
-                    class="flex items-start justify-between gap-2 sm:gap-3 bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-2.5 sm:p-3"
-                  >
-                    <div class="min-w-0">
-                      <div class="text-[10px] text-zinc-500">
-                        {{ game.date
-                        }}<span v-if="game.week"> · {{ game.week }}</span>
-                      </div>
-                      <div
-                        class="flex items-center gap-2 text-sm font-bold text-white truncate mt-1"
+                <div v-else class="space-y-6">
+                  <section v-for="group in teamScheduleGroups" :key="group.key">
+                    <h4
+                      class="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500"
+                    >
+                      {{ group.label }}
+                    </h4>
+                    <div
+                      class="divide-y divide-zinc-800 border-y border-zinc-800"
+                    >
+                      <article
+                        v-for="game in group.games"
+                        :key="game.id"
+                        class="flex items-center justify-between gap-3 py-3"
                       >
-                        <img
-                          :src="game.opponentLogo"
-                          class="w-5 h-5 object-contain shrink-0"
-                          loading="lazy"
-                        />
-                        <span class="truncate"
-                          >{{ game.homeAway === "home" ? "vs" : "at" }}
-                          {{ game.opponent }}</span
-                        >
-                      </div>
-                      <div
-                        v-if="game.venue"
-                        class="text-[10px] text-zinc-500 mt-1 truncate"
-                      >
-                        {{ game.venue }}
-                      </div>
+                        <div class="min-w-0">
+                          <p class="text-[10px] text-zinc-500">
+                            {{ game.date
+                            }}<span v-if="game.week"> · {{ game.week }}</span>
+                          </p>
+                          <div class="mt-1 flex min-w-0 items-center gap-2">
+                            <img
+                              :src="game.opponentLogo"
+                              :alt="`${game.opponent} logo`"
+                              class="h-6 w-6 shrink-0 object-contain"
+                              loading="lazy"
+                            />
+                            <span class="truncate text-sm font-bold text-white">
+                              {{ game.homeAway === "home" ? "vs" : "at" }}
+                              {{ game.opponent }}
+                            </span>
+                          </div>
+                          <p
+                            v-if="game.venue"
+                            class="mt-1 truncate text-[10px] text-zinc-500"
+                          >
+                            {{ game.venue }}
+                          </p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                          <p class="font-mono text-sm font-black text-white">
+                            {{ game.score }}
+                          </p>
+                          <p
+                            class="mt-1 text-[10px] font-bold uppercase"
+                            :class="
+                              game.result === 'W'
+                                ? 'text-emerald-400'
+                                : game.result === 'L'
+                                  ? 'text-rose-400'
+                                  : game.state === 'in'
+                                    ? 'text-rose-400'
+                                    : 'text-zinc-500'
+                            "
+                          >
+                            {{ game.result || game.status }}
+                          </p>
+                        </div>
+                      </article>
                     </div>
-                    <div class="text-right shrink-0">
-                      <div
-                        class="flex items-center gap-2 font-mono font-black text-white"
-                      >
-                        <img
-                          :src="game.teamLogo"
-                          class="w-5 h-5 object-contain shrink-0"
-                          loading="lazy"
-                        />
-                        <span>{{ game.score }}</span>
-                      </div>
-                      <div class="text-[10px] text-zinc-400 uppercase mt-1">
-                        {{ game.result || game.status }}
-                      </div>
-                    </div>
-                  </div>
+                  </section>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
@@ -2609,6 +2830,11 @@ import {
   getScoreboardUrl,
 } from "./api/espn.js";
 import { CBB_CONFERENCE_GROUPS, LEAGUES, getLeague } from "./app/leagues";
+import {
+  createDashboardPoller,
+  getLiveModalGameId as getLiveModalGameIdUtil,
+} from "./app/dashboardPolling";
+import { groupMyTeamsGames } from "./app/myTeamsGroups";
 import { loadPreferences } from "./app/preferences.js";
 import { usePreferences } from "./composables/usePreferences";
 import { useAppUpdates } from "./composables/useAppUpdates";
@@ -2645,7 +2871,11 @@ import {
   isWinner as isWinnerUtil,
   sortGames as sortGamesUtil,
 } from "./app/scoreboard";
-import { filterStandingGroups } from "./domain/standings";
+import {
+  CFB_CONFERENCE_GROUPS,
+  filterStandingGroups,
+} from "./domain/standings";
+import { getCurrentDriveSummary } from "./domain/drive";
 import { normalizeMatchup } from "./domain/matchup.js";
 import { normalizePlayByPlay } from "./domain/playByPlay";
 import { buildGameFlow } from "./app/gameFlow.js";
@@ -2659,6 +2889,8 @@ import {
 import {
   getTeamRecords,
   getTeamRecordStats,
+  groupTeamRecordStats,
+  getTeamScheduleSections,
   normalizeTeamDetails,
 } from "./domain/team.js";
 import { resolveLeague } from "./plugins/registry";
@@ -2777,8 +3009,7 @@ export default {
     const modalView = ref<"game" | "team">("game");
     const selectedTeamSide = ref<HomeAway | null>(null);
     const selectedTeamOverride = ref<TeamChoice | null>(null);
-    const showSeasonMetrics = ref(false);
-    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    const teamDetailTab = ref<"overview" | "schedule">("overview");
     const {
       modalLoading,
       modalData,
@@ -2918,33 +3149,9 @@ export default {
     const myTeamCachedSchedules = computed(() =>
       myTeamSchedules.value.filter((schedule) => schedule.cachedAt !== null),
     );
-    const myTeamsGroups = computed(() => {
-      const groups = new Map<
-        string,
-        { key: string; label: string; games: MyTeamsGame[] }
-      >();
-      for (const game of myTeamGames.value) {
-        const date = new Date(game.startTime ?? myTeamsNow.value);
-        const dateKey = [
-          date.getFullYear(),
-          String(date.getMonth() + 1).padStart(2, "0"),
-          String(date.getDate()).padStart(2, "0"),
-        ].join("-");
-        const key = game.state === "in" ? "live" : dateKey;
-        const label =
-          key === "live"
-            ? "Live now"
-            : date.toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              });
-        const group = groups.get(key) ?? { key, label, games: [] };
-        group.games.push(game);
-        groups.set(key, group);
-      }
-      return [...groups.values()];
-    });
+    const myTeamsGroups = computed(() =>
+      groupMyTeamsGames(myTeamGames.value, myTeamsNow.value),
+    );
     const {
       update,
       checking: updateChecking,
@@ -2987,9 +3194,7 @@ export default {
       if (viewMode.value === view) return;
       viewMode.value = view;
       pushNavigationEntry();
-      if (view === "scoreboard") await triggerImmediateFetch();
-      if (view === "standings") await fetchStandings();
-      if (view === "my-teams") await loadMyTeams(true);
+      await refreshVisibleSection();
     };
 
     const selectLeagueTab = async (league: LeagueId) => {
@@ -3034,19 +3239,53 @@ export default {
     const teamRecordStats = computed(() =>
       getTeamRecordStats(rawTeamData.value),
     );
+    const teamRecordStatGroups = computed(() =>
+      groupTeamRecordStats(teamRecordStats.value),
+    );
     const teamRecords = computed(() => getTeamRecords(rawTeamData.value));
+    const primaryTeamRecord = computed(
+      () =>
+        teamRecords.value.find((record) =>
+          /overall|total/i.test(record.label),
+        ) ??
+        teamRecords.value[0] ??
+        null,
+    );
+    const secondaryTeamRecords = computed(() =>
+      teamRecords.value.filter((record) => record !== primaryTeamRecord.value),
+    );
     const teamSchedule = computed(() => {
       const teamId = selectedTeam.value.id;
       if (!teamId) return [];
       return normalizeSchedule(teamScheduleData.value, teamId, "en-US");
     });
+    const teamScheduleSections = computed(() =>
+      getTeamScheduleSections(teamSchedule.value),
+    );
+    const teamScheduleGroups = computed(() =>
+      [
+        {
+          key: "upcoming",
+          label: "Upcoming",
+          games: teamScheduleSections.value.upcoming,
+        },
+        {
+          key: "completed",
+          label: "Results",
+          games: teamScheduleSections.value.completed,
+        },
+      ].filter((section) => section.games.length > 0),
+    );
+    const teamNextGame = computed(
+      () => teamScheduleSections.value.upcoming[0] ?? null,
+    );
 
     const resetTeamView = () => {
       modalView.value = "game";
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
       resetTeamDetails();
-      showSeasonMetrics.value = false;
+      teamDetailTab.value = "overview";
     };
 
     const openTeamDetails = async (
@@ -3070,6 +3309,7 @@ export default {
         showModal.value = true;
       }
       modalView.value = "team";
+      teamDetailTab.value = "overview";
       if (pushHistory) {
         pushNavigationEntry({
           type: "team",
@@ -3182,13 +3422,15 @@ export default {
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
       modalLoading.value = false;
-      showSeasonMetrics.value = false;
       showModal.value = false;
       modalView.value = "game";
 
-      const pendingRequests = [
-        fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
-      ];
+      const pendingRequests: Promise<unknown>[] = [];
+      if (snapshot.view === "scoreboard" || snapshot.view === "tv-lineup") {
+        pendingRequests.push(
+          fetchScoreboard(isInitialLoad && !hasSavedNavigation, isInitialLoad),
+        );
+      }
       if (snapshot.view === "standings") pendingRequests.push(fetchStandings());
       if (snapshot.view === "my-teams") pendingRequests.push(loadMyTeams(true));
       if (snapshot.modal?.type === "game") {
@@ -3308,13 +3550,10 @@ export default {
       if (!leagueBehavior.value?.game.supportsDrives) {
         return null;
       }
-      const dr = asObject(asObject(modalData.value?.drives).current);
-      if (Object.keys(dr).length === 0) return null;
-      return {
-        description: dr.description || "Active drive ongoing...",
-        result: dr.result || "Ongoing",
-        recap: asObject(dr.recap).recap || "",
-      };
+      return getCurrentDriveSummary(
+        modalData.value?.drives,
+        modalData.value?.teams,
+      );
     });
 
     const winProbabilityChart = computed(() =>
@@ -3348,30 +3587,67 @@ export default {
 
     const triggerImmediateFetch = () => fetchScoreboard(false);
 
-    const startPoller = () => {
-      if (pollingInterval !== null) clearInterval(pollingInterval);
-      pollingInterval = setInterval(() => {
-        void fetchScoreboard(false);
-        if (viewMode.value === "my-teams") {
-          const modalEventId = selectedGame.value?.id;
-          const skipSummaryEventKey =
-            showModal.value &&
-            modalView.value === "game" &&
-            modalEventId !== undefined &&
-            String(modalEventId).trim() !== ""
-              ? `${selectedLeague.value}:${modalEventId}`
-              : null;
-          void loadMyTeams(true, skipSummaryEventKey);
-        }
-        if (
-          showModal.value &&
-          modalView.value === "game" &&
-          modalData.value?.id
-        ) {
-          void fetchGameDetail(modalData.value.id);
-        }
-      }, 15000);
+    const liveModalGameId = () =>
+      getLiveModalGameIdUtil({
+        open: showModal.value,
+        view: modalView.value,
+        status: modalGameStatus.value,
+        detailId: modalData.value?.id,
+        selectedId: selectedGame.value?.id,
+      });
+
+    const skipOpenGameSummaryKey = () => {
+      const modalEventId = selectedGame.value?.id;
+      if (
+        !showModal.value ||
+        modalView.value !== "game" ||
+        modalEventId === undefined ||
+        String(modalEventId).trim() === ""
+      ) {
+        return null;
+      }
+      return `${selectedLeague.value}:${modalEventId}`;
     };
+
+    const refreshVisibleSection = async () => {
+      const pendingRequests: Promise<unknown>[] = [];
+      if (viewMode.value === "scoreboard" || viewMode.value === "tv-lineup") {
+        pendingRequests.push(triggerImmediateFetch());
+      } else if (viewMode.value === "standings") {
+        pendingRequests.push(fetchStandings());
+      } else if (viewMode.value === "my-teams") {
+        pendingRequests.push(loadMyTeams(true, skipOpenGameSummaryKey()));
+      }
+
+      const liveGameId = liveModalGameId();
+      if (liveGameId !== null) {
+        pendingRequests.push(fetchGameDetail(liveGameId));
+      } else if (
+        showModal.value &&
+        modalView.value === "team" &&
+        selectedTeam.value.id
+      ) {
+        pendingRequests.push(loadTeamDetails(selectedTeam.value.id));
+      }
+
+      await Promise.all(pendingRequests);
+    };
+
+    const refreshPolledData = () => {
+      if (viewMode.value === "scoreboard" || viewMode.value === "tv-lineup") {
+        void fetchScoreboard(false);
+      } else if (viewMode.value === "my-teams") {
+        void loadMyTeams(true, skipOpenGameSummaryKey());
+      }
+      const liveGameId = liveModalGameId();
+      if (liveGameId !== null) void fetchGameDetail(liveGameId);
+    };
+
+    const dashboardPoller = createDashboardPoller(
+      document,
+      refreshPolledData,
+      () => void refreshVisibleSection(),
+    );
 
     const switchTab = async (
       league: LeagueId,
@@ -3472,19 +3748,20 @@ export default {
 
     onMounted(async () => {
       window.addEventListener("popstate", handlePopState);
-      startPoller();
+      dashboardPoller.start();
       await restoreNavigationEntry(initialNavigationEntry, !hasSavedNavigation);
       void checkForUpdates(true);
     });
 
     onUnmounted(() => {
-      if (pollingInterval !== null) clearInterval(pollingInterval);
+      dashboardPoller.stop();
       window.removeEventListener("popstate", handlePopState);
     });
 
     return {
       isNativeApp,
       LEAGUES,
+      CFB_CONFERENCE_GROUPS,
       getLeague,
       showMyTeamsTab,
       preferences,
@@ -3588,10 +3865,16 @@ export default {
       scheduleError,
       teamShowingCachedData,
       teamCachedAt,
-      showSeasonMetrics,
+      teamDetailTab,
       teamRecords,
       teamRecordStats,
+      teamRecordStatGroups,
+      primaryTeamRecord,
+      secondaryTeamRecords,
       teamSchedule,
+      teamScheduleSections,
+      teamScheduleGroups,
+      teamNextGame,
       sortedGames,
       tvLineup,
       tvLineupScrollLeft,

@@ -1,3 +1,5 @@
+import type { NormalizedScheduleEntry } from "./schedule";
+
 type JsonObject = Record<string, unknown>;
 
 export interface TeamRecord {
@@ -7,8 +9,21 @@ export interface TeamRecord {
 
 export interface TeamRecordStat {
   key: string;
+  category: string;
   label: string;
   value: unknown;
+}
+
+export interface TeamRecordStatGroup {
+  key: string;
+  label: string;
+  categories: TeamRecordStatCategory[];
+}
+
+export interface TeamRecordStatCategory {
+  key: string;
+  label: string;
+  stats: TeamRecordStat[];
 }
 
 export interface TeamDetailsView {
@@ -21,6 +36,12 @@ export interface TeamDetailsView {
     groups?: { name?: string };
   };
   groups?: { name?: string };
+}
+
+export interface TeamScheduleSections {
+  upcoming: NormalizedScheduleEntry[];
+  completed: NormalizedScheduleEntry[];
+  lastFive: NormalizedScheduleEntry[];
 }
 
 function asObject(value: unknown): JsonObject {
@@ -84,6 +105,14 @@ function formatStatValue(stat: JsonObject): unknown {
     return stat.displayValue;
   }
   if (typeof stat.value !== "number") return stat.value;
+  if (
+    typeof stat.name === "string" &&
+    /win.?percent|percentage|pct/i.test(stat.name) &&
+    stat.value >= 0 &&
+    stat.value <= 1
+  ) {
+    return `${(stat.value * 100).toFixed(1)}%`;
+  }
   return Number(stat.value.toFixed(3));
 }
 
@@ -103,12 +132,20 @@ export function getTeamRecords(teamPayload: unknown): TeamRecord[] {
 export function getTeamRecordStats(teamPayload: unknown): TeamRecordStat[] {
   return getRecordItems(teamPayload).flatMap((item) => {
     const itemObj = asObject(item);
+    const category = getString(
+      itemObj.description,
+      getString(itemObj.displayName, getString(itemObj.type, "Season")),
+    );
     return asArray(itemObj.stats).flatMap((statValue) => {
       const stat = asObject(statValue);
       if (typeof stat.name !== "string" || !stat.name) return [];
       return [
         {
-          key: `${getString(itemObj.type, "record")}-${stat.name}`,
+          key: `${getString(
+            itemObj.type,
+            category.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          )}-${stat.name}`,
+          category,
           label: stat.name
             .replace(/([A-Z])/g, " $1")
             .replace(/^./, (letter) => letter.toUpperCase()),
@@ -117,6 +154,141 @@ export function getTeamRecordStats(teamPayload: unknown): TeamRecordStat[] {
       ];
     });
   });
+}
+
+export function groupTeamRecordStats(
+  stats: TeamRecordStat[],
+): TeamRecordStatGroup[] {
+  const groups = new Map<string, TeamRecordStatGroup>();
+  for (const stat of stats) {
+    const name = stat.label.toLowerCase();
+    const key = /power play|penalty kill|special team/.test(name)
+      ? "special-teams"
+      : /win|loss|tie|percent|rank|seed|streak|record|games behind/.test(name)
+        ? "results"
+        : /point|run|goal|score|differential/.test(name)
+          ? "scoring"
+          : /offen|pass|rush|yard|reception|attempt|assist|rebound|shot|hit|bat|faceoff/.test(
+                name,
+              )
+            ? "offense"
+            : /defen|against|allowed|sack|interception|turnover|block|steal|save|field|out/.test(
+                  name,
+                )
+              ? "defense"
+              : "other";
+    const label =
+      key === "special-teams"
+        ? "Special Teams"
+        : key === "results"
+          ? "Results"
+          : key === "scoring"
+            ? "Scoring"
+            : key === "offense"
+              ? "Offense"
+              : key === "defense"
+                ? "Defense"
+                : "Other";
+    const group = groups.get(key) ?? { key, label, categories: [] };
+    const categoryKey = stat.category.toLowerCase();
+    let category = group.categories.find((entry) => entry.key === categoryKey);
+    if (!category) {
+      category = { key: categoryKey, label: stat.category, stats: [] };
+      group.categories.push(category);
+    }
+    category.stats.push(stat);
+    groups.set(key, group);
+  }
+  const groupOrder = [
+    "results",
+    "scoring",
+    "offense",
+    "defense",
+    "special-teams",
+    "other",
+  ];
+  const categoryOrder = (category: TeamRecordStatCategory) => {
+    const name = category.label.toLowerCase();
+    if (/overall|total/.test(name)) return 0;
+    if (/conference|league/.test(name)) return 1;
+    if (/division/.test(name)) return 2;
+    if (/home/.test(name)) return 3;
+    if (/away/.test(name)) return 4;
+    return 5;
+  };
+  const statOrder = (stat: TeamRecordStat) => {
+    const name = stat.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+    const priorities: Record<string, number> = {
+      wins: 0,
+      losses: 1,
+      ties: 2,
+      "win percent": 3,
+      "win percentage": 3,
+      streak: 4,
+      "ot wins": 5,
+      "overtime wins": 5,
+      "ot losses": 6,
+      "overtime losses": 6,
+      "shootout wins": 7,
+      "shootout losses": 8,
+      "playoff seed": 9,
+      "games behind": 10,
+    };
+    return priorities[name] ?? 100;
+  };
+
+  return [...groups.values()]
+    .sort(
+      (first, second) =>
+        groupOrder.indexOf(first.key) - groupOrder.indexOf(second.key),
+    )
+    .map((group) => ({
+      ...group,
+      categories: group.categories
+        .sort(
+          (first, second) =>
+            categoryOrder(first) - categoryOrder(second) ||
+            first.label.localeCompare(second.label),
+        )
+        .map((category) => ({
+          ...category,
+          stats: category.stats.sort(
+            (first, second) =>
+              statOrder(first) - statOrder(second) ||
+              first.label.localeCompare(second.label),
+          ),
+        })),
+    }));
+}
+
+export function getTeamScheduleSections(
+  schedule: NormalizedScheduleEntry[],
+): TeamScheduleSections {
+  const upcoming = schedule
+    .filter((game) => game.state !== "post")
+    .sort((first, second) => {
+      const stateOrder =
+        Number(second.state === "in") - Number(first.state === "in");
+      const firstTime = first.startTime ?? Number.MAX_SAFE_INTEGER;
+      const secondTime = second.startTime ?? Number.MAX_SAFE_INTEGER;
+      return stateOrder || firstTime - secondTime;
+    });
+  const completed = schedule
+    .filter((game) => game.state === "post")
+    .sort(
+      (first, second) =>
+        (second.startTime ?? Number.MIN_SAFE_INTEGER) -
+        (first.startTime ?? Number.MIN_SAFE_INTEGER),
+    );
+
+  return {
+    upcoming,
+    completed,
+    lastFive: completed.filter((game) => game.result !== "").slice(0, 5),
+  };
 }
 
 export function getTeamDirectoryOptions(payload: unknown): Array<{
