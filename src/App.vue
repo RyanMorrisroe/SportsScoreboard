@@ -2510,78 +2510,222 @@
               </p>
 
               <div
+                role="tablist"
+                aria-label="Team details"
+                class="flex gap-1 border-b border-zinc-800"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="teamDetailTab === 'overview'"
+                  @click="teamDetailTab = 'overview'"
+                  class="border-b-2 px-4 py-2.5 text-xs font-bold transition-colors"
+                  :class="
+                    teamDetailTab === 'overview'
+                      ? 'border-amber-400 text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-200'
+                  "
+                >
+                  Overview
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="teamDetailTab === 'schedule'"
+                  @click="teamDetailTab = 'schedule'"
+                  class="border-b-2 px-4 py-2.5 text-xs font-bold transition-colors"
+                  :class="
+                    teamDetailTab === 'schedule'
+                      ? 'border-amber-400 text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-200'
+                  "
+                >
+                  Schedule
+                  <span class="ml-1.5 font-mono text-[10px] text-zinc-500">{{
+                    teamSchedule.length
+                  }}</span>
+                </button>
+              </div>
+
+              <div
                 v-if="teamError"
                 class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
               >
                 {{ teamError }}
               </div>
 
-              <div
-                v-if="teamRecords.length || teamRecordStats.length"
-                class="space-y-5"
-              >
+              <section v-if="teamDetailTab === 'overview'" class="space-y-5">
                 <div
-                  v-if="teamRecords.length"
-                  class="grid grid-cols-2 gap-2 sm:gap-3"
+                  v-if="primaryTeamRecord || secondaryTeamRecords.length"
+                  class="flex flex-wrap items-end justify-between gap-4 border-y border-zinc-800 py-4"
                 >
+                  <div v-if="primaryTeamRecord">
+                    <p class="text-[10px] font-bold uppercase text-zinc-500">
+                      {{ primaryTeamRecord.label }}
+                    </p>
+                    <p class="mt-1 font-mono text-3xl font-black text-white">
+                      {{ primaryTeamRecord.value }}
+                    </p>
+                  </div>
                   <div
-                    v-for="record in teamRecords"
-                    :key="record.label"
-                    class="bg-gradient-to-br from-blue-950/60 to-zinc-950/60 border border-blue-900/50 rounded-2xl px-3 sm:px-4 py-3"
+                    v-if="secondaryTeamRecords.length"
+                    class="flex flex-wrap gap-x-5 gap-y-2"
                   >
                     <div
-                      class="text-[10px] text-blue-300/70 uppercase tracking-widest font-bold"
+                      v-for="record in secondaryTeamRecords"
+                      :key="record.label"
                     >
-                      {{ record.label }}
-                    </div>
-                    <div
-                      class="font-mono text-xl sm:text-2xl font-black text-white mt-1 truncate"
-                    >
-                      {{ record.value }}
+                      <p class="text-[10px] font-bold uppercase text-zinc-500">
+                        {{ record.label }}
+                      </p>
+                      <p class="mt-1 font-mono text-sm font-bold text-zinc-200">
+                        {{ record.value }}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div v-if="teamRecordStats.length" class="space-y-3">
-                  <button
-                    @click="showSeasonMetrics = !showSeasonMetrics"
-                    class="flex items-center justify-between w-full text-left text-xs font-black text-zinc-400 uppercase tracking-widest hover:text-white"
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <article
+                    v-if="teamNextGame"
+                    class="min-w-0 border border-zinc-800 bg-zinc-950/60 p-4"
                   >
-                    <span>Season Metrics</span>
-                    <span class="text-base leading-none">{{
-                      showSeasonMetrics ? "−" : "+"
-                    }}</span>
-                  </button>
-                  <div
-                    v-if="showSeasonMetrics"
-                    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
+                    <div class="flex items-center justify-between gap-3">
+                      <h4
+                        class="text-[10px] font-bold uppercase text-zinc-500"
+                      >
+                        {{
+                          teamNextGame.state === "in"
+                            ? "In progress"
+                            : "Next game"
+                        }}
+                      </h4>
+                      <span
+                        class="shrink-0 text-[10px] font-bold uppercase"
+                        :class="
+                          teamNextGame.state === 'in'
+                            ? 'text-rose-400'
+                            : 'text-zinc-400'
+                        "
+                      >
+                        {{ teamNextGame.status }}
+                      </span>
+                    </div>
+                    <p class="mt-2 text-xs text-zinc-400">
+                      {{ teamNextGame.date }}<span v-if="teamNextGame.week">
+                        · {{ teamNextGame.week }}</span
+                      >
+                    </p>
+                    <div class="mt-3 flex min-w-0 items-center gap-2">
+                      <img
+                        :src="teamNextGame.opponentLogo"
+                        :alt="`${teamNextGame.opponent} logo`"
+                        class="h-8 w-8 shrink-0 object-contain"
+                        loading="lazy"
+                      />
+                      <p class="min-w-0 truncate text-sm font-bold text-white">
+                        {{ teamNextGame.homeAway === "home" ? "vs" : "at" }}
+                        {{ teamNextGame.opponent }}
+                      </p>
+                    </div>
+                    <p
+                      v-if="teamNextGame.venue"
+                      class="mt-2 truncate text-[10px] text-zinc-500"
+                    >
+                      {{ teamNextGame.venue }}
+                    </p>
+                  </article>
+
+                  <article
+                    class="min-w-0 border border-zinc-800 bg-zinc-950/60 p-4"
                   >
+                    <h4 class="text-[10px] font-bold uppercase text-zinc-500">
+                      Last five
+                    </h4>
                     <div
-                      v-for="stat in teamRecordStats"
-                      :key="stat.key"
-                      class="bg-zinc-950/70 border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-3"
+                      v-if="teamScheduleSections.lastFive.length"
+                      class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"
                     >
                       <div
-                        class="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight"
+                        v-for="game in teamScheduleSections.lastFive"
+                        :key="game.id"
+                        class="flex min-w-0 items-center gap-2 border-l-2 py-1 pl-2"
+                        :class="
+                          game.result === 'W'
+                            ? 'border-emerald-400'
+                            : game.result === 'L'
+                              ? 'border-rose-400'
+                              : 'border-amber-300'
+                        "
                       >
-                        {{ stat.label }}
-                      </div>
-                      <div
-                        class="font-mono text-base sm:text-lg font-black text-white mt-2 truncate"
-                      >
-                        {{ stat.value }}
+                        <span
+                          class="shrink-0 text-xs font-black"
+                          :class="
+                            game.result === 'W'
+                              ? 'text-emerald-300'
+                              : game.result === 'L'
+                                ? 'text-rose-300'
+                                : 'text-amber-300'
+                          "
+                        >
+                          {{ game.result }}
+                        </span>
+                        <span class="min-w-0">
+                          <span class="block truncate text-[10px] font-semibold text-zinc-300">
+                            {{ game.opponent }}
+                          </span>
+                          <span class="block font-mono text-[10px] text-zinc-500">
+                            {{ game.score }}
+                          </span>
+                        </span>
                       </div>
                     </div>
-                  </div>
+                    <p v-else class="mt-3 text-xs text-zinc-500">
+                      Recent results unavailable.
+                    </p>
+                  </article>
                 </div>
-              </div>
 
-              <div>
-                <h4
-                  class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3"
-                >
-                  Schedule
-                </h4>
+                <section v-if="teamRecordStatGroups.length" class="space-y-5">
+                  <h4 class="text-xs font-black uppercase tracking-widest text-zinc-400">
+                    Team metrics
+                  </h4>
+                  <section
+                    v-for="group in teamRecordStatGroups"
+                    :key="group.key"
+                    class="space-y-3"
+                  >
+                    <h5 class="border-b border-zinc-800 pb-2 text-sm font-bold text-zinc-200">
+                      {{ group.label }}
+                    </h5>
+                    <section
+                      v-for="category in group.categories"
+                      :key="category.key"
+                      class="space-y-1"
+                    >
+                      <h6 class="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                        {{ category.label }}
+                      </h6>
+                      <dl class="divide-y divide-zinc-800/80">
+                        <div
+                          v-for="stat in category.stats"
+                          :key="stat.key"
+                          class="flex items-center justify-between gap-4 py-2.5"
+                        >
+                          <dt class="min-w-0 text-sm text-zinc-300">
+                            {{ stat.label }}
+                          </dt>
+                          <dd class="shrink-0 font-mono text-sm font-semibold text-white">
+                            {{ stat.value }}
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                  </section>
+                </section>
+              </section>
+
+              <section v-if="teamDetailTab === 'schedule'" class="space-y-6">
                 <div
                   v-if="scheduleError"
                   class="border border-red-900/60 bg-red-950/20 rounded-xl p-4 text-sm text-red-300"
@@ -2594,55 +2738,73 @@
                 >
                   No schedule available.
                 </div>
-                <div v-else class="space-y-2">
-                  <div
-                    v-for="game in teamSchedule"
-                    :key="game.id"
-                    class="flex items-start justify-between gap-2 sm:gap-3 bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-2.5 sm:p-3"
+                <div v-else class="space-y-6">
+                  <section
+                    v-for="group in teamScheduleGroups"
+                    :key="group.key"
                   >
-                    <div class="min-w-0">
-                      <div class="text-[10px] text-zinc-500">
-                        {{ game.date
-                        }}<span v-if="game.week"> · {{ game.week }}</span>
-                      </div>
-                      <div
-                        class="flex items-center gap-2 text-sm font-bold text-white truncate mt-1"
+                    <h4
+                      class="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500"
+                    >
+                      {{ group.label }}
+                    </h4>
+                    <div class="divide-y divide-zinc-800 border-y border-zinc-800">
+                      <article
+                        v-for="game in group.games"
+                        :key="game.id"
+                        class="flex items-center justify-between gap-3 py-3"
                       >
-                        <img
-                          :src="game.opponentLogo"
-                          class="w-5 h-5 object-contain shrink-0"
-                          loading="lazy"
-                        />
-                        <span class="truncate"
-                          >{{ game.homeAway === "home" ? "vs" : "at" }}
-                          {{ game.opponent }}</span
-                        >
-                      </div>
-                      <div
-                        v-if="game.venue"
-                        class="text-[10px] text-zinc-500 mt-1 truncate"
-                      >
-                        {{ game.venue }}
-                      </div>
+                        <div class="min-w-0">
+                          <p class="text-[10px] text-zinc-500">
+                            {{ game.date }}<span v-if="game.week">
+                              · {{ game.week }}</span
+                            >
+                          </p>
+                          <div class="mt-1 flex min-w-0 items-center gap-2">
+                            <img
+                              :src="game.opponentLogo"
+                              :alt="`${game.opponent} logo`"
+                              class="h-6 w-6 shrink-0 object-contain"
+                              loading="lazy"
+                            />
+                            <span
+                              class="truncate text-sm font-bold text-white"
+                            >
+                              {{ game.homeAway === "home" ? "vs" : "at" }}
+                              {{ game.opponent }}
+                            </span>
+                          </div>
+                          <p
+                            v-if="game.venue"
+                            class="mt-1 truncate text-[10px] text-zinc-500"
+                          >
+                            {{ game.venue }}
+                          </p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                          <p class="font-mono text-sm font-black text-white">
+                            {{ game.score }}
+                          </p>
+                          <p
+                            class="mt-1 text-[10px] font-bold uppercase"
+                            :class="
+                              game.result === 'W'
+                                ? 'text-emerald-400'
+                                : game.result === 'L'
+                                  ? 'text-rose-400'
+                                  : game.state === 'in'
+                                    ? 'text-rose-400'
+                                    : 'text-zinc-500'
+                            "
+                          >
+                            {{ game.result || game.status }}
+                          </p>
+                        </div>
+                      </article>
                     </div>
-                    <div class="text-right shrink-0">
-                      <div
-                        class="flex items-center gap-2 font-mono font-black text-white"
-                      >
-                        <img
-                          :src="game.teamLogo"
-                          class="w-5 h-5 object-contain shrink-0"
-                          loading="lazy"
-                        />
-                        <span>{{ game.score }}</span>
-                      </div>
-                      <div class="text-[10px] text-zinc-400 uppercase mt-1">
-                        {{ game.result || game.status }}
-                      </div>
-                    </div>
-                  </div>
+                  </section>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
@@ -2720,6 +2882,8 @@ import {
 import {
   getTeamRecords,
   getTeamRecordStats,
+  groupTeamRecordStats,
+  getTeamScheduleSections,
   normalizeTeamDetails,
 } from "./domain/team.js";
 import { resolveLeague } from "./plugins/registry";
@@ -2838,7 +3002,7 @@ export default {
     const modalView = ref<"game" | "team">("game");
     const selectedTeamSide = ref<HomeAway | null>(null);
     const selectedTeamOverride = ref<TeamChoice | null>(null);
-    const showSeasonMetrics = ref(false);
+    const teamDetailTab = ref<"overview" | "schedule">("overview");
     const {
       modalLoading,
       modalData,
@@ -3068,19 +3232,53 @@ export default {
     const teamRecordStats = computed(() =>
       getTeamRecordStats(rawTeamData.value),
     );
+    const teamRecordStatGroups = computed(() =>
+      groupTeamRecordStats(teamRecordStats.value),
+    );
     const teamRecords = computed(() => getTeamRecords(rawTeamData.value));
+    const primaryTeamRecord = computed(
+      () =>
+        teamRecords.value.find((record) => /overall|total/i.test(record.label)) ??
+        teamRecords.value[0] ??
+        null,
+    );
+    const secondaryTeamRecords = computed(() =>
+      teamRecords.value.filter(
+        (record) => record !== primaryTeamRecord.value,
+      ),
+    );
     const teamSchedule = computed(() => {
       const teamId = selectedTeam.value.id;
       if (!teamId) return [];
       return normalizeSchedule(teamScheduleData.value, teamId, "en-US");
     });
+    const teamScheduleSections = computed(() =>
+      getTeamScheduleSections(teamSchedule.value),
+    );
+    const teamScheduleGroups = computed(() =>
+      [
+        {
+          key: "upcoming",
+          label: "Upcoming",
+          games: teamScheduleSections.value.upcoming,
+        },
+        {
+          key: "completed",
+          label: "Results",
+          games: teamScheduleSections.value.completed,
+        },
+      ].filter((section) => section.games.length > 0),
+    );
+    const teamNextGame = computed(
+      () => teamScheduleSections.value.upcoming[0] ?? null,
+    );
 
     const resetTeamView = () => {
       modalView.value = "game";
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
       resetTeamDetails();
-      showSeasonMetrics.value = false;
+      teamDetailTab.value = "overview";
     };
 
     const openTeamDetails = async (
@@ -3104,6 +3302,7 @@ export default {
         showModal.value = true;
       }
       modalView.value = "team";
+      teamDetailTab.value = "overview";
       if (pushHistory) {
         pushNavigationEntry({
           type: "team",
@@ -3216,7 +3415,6 @@ export default {
       selectedTeamSide.value = null;
       selectedTeamOverride.value = null;
       modalLoading.value = false;
-      showSeasonMetrics.value = false;
       showModal.value = false;
       modalView.value = "game";
 
@@ -3660,10 +3858,16 @@ export default {
       scheduleError,
       teamShowingCachedData,
       teamCachedAt,
-      showSeasonMetrics,
+      teamDetailTab,
       teamRecords,
       teamRecordStats,
+      teamRecordStatGroups,
+      primaryTeamRecord,
+      secondaryTeamRecords,
       teamSchedule,
+      teamScheduleSections,
+      teamScheduleGroups,
+      teamNextGame,
       sortedGames,
       tvLineup,
       tvLineupScrollLeft,

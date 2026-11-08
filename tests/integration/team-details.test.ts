@@ -72,8 +72,18 @@ describe("team details integration", () => {
       { label: "Overall", value: "10-2" },
     ]);
     expect(getTeamRecordStats(response.details)).toEqual([
-      { key: "total-wins", label: "Wins", value: 10 },
-      { key: "total-winPercent", label: "Win Percent", value: "83.3%" },
+      {
+        key: "total-wins",
+        category: "Overall",
+        label: "Wins",
+        value: 10,
+      },
+      {
+        key: "total-winPercent",
+        category: "Overall",
+        label: "Win Percent",
+        value: "83.3%",
+      },
     ]);
     expect(normalizeSchedule(response.schedule, "12", "UTC")).toEqual([
       {

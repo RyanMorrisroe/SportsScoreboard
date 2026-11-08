@@ -115,6 +115,35 @@ describe("schedule normalization", () => {
     });
   });
 
+  it("recognizes final ties and preserves zero scores in score objects", () => {
+    const tiedEvent = event({
+      competitions: [
+        {
+          status: { type: { state: "post", shortDetail: "Final" } },
+          competitors: [
+            {
+              id: "12",
+              homeAway: "home",
+              score: { value: 0 },
+              team: { displayName: "Home Team" },
+            },
+            {
+              id: "34",
+              homeAway: "away",
+              score: { displayValue: "0", value: 0 },
+              team: { displayName: "Away Team" },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalizeSchedule({ events: [tiedEvent] }, "12")[0]).toMatchObject({
+      score: "0-0",
+      result: "T",
+    });
+  });
+
   it("suppresses placeholder times for TBD events", () => {
     const tbdEvent = event({
       timeValid: false,
