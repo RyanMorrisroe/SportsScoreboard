@@ -32,7 +32,13 @@ describe("team record normalization", () => {
         schedule[7],
         schedule[8],
       ],
-      lastFive: [schedule[3], schedule[4], schedule[0], schedule[5], schedule[6]],
+      lastFive: [
+        schedule[3],
+        schedule[4],
+        schedule[0],
+        schedule[5],
+        schedule[6],
+      ],
     });
   });
 
@@ -128,11 +134,7 @@ describe("team record normalization", () => {
     ]);
     expect(groups[0]?.categories[0]).toMatchObject({
       label: "Overall Record",
-      stats: [
-        { label: "Wins" },
-        { label: "Losses" },
-        { label: "Win Percent" },
-      ],
+      stats: [{ label: "Wins" }, { label: "Losses" }, { label: "Win Percent" }],
     });
     expect(groups[1]?.categories[0]?.stats[0]).toMatchObject({
       label: "Points For",
@@ -150,21 +152,27 @@ describe("team record normalization", () => {
   it("handles missing and malformed records", () => {
     expect(getTeamRecords({})).toEqual([]);
     expect(getTeamRecordStats({})).toEqual([]);
-    expect(getTeamRecordStats({ team: { record: { items: [null, { stats: [null, {}] }] } } })).toEqual([]);
+    expect(
+      getTeamRecordStats({
+        team: { record: { items: [null, { stats: [null, {}] }] } },
+      }),
+    ).toEqual([]);
   });
 
   it("normalizes display fields from unknown team detail payloads", () => {
-    expect(normalizeTeamDetails({
-      team: {
-        logos: [{ href: "https://cdn.test/team.png" }, { href: 4 }],
-        logo: "https://cdn.test/fallback.png",
-        displayName: "Example Team",
-        abbreviation: "EXM",
-        location: "Example City",
-        groups: { name: "Conference" },
-      },
-      groups: { name: "Division" },
-    })).toEqual({
+    expect(
+      normalizeTeamDetails({
+        team: {
+          logos: [{ href: "https://cdn.test/team.png" }, { href: 4 }],
+          logo: "https://cdn.test/fallback.png",
+          displayName: "Example Team",
+          abbreviation: "EXM",
+          location: "Example City",
+          groups: { name: "Conference" },
+        },
+        groups: { name: "Division" },
+      }),
+    ).toEqual({
       team: {
         logos: [{ href: "https://cdn.test/team.png" }, {}],
         logo: "https://cdn.test/fallback.png",

@@ -2591,9 +2591,7 @@
                     class="min-w-0 border border-zinc-800 bg-zinc-950/60 p-4"
                   >
                     <div class="flex items-center justify-between gap-3">
-                      <h4
-                        class="text-[10px] font-bold uppercase text-zinc-500"
-                      >
+                      <h4 class="text-[10px] font-bold uppercase text-zinc-500">
                         {{
                           teamNextGame.state === "in"
                             ? "In progress"
@@ -2612,7 +2610,8 @@
                       </span>
                     </div>
                     <p class="mt-2 text-xs text-zinc-400">
-                      {{ teamNextGame.date }}<span v-if="teamNextGame.week">
+                      {{ teamNextGame.date
+                      }}<span v-if="teamNextGame.week">
                         · {{ teamNextGame.week }}</span
                       >
                     </p>
@@ -2671,10 +2670,14 @@
                           {{ game.result }}
                         </span>
                         <span class="min-w-0">
-                          <span class="block truncate text-[10px] font-semibold text-zinc-300">
+                          <span
+                            class="block truncate text-[10px] font-semibold text-zinc-300"
+                          >
                             {{ game.opponent }}
                           </span>
-                          <span class="block font-mono text-[10px] text-zinc-500">
+                          <span
+                            class="block font-mono text-[10px] text-zinc-500"
+                          >
                             {{ game.score }}
                           </span>
                         </span>
@@ -2687,7 +2690,9 @@
                 </div>
 
                 <section v-if="teamRecordStatGroups.length" class="space-y-5">
-                  <h4 class="text-xs font-black uppercase tracking-widest text-zinc-400">
+                  <h4
+                    class="text-xs font-black uppercase tracking-widest text-zinc-400"
+                  >
                     Team metrics
                   </h4>
                   <section
@@ -2695,7 +2700,9 @@
                     :key="group.key"
                     class="space-y-3"
                   >
-                    <h5 class="border-b border-zinc-800 pb-2 text-sm font-bold text-zinc-200">
+                    <h5
+                      class="border-b border-zinc-800 pb-2 text-sm font-bold text-zinc-200"
+                    >
                       {{ group.label }}
                     </h5>
                     <section
@@ -2703,7 +2710,9 @@
                       :key="category.key"
                       class="space-y-1"
                     >
-                      <h6 class="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                      <h6
+                        class="text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+                      >
                         {{ category.label }}
                       </h6>
                       <dl class="divide-y divide-zinc-800/80">
@@ -2715,7 +2724,9 @@
                           <dt class="min-w-0 text-sm text-zinc-300">
                             {{ stat.label }}
                           </dt>
-                          <dd class="shrink-0 font-mono text-sm font-semibold text-white">
+                          <dd
+                            class="shrink-0 font-mono text-sm font-semibold text-white"
+                          >
                             {{ stat.value }}
                           </dd>
                         </div>
@@ -2739,16 +2750,15 @@
                   No schedule available.
                 </div>
                 <div v-else class="space-y-6">
-                  <section
-                    v-for="group in teamScheduleGroups"
-                    :key="group.key"
-                  >
+                  <section v-for="group in teamScheduleGroups" :key="group.key">
                     <h4
                       class="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500"
                     >
                       {{ group.label }}
                     </h4>
-                    <div class="divide-y divide-zinc-800 border-y border-zinc-800">
+                    <div
+                      class="divide-y divide-zinc-800 border-y border-zinc-800"
+                    >
                       <article
                         v-for="game in group.games"
                         :key="game.id"
@@ -2756,9 +2766,8 @@
                       >
                         <div class="min-w-0">
                           <p class="text-[10px] text-zinc-500">
-                            {{ game.date }}<span v-if="game.week">
-                              · {{ game.week }}</span
-                            >
+                            {{ game.date
+                            }}<span v-if="game.week"> · {{ game.week }}</span>
                           </p>
                           <div class="mt-1 flex min-w-0 items-center gap-2">
                             <img
@@ -2767,9 +2776,7 @@
                               class="h-6 w-6 shrink-0 object-contain"
                               loading="lazy"
                             />
-                            <span
-                              class="truncate text-sm font-bold text-white"
-                            >
+                            <span class="truncate text-sm font-bold text-white">
                               {{ game.homeAway === "home" ? "vs" : "at" }}
                               {{ game.opponent }}
                             </span>
@@ -3238,14 +3245,14 @@ export default {
     const teamRecords = computed(() => getTeamRecords(rawTeamData.value));
     const primaryTeamRecord = computed(
       () =>
-        teamRecords.value.find((record) => /overall|total/i.test(record.label)) ??
+        teamRecords.value.find((record) =>
+          /overall|total/i.test(record.label),
+        ) ??
         teamRecords.value[0] ??
         null,
     );
     const secondaryTeamRecords = computed(() =>
-      teamRecords.value.filter(
-        (record) => record !== primaryTeamRecord.value,
-      ),
+      teamRecords.value.filter((record) => record !== primaryTeamRecord.value),
     );
     const teamSchedule = computed(() => {
       const teamId = selectedTeam.value.id;

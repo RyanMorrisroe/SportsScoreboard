@@ -165,30 +165,30 @@ export function groupTeamRecordStats(
     const key = /power play|penalty kill|special team/.test(name)
       ? "special-teams"
       : /win|loss|tie|percent|rank|seed|streak|record|games behind/.test(name)
-      ? "results"
-      : /point|run|goal|score|differential/.test(name)
-        ? "scoring"
-        : /offen|pass|rush|yard|reception|attempt|assist|rebound|shot|hit|bat|faceoff/.test(
-              name,
-            )
-          ? "offense"
-          : /defen|against|allowed|sack|interception|turnover|block|steal|save|field|out/.test(
+        ? "results"
+        : /point|run|goal|score|differential/.test(name)
+          ? "scoring"
+          : /offen|pass|rush|yard|reception|attempt|assist|rebound|shot|hit|bat|faceoff/.test(
                 name,
               )
-            ? "defense"
-            : "other";
+            ? "offense"
+            : /defen|against|allowed|sack|interception|turnover|block|steal|save|field|out/.test(
+                  name,
+                )
+              ? "defense"
+              : "other";
     const label =
-        key === "special-teams"
-          ? "Special Teams"
-          : key === "results"
-            ? "Results"
-            : key === "scoring"
-          ? "Scoring"
-          : key === "offense"
-            ? "Offense"
-            : key === "defense"
-              ? "Defense"
-              : "Other";
+      key === "special-teams"
+        ? "Special Teams"
+        : key === "results"
+          ? "Results"
+          : key === "scoring"
+            ? "Scoring"
+            : key === "offense"
+              ? "Offense"
+              : key === "defense"
+                ? "Defense"
+                : "Other";
     const group = groups.get(key) ?? { key, label, categories: [] };
     const categoryKey = stat.category.toLowerCase();
     let category = group.categories.find((entry) => entry.key === categoryKey);
@@ -217,7 +217,10 @@ export function groupTeamRecordStats(
     return 5;
   };
   const statOrder = (stat: TeamRecordStat) => {
-    const name = stat.label.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const name = stat.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
     const priorities: Record<string, number> = {
       wins: 0,
       losses: 1,
@@ -284,9 +287,7 @@ export function getTeamScheduleSections(
   return {
     upcoming,
     completed,
-    lastFive: completed
-      .filter((game) => game.result !== "")
-      .slice(0, 5),
+    lastFive: completed.filter((game) => game.result !== "").slice(0, 5),
   };
 }
 
