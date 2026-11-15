@@ -79,13 +79,28 @@ export function useScoreboard(
   const isBeforeWeekStart =
     dependencies.isBeforeFootballWeekStart ?? isBeforeFootballWeekStart;
   let requestId = 0;
+  let weekResolutionRequestId: number | null = null;
+  const resolvedWeekLeagues = new Set<LeagueId>();
+  if (
+    selection.week.value > 1 &&
+    resolveLeague(selection.selectedLeague.value)?.schedule.mode === "week"
+  ) {
+    resolvedWeekLeagues.add(selection.selectedLeague.value);
+  }
   let hydratedRequestUrl: string | null = null;
 
   async function fetchScoreboard(
     isInitialBoot = false,
     showLoading = isInitialBoot,
   ): Promise<void> {
+    if (!isInitialBoot && weekResolutionRequestId !== null) return;
+
     const currentRequestId = ++requestId;
+    weekResolutionRequestId =
+      isInitialBoot &&
+      resolveLeague(selection.selectedLeague.value)?.schedule.mode === "week"
+        ? currentRequestId
+        : null;
     let responseUsedCache = false;
     const onCacheFallback = (url: string, savedAt: number) => {
       if (currentRequestId !== requestId) return;
@@ -191,6 +206,12 @@ export function useScoreboard(
       }
 
       const finalResponseWeek = asFiniteNumber(asObject(data.week).number);
+      if (
+        finalResponseWeek &&
+        resolveLeague(selection.selectedLeague.value)?.schedule.mode === "week"
+      ) {
+        resolvedWeekLeagues.add(selection.selectedLeague.value);
+      }
       if (isInitialBoot && !selection.isDateLeague.value && finalResponseWeek) {
         selection.week.value = initialWeek ?? finalResponseWeek;
         const seasonType = asFiniteNumber(asObject(data.season).type);
@@ -203,6 +224,9 @@ export function useScoreboard(
         console.error("Scoreboard fetch error:", error);
       }
     } finally {
+      if (weekResolutionRequestId === currentRequestId) {
+        weekResolutionRequestId = null;
+      }
       if (currentRequestId === requestId) {
         refreshing.value = false;
         if (showLoading) loading.value = false;
@@ -212,6 +236,7 @@ export function useScoreboard(
 
   function invalidateScoreboard(): void {
     requestId++;
+    weekResolutionRequestId = null;
     refreshing.value = false;
     refreshFailed.value = false;
   }
@@ -224,6 +249,7 @@ export function useScoreboard(
     lastSuccessfulRefreshAt,
     showingCachedData: provenance.showingCachedData,
     cachedAt: provenance.cachedAt,
+    hasResolvedWeek: (league: LeagueId) => resolvedWeekLeagues.has(league),
     fetchScoreboard,
     invalidateScoreboard,
   };

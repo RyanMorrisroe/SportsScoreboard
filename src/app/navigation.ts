@@ -18,6 +18,20 @@ export function shouldFetchScoreboardForSportSelection(
   return currentView !== "scoreboard" || !sameLeague;
 }
 
+export function shouldResolveWeekOnDashboardEntry(
+  currentView: AppView,
+  nextView: AppView,
+  isWeekLeague: boolean,
+  weekResolved: boolean,
+): boolean {
+  return (
+    currentView === "my-teams" &&
+    nextView === "scoreboard" &&
+    isWeekLeague &&
+    !weekResolved
+  );
+}
+
 export type AppModalSnapshot =
   | { type: "game"; eventId: string }
   | {
