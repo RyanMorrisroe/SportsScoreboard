@@ -8,6 +8,7 @@ import {
   readAppHistoryEntry,
   replaceAppHistoryEntry,
   shouldFetchScoreboardForSportSelection,
+  shouldResolveWeekOnDashboardEntry,
 } from "../../src/app/navigation";
 import type { AppHistory, AppSnapshot } from "../../src/app/navigation";
 
@@ -59,6 +60,21 @@ describe("navigation history helpers", () => {
     expect(shouldFetchScoreboardForSportSelection("scoreboard", true)).toBe(
       false,
     );
+  });
+
+  it("resolves an uninitialized football week when opening the scoreboard from My Teams", () => {
+    expect(
+      shouldResolveWeekOnDashboardEntry("my-teams", "scoreboard", true, false),
+    ).toBe(true);
+    expect(
+      shouldResolveWeekOnDashboardEntry("my-teams", "scoreboard", true, true),
+    ).toBe(false);
+    expect(
+      shouldResolveWeekOnDashboardEntry("my-teams", "scoreboard", false, false),
+    ).toBe(false);
+    expect(
+      shouldResolveWeekOnDashboardEntry("standings", "scoreboard", true, false),
+    ).toBe(false);
   });
 
   it("redirects history snapshots away from hidden leagues and closes their modal", () => {

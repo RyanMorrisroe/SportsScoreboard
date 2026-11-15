@@ -2899,6 +2899,7 @@ import { useRefreshNotice } from "./composables/useRefreshNotice";
 import {
   getDefaultAppView,
   shouldFetchScoreboardForSportSelection,
+  shouldResolveWeekOnDashboardEntry,
 } from "./app/navigation";
 import type { AppHistoryEntry, AppView } from "./app/navigation";
 import type { GameDetailTeam } from "./domain/game";
@@ -3075,6 +3076,7 @@ export default {
       showingCachedData: scoreboardShowingCachedData,
       cachedAt: scoreboardCachedAt,
       fetchScoreboard,
+      hasResolvedWeek,
       invalidateScoreboard,
     } = useScoreboard(
       {
@@ -3192,9 +3194,19 @@ export default {
     const setDashboardView = async (view: AppView) => {
       if (view === "my-teams" && !showMyTeamsTab.value) return;
       if (viewMode.value === view) return;
+      const shouldResolveWeek = shouldResolveWeekOnDashboardEntry(
+        viewMode.value,
+        view,
+        resolveLeague(selectedLeague.value)?.schedule.mode === "week",
+        hasResolvedWeek(selectedLeague.value),
+      );
       viewMode.value = view;
       pushNavigationEntry();
-      await refreshVisibleSection();
+      if (shouldResolveWeek) {
+        await fetchScoreboard(true);
+      } else {
+        await refreshVisibleSection();
+      }
     };
 
     const selectLeagueTab = async (league: LeagueId) => {

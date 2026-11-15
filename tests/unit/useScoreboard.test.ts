@@ -84,6 +84,52 @@ describe("useScoreboard", () => {
     expect(selection.week.value).toBe(11);
   });
 
+  it("tracks when a league's week has been resolved", async () => {
+    const selection = createSelection("college-football");
+    selection.week.value = 1;
+    const scoreboard = useScoreboard(selection, vi.fn(), {
+      fetchJson: vi.fn(async () => ({
+        events: [],
+        week: { number: 8 },
+        season: { type: 2 },
+      })),
+      isBeforeFootballWeekStart: () => false,
+    });
+
+    expect(scoreboard.hasResolvedWeek("college-football")).toBe(false);
+
+    await scoreboard.fetchScoreboard(true);
+
+    expect(scoreboard.hasResolvedWeek("college-football")).toBe(true);
+  });
+
+  it("does not let a routine refresh supersede the initial football week lookup", async () => {
+    const selection = createSelection("college-football");
+    let resolveFetch: (value: unknown) => void = () => {};
+    const fetchJson = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const scoreboard = useScoreboard(selection, vi.fn(), { fetchJson });
+    const initialRequest = scoreboard.fetchScoreboard(true);
+
+    await scoreboard.fetchScoreboard();
+    await vi.waitFor(() => expect(fetchJson).toHaveBeenCalledOnce());
+
+    expect(fetchJson).toHaveBeenCalledOnce();
+    resolveFetch({
+      events: [{ id: "current-week" }],
+      week: { number: 8 },
+      season: { type: 2 },
+    });
+    await initialRequest;
+
+    expect(selection.week.value).toBe(8);
+    expect(scoreboard.games.value).toEqual([{ id: "current-week" }]);
+  });
+
   it("ignores responses invalidated while a request is pending", async () => {
     const selection = createSelection("nfl");
     let resolveFetch: (value: unknown) => void = () => {};
